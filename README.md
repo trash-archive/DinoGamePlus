@@ -1,16 +1,53 @@
-# React + Vite
+﻿# Dino Game Plus
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A React + Vite browser game where you run, collect fossils, unlock upgrades, and survive a changing day/night world.
 
-Currently, two official plugins are available:
+## Project overview
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+This project is a single-page React game built with Vite.
+The player controls a pixel-style dinosaur, collects fossil pickups, grabs powerups, and upgrades movement and income systems between runs.
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Playable run mode with jump, dash, double jump, and duck slide controls
+- Buy upgrades to increase fossil income, combo rewards, shield chance, idle fossil production, and more
+- Pick up in-run powerups: shield, speed, giant, ghost, magnet, slow motion, and fossil boost
+- Giant mode can crush obstacles and convert them into fossil rewards
+- Smooth day/night transitions with bonus rewards on every cycle change
+- Buy new dinosaur skins and visual variants
+- Automatic passive fossil generation between runs
 
-## Expanding the ESLint configuration
+## Controls
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- `Space`, `ArrowUp`, or `W` = Jump
+- `D` = Dash forward (if unlocked)
+- `A` = Dash backward (if unlocked)
+- `S` or `ArrowDown` = Fast drop / duck slide (if unlocked)
+- Click the canvas to jump as well
+
+## Local setup
+
+```bash
+npm install
+npm run dev
+```
+
+Open the local URL shown by Vite.
+
+## Build for production
+
+```bash
+npm run build
+```
+
+## Project structure
+
+- `src/DinoGamePlus.jsx` — main game logic and rendering
+- `src/App.jsx` — application entry for the game component
+- `src/index.css` — global layout and page styling
+- `package.json` — npm scripts and dependencies
+
+## Notes
+
+This game is built with React 19 and Vite.
+Feel free to add more skins, upgrades, and powerups as new features.
