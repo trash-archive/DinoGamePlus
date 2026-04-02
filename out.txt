@@ -1,0 +1,18 @@
+127   { id:"fossil",     label:"Fossil Sense",      desc:"+20% bones earned/level",   baseCost:50,  maxLevel:10,icon:"◈",  cat:"income" },
+129   { id:"magnet",     label:"Bone Magnet",       desc:"Attract nearby bones",      baseCost:120, maxLevel:3, icon:"◈",  cat:"income" },
+132   { id:"transBonus", label:"Cycle Reward",      desc:"+25% day/night bonus/lv",   baseCost:180, maxLevel:4, icon:"◈",  cat:"income" },
+134   { id:"shield",     label:"Bone Armor",        desc:"6% auto-revive chance/lv",  baseCost:70,  maxLevel:5, icon:"◈",  cat:"survival" },
+141   { id:"pwShieldDur",   label:"Shield Durability", desc:"+1 hit per shield",          baseCost:250, maxLevel:4, icon:"◈", cat:"powerups" },
+144   { id:"pwMagnetRng",   label:"Magnet Range",       desc:"+60px magnet powerup range", baseCost:180, maxLevel:3, icon:"◈", cat:"powerups" },
+148   { id:"pwGhostDur",    label:"Ghost Duration",     desc:"+50 frames ghost time",      baseCost:220, maxLevel:3, icon:"◈", cat:"powerups" },
+153   { id:"pwWindfallDur", label:"Windfall Duration",  desc:"+50 frames windfall time",   baseCost:200, maxLevel:3, icon:"◈", cat:"powerups" },
+3347                 <span style={{fontSize:16,color:DARK}}>◈</span>
+3404             <span style={{fontSize:14,color:DARK}}>◈</span>
+3426               <span style={{fontSize:16}}>◈</span>
+3458                     {maxed?"MAX":`◈${cost}`}
+3503                           {`◈${def.unlockCost} UNLOCK`}
+3524                               {maxed?"MAX":`◈${cost}`}
+3570               <span style={{fontSize:16}}>◈</span>
+3609                       {active?"ACTIVE":owned?"[ SELECT ]":`◈${d.cost}`}
+3628                       {active?"ACTIVE":owned?"[ SELECT ]":sk.cost===0?"FREE":`◈${sk.cost}`}
+3651                       {active?"ACTIVE":owned?"[ SELECT ]":s.cost===0?"FREE":`◈${s.cost}`}

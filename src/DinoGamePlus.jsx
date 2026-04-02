@@ -1,4 +1,21 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { submitScore, fetchLeaderboard, isNameTaken } from "./leaderboard";
+import { getSavedName, savePlayerName, getPlayerId } from "./supabase";
+
+// ─── LOCAL STORAGE HOOK ───────────────────────────────────────────────────────
+function useLocalStorage(key, defaultValue) {
+  const [value, setValue] = useState(() => {
+    try {
+      const saved = localStorage.getItem(key);
+      return saved !== null ? JSON.parse(saved) : defaultValue;
+    } catch { return defaultValue; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+  }, [key, value]);
+  return [value, setValue];
+}
+import { drawPowerupIcon } from "./rendering/drawPowerups";
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 const GRAVITY    = 0.55;
@@ -41,18 +58,120 @@ function drawBoneCoin(ctx, x, y, size = 10) {
 
 // ─── SCENERIES ────────────────────────────────────────────────────────────────
 const SCENERIES = [
-  { id:"classic",  label:"Wasteland",     cost:0, desc:"The digital wasteland — where it all began",  dayBg:"#f5f5f0", nightBg:"#111118", groundColor:"#222222", groundTop:"#444444", cloudColor:"#dddddd", obstacleSet:"plants",  accentColor:"#444444" },
-  { id:"plains",   label:"Grasslands",    cost:1, desc:"The classic prehistoric plains",               dayBg:"#e8f4d4", nightBg:"#0d1a0a", groundColor:"#5a3e1b", groundTop:"#6b8c3e", cloudColor:"#c8ddb0", obstacleSet:"plants",  accentColor:"#6b8c3e" },
-  { id:"desert",   label:"Desert",        cost:1, desc:"Scorching sands and ancient dunes",            dayBg:"#f5dfa0", nightBg:"#1a0d00", groundColor:"#c4883a", groundTop:"#e0a850", cloudColor:"#f0d080", obstacleSet:"desert",  accentColor:"#e07020" },
-  { id:"arctic",   label:"Arctic Tundra", cost:1, desc:"Frozen wastes from the ice age",              dayBg:"#d8eeff", nightBg:"#050a14", groundColor:"#8ab0cc", groundTop:"#ddeeff", cloudColor:"#eef6ff", obstacleSet:"arctic",  accentColor:"#88ccee" },
-  { id:"volcano",  label:"Volcanic Rift", cost:1, desc:"Lava flows and volcanic fury",                dayBg:"#2a0800", nightBg:"#0a0200", groundColor:"#3a1a08", groundTop:"#8a2a00", cloudColor:"#6a2a10", obstacleSet:"volcano", accentColor:"#ff4400" },
-  { id:"jungle",   label:"Dense Jungle",  cost:1, desc:"Ancient overgrown rainforest",                dayBg:"#0a2a10", nightBg:"#020a04", groundColor:"#1a3a10", groundTop:"#2a5a18", cloudColor:"#1a3a20", obstacleSet:"jungle",  accentColor:"#44aa22" },
-  { id:"ruins",    label:"Ancient Ruins", cost:1, desc:"Crumbling stone temples of the ancients",     dayBg:"#d4c8a0", nightBg:"#0a0808", groundColor:"#8a7a5a", groundTop:"#a89878", cloudColor:"#c4b888", obstacleSet:"ruins",   accentColor:"#a08050" },
-  { id:"cave",     label:"Crystal Cave",  cost:1, desc:"Glowing crystals in the deep earth",          dayBg:"#080418", nightBg:"#020108", groundColor:"#2a1a4a", groundTop:"#3a2a6a", cloudColor:"#3a2a6a", obstacleSet:"cave",    accentColor:"#8844ff" },
+  { id:"classic",  label:"Wasteland",     cost:0,    desc:"The digital wasteland  Ewhere it all began",  dayBg:"#f5f5f0", nightBg:"#111118", groundColor:"#222222", groundTop:"#444444", cloudColor:"#dddddd", obstacleSet:"plants",  accentColor:"#444444" },
+  { id:"plains",   label:"Grasslands",    cost:3000,  desc:"The classic prehistoric plains",               dayBg:"#e8f4d4", nightBg:"#0d1a0a", groundColor:"#5a3e1b", groundTop:"#6b8c3e", cloudColor:"#c8ddb0", obstacleSet:"plants",  accentColor:"#6b8c3e" },
+  { id:"desert",   label:"Desert",        cost:6000,  desc:"Scorching sands and ancient dunes",            dayBg:"#f5dfa0", nightBg:"#1a0d00", groundColor:"#c4883a", groundTop:"#e0a850", cloudColor:"#f0d080", obstacleSet:"desert",  accentColor:"#e07020" },
+  { id:"arctic",   label:"Arctic Tundra", cost:10000, desc:"Frozen wastes from the ice age",              dayBg:"#d8eeff", nightBg:"#050a14", groundColor:"#8ab0cc", groundTop:"#ddeeff", cloudColor:"#eef6ff", obstacleSet:"arctic",  accentColor:"#88ccee" },
+  { id:"volcano",  label:"Volcanic Rift", cost:18000, desc:"Lava flows and volcanic fury",                dayBg:"#2a0800", nightBg:"#0a0200", groundColor:"#3a1a08", groundTop:"#8a2a00", cloudColor:"#6a2a10", obstacleSet:"volcano", accentColor:"#ff4400" },
+  { id:"jungle",   label:"Dense Jungle",  cost:25000, desc:"Ancient overgrown rainforest",                dayBg:"#0a2a10", nightBg:"#020a04", groundColor:"#1a3a10", groundTop:"#2a5a18", cloudColor:"#1a3a20", obstacleSet:"jungle",  accentColor:"#44aa22" },
+  { id:"ruins",    label:"Ancient Ruins", cost:40000, desc:"Crumbling stone temples of the ancients",     dayBg:"#d4c8a0", nightBg:"#0a0808", groundColor:"#8a7a5a", groundTop:"#a89878", cloudColor:"#c4b888", obstacleSet:"ruins",   accentColor:"#a08050" },
+  { id:"cave",     label:"Crystal Cave",  cost:75000, desc:"Glowing crystals in the deep earth",          dayBg:"#080418", nightBg:"#020108", groundColor:"#2a1a4a", groundTop:"#3a2a6a", cloudColor:"#3a2a6a", obstacleSet:"cave",    accentColor:"#8844ff" },
 ];
 
 // ─── DINO PASSIVE SKILLS ──────────────────────────────────────────────────────
 // Each dino has a unique passive that modifies gameplay
+// Pixel-style SVG icons for dino passives — inline, theme-consistent
+const S = {display:"inline",verticalAlign:"middle",marginRight:3,shapeRendering:"crispEdges"};
+const PASSIVE_ICONS = {
+  // Lightning bolt — centred on 10×10
+  raptor:
+    <svg width="12" height="12" viewBox="0 0 10 10" style={S}>
+      <rect x="5" y="0" width="3" height="4" fill="currentColor"/>
+      <rect x="2" y="3" width="6" height="3" fill="currentColor"/>
+      <rect x="2" y="6" width="3" height="4" fill="currentColor"/>
+    </svg>,
+  // Skull — symmetric 8-wide dome + 2 eye holes + 2 fangs
+  trex:
+    <svg width="12" height="12" viewBox="0 0 10 10" style={S}>
+      <rect x="1" y="1" width="8" height="5" fill="currentColor"/>
+      <rect x="0" y="3" width="2" height="3" fill="currentColor"/>
+      <rect x="8" y="3" width="2" height="3" fill="currentColor"/>
+      <rect x="2" y="6" width="2" height="3" fill="currentColor"/>
+      <rect x="6" y="6" width="2" height="3" fill="currentColor"/>
+      <rect x="2" y="2" width="2" height="2" fill="#f0ede6"/>
+      <rect x="6" y="2" width="2" height="2" fill="#f0ede6"/>
+    </svg>,
+  // Shield — symmetric kite shape
+  stego:
+    <svg width="12" height="12" viewBox="0 0 10 10" style={S}>
+      <rect x="1" y="0" width="8" height="6" fill="currentColor"/>
+      <rect x="2" y="6" width="6" height="2" fill="currentColor"/>
+      <rect x="3" y="8" width="4" height="1" fill="currentColor"/>
+      <rect x="4" y="9" width="2" height="1" fill="currentColor"/>
+    </svg>,
+  // Wing sweep — diagonal S-curve, symmetric about centre
+  pterodac:
+    <svg width="12" height="12" viewBox="0 0 10 10" style={S}>
+      <rect x="0" y="1" width="4" height="2" fill="currentColor"/>
+      <rect x="1" y="0" width="2" height="1" fill="currentColor"/>
+      <rect x="3" y="3" width="4" height="2" fill="currentColor"/>
+      <rect x="6" y="5" width="4" height="2" fill="currentColor"/>
+      <rect x="7" y="7" width="2" height="1" fill="currentColor"/>
+    </svg>,
+  // Club on handle — centred
+  anky:
+    <svg width="12" height="12" viewBox="0 0 10 10" style={S}>
+      <rect x="4" y="0" width="2" height="4" fill="currentColor"/>
+      <rect x="1" y="4" width="8" height="4" fill="currentColor"/>
+      <rect x="0" y="5" width="2" height="2" fill="currentColor"/>
+      <rect x="8" y="5" width="2" height="2" fill="currentColor"/>
+    </svg>,
+  // Right-pointing arrow — centred vertically
+  tri:
+    <svg width="12" height="12" viewBox="0 0 10 10" style={S}>
+      <rect x="0" y="4" width="6" height="2" fill="currentColor"/>
+      <rect x="4" y="2" width="2" height="2" fill="currentColor"/>
+      <rect x="4" y="6" width="2" height="2" fill="currentColor"/>
+      <rect x="6" y="1" width="2" height="3" fill="currentColor"/>
+      <rect x="6" y="6" width="2" height="3" fill="currentColor"/>
+      <rect x="8" y="3" width="2" height="4" fill="currentColor"/>
+    </svg>,
+  // U-magnet — perfectly symmetric, coloured poles
+  brachio:
+    <svg width="12" height="12" viewBox="0 0 10 10" style={S}>
+      <rect x="0" y="0" width="3" height="7" fill="currentColor"/>
+      <rect x="7" y="0" width="3" height="7" fill="currentColor"/>
+      <rect x="3" y="7" width="4" height="3" fill="currentColor"/>
+      <rect x="0" y="0" width="3" height="3" fill="#cc2200"/>
+      <rect x="7" y="0" width="3" height="3" fill="#2255cc"/>
+    </svg>,
+  // Crescent moon — open on right side
+  spino:
+    <svg width="12" height="12" viewBox="0 0 10 10" style={S}>
+      <rect x="2" y="0" width="5" height="2" fill="currentColor"/>
+      <rect x="1" y="2" width="3" height="6" fill="currentColor"/>
+      <rect x="2" y="8" width="5" height="2" fill="currentColor"/>
+      <rect x="6" y="1" width="2" height="2" fill="currentColor"/>
+      <rect x="7" y="3" width="2" height="4" fill="currentColor"/>
+      <rect x="6" y="7" width="2" height="2" fill="currentColor"/>
+    </svg>,
+  // Dome head — wide flat base + rounded top
+  pachy:
+    <svg width="12" height="12" viewBox="0 0 10 10" style={S}>
+      <rect x="3" y="0" width="4" height="1" fill="currentColor"/>
+      <rect x="2" y="1" width="6" height="2" fill="currentColor"/>
+      <rect x="1" y="3" width="8" height="3" fill="currentColor"/>
+      <rect x="0" y="7" width="10" height="2" fill="currentColor"/>
+    </svg>,
+  // Sound wave bars — 4 bars symmetric around centre
+  para:
+    <svg width="12" height="12" viewBox="0 0 10 10" style={S}>
+      <rect x="0" y="3" width="2" height="4" fill="currentColor"/>
+      <rect x="3" y="1" width="2" height="8" fill="currentColor"/>
+      <rect x="6" y="1" width="2" height="8" fill="currentColor"/>
+      <rect x="9" y="3" width="1" height="4" fill="currentColor"/>
+    </svg>,
+  // Venom drop — symmetric teardrop
+  dilopho:
+    <svg width="12" height="12" viewBox="0 0 10 10" style={S}>
+      <rect x="4" y="0" width="2" height="3" fill="currentColor"/>
+      <rect x="3" y="3" width="4" height="2" fill="currentColor"/>
+      <rect x="2" y="5" width="6" height="2" fill="currentColor"/>
+      <rect x="3" y="7" width="4" height="2" fill="currentColor"/>
+      <rect x="4" y="9" width="2" height="1" fill="currentColor"/>
+    </svg>,
+};
+
 const DINO_PASSIVES = {
   raptor:    { label:"Speed Rush",      desc:"Every 200m grants +5% bone income permanently this run. Sprint energy!" },
   trex:      { label:"Apex Predator",   desc:"Obstacles destroyed while giant give +8 bones instead of 4. Dominance!" },
@@ -69,65 +188,71 @@ const DINO_PASSIVES = {
 
 // ─── DINO DESIGNS ─────────────────────────────────────────────────────────────
 const DINO_DESIGNS = [
-  { id:"raptor",   label:"Raptor",        cost:0,    desc:"Fast and lean — the classic runner" },
-  { id:"trex",     label:"T-Rex",         cost:1,  desc:"Stocky and powerful apex predator" },
-  { id:"stego",    label:"Stegosaurus",   cost:1,  desc:"Armored with iconic back plates" },
-  { id:"pterodac", label:"Pterodactyl",   cost:1,  desc:"Winged flyer, soars above danger" },
-  { id:"anky",     label:"Ankylosaurus",  cost:1,  desc:"Club tail, heavy armored tank" },
-  { id:"tri",      label:"Triceratops",   cost:1,  desc:"Three-horned charging powerhouse" },
-  { id:"brachio",  label:"Brachiosaurus", cost:1,  desc:"Towering long-neck gentle giant" },
-  { id:"spino",    label:"Spinosaurus",   cost:800,  desc:"Sail-backed river predator" },
-  { id:"pachy",    label:"Pachycephalosaurus", cost:550, desc:"Dome-headed headbutter" },
-  { id:"para",     label:"Parasaurolophus", cost:650, desc:"Crested hadrosaur, crest resonates" },
-  { id:"dilopho",  label:"Dilophosaurus", cost:900,  desc:"Frilled venomous sprinter" },
+  { id:"raptor",   label:"Raptor",        cost:0,    desc:"Fast and lean  Ethe classic runner" },
+  { id:"trex",     label:"T-Rex",         cost:2500,  desc:"Stocky and powerful apex predator" },
+  { id:"stego",    label:"Stegosaurus",   cost:3500,  desc:"Armored with iconic back plates" },
+  { id:"pterodac", label:"Pterodactyl",   cost:5000,  desc:"Winged flyer, soars above danger" },
+  { id:"anky",     label:"Ankylosaurus",  cost:7000,  desc:"Club tail, heavy armored tank" },
+  { id:"tri",      label:"Triceratops",   cost:9000,  desc:"Three-horned charging powerhouse" },
+  { id:"brachio",  label:"Brachiosaurus", cost:12000, desc:"Towering long-neck gentle giant" },
+  { id:"spino",    label:"Spinosaurus",   cost:18000, desc:"Sail-backed river predator" },
+  { id:"pachy",    label:"Pachycephalosaurus", cost:15000, desc:"Dome-headed headbutter" },
+  { id:"para",     label:"Parasaurolophus", cost:20000, desc:"Crested hadrosaur, crest resonates" },
+  { id:"dilopho",  label:"Dilophosaurus", cost:30000, desc:"Frilled venomous sprinter" },
 ];
 
 // ─── SKINS ────────────────────────────────────────────────────────────────────
 const SKINS = [
-  { id:"classic",  label:"Classic",   cost:0,    color:"#2a2a2a", eyeColor:"#f0f0f0", accent:"#3a3a3a", plateColor:"#333",    frillColor:"#444" },
-  { id:"bone",     label:"Bone",      cost:1,  color:"#d4c9a8", eyeColor:"#3a6a2a", accent:"#c0b48e", plateColor:"#c8bd9c", frillColor:"#b8a880" },
-  { id:"neon",     label:"Neon",      cost:1,  color:"#00cc66", eyeColor:"#ffffff", accent:"#00aa44", plateColor:"#00aa55", frillColor:"#00ff88" },
-  { id:"shadow",   label:"Shadow",    cost:1,  color:"#1a1a1a", eyeColor:"#dd3333", accent:"#0a0a0a", plateColor:"#151515", frillColor:"#222" },
-  { id:"robo",     label:"Robo",      cost:1,  color:"#5599aa", eyeColor:"#ffdd00", accent:"#336688", plateColor:"#446688", frillColor:"#6699bb" },
-  { id:"gold",     label:"Gold",      cost:1,  color:"#d4a820", eyeColor:"#2a2a2a", accent:"#b89010", plateColor:"#c09810", frillColor:"#e8c030" },
-  { id:"lava",     label:"Lava",      cost:1,  color:"#aa2200", eyeColor:"#ffaa00", accent:"#661100", plateColor:"#882200", frillColor:"#cc3300" },
-  { id:"ice",      label:"Ice",       cost:1,  color:"#88ccee", eyeColor:"#003388", accent:"#66aacc", plateColor:"#77bbdd", frillColor:"#aaddff" },
-  { id:"void",     label:"Void",      cost:1, color:"#110022", eyeColor:"#aa33ff", accent:"#0a0015", plateColor:"#1a0033", frillColor:"#220044" },
-  { id:"crystal",  label:"Crystal",   cost:1,  color:"#cc77ee", eyeColor:"#ffffff", accent:"#994dbb", plateColor:"#bb66dd", frillColor:"#dd99ff" },
-  { id:"rust",     label:"Rust",      cost:1,  color:"#8a3a18", eyeColor:"#ffcc55", accent:"#5a2a10", plateColor:"#6a3015", frillColor:"#aa4422" },
-  { id:"obsidian", label:"Obsidian",  cost:1,  color:"#1a1a2a", eyeColor:"#44ddff", accent:"#0a0a18", plateColor:"#15152a", frillColor:"#2a2a3a" },
+  { id:"classic",  label:"Classic",   cost:0,   color:"#2a2a2a", eyeColor:"#f0f0f0", accent:"#3a3a3a", plateColor:"#333",    frillColor:"#444" },
+  { id:"bone",     label:"Bone",      cost:1500,  color:"#d4c9a8", eyeColor:"#3a6a2a", accent:"#c0b48e", plateColor:"#c8bd9c", frillColor:"#b8a880" },
+  { id:"neon",     label:"Neon",      cost:2500,  color:"#00cc66", eyeColor:"#ffffff", accent:"#00aa44", plateColor:"#00aa55", frillColor:"#00ff88" },
+  { id:"shadow",   label:"Shadow",    cost:3500,  color:"#1a1a1a", eyeColor:"#dd3333", accent:"#0a0a0a", plateColor:"#151515", frillColor:"#222" },
+  { id:"robo",     label:"Robo",      cost:5000,  color:"#5599aa", eyeColor:"#ffdd00", accent:"#336688", plateColor:"#446688", frillColor:"#6699bb" },
+  { id:"gold",     label:"Gold",      cost:8000,  color:"#d4a820", eyeColor:"#2a2a2a", accent:"#b89010", plateColor:"#c09810", frillColor:"#e8c030" },
+  { id:"lava",     label:"Lava",      cost:10000, color:"#aa2200", eyeColor:"#ffaa00", accent:"#661100", plateColor:"#882200", frillColor:"#cc3300" },
+  { id:"ice",      label:"Ice",       cost:12000, color:"#88ccee", eyeColor:"#003388", accent:"#66aacc", plateColor:"#77bbdd", frillColor:"#aaddff" },
+  { id:"void",     label:"Void",      cost:20000, color:"#110022", eyeColor:"#aa33ff", accent:"#0a0015", plateColor:"#1a0033", frillColor:"#220044" },
+  { id:"crystal",  label:"Crystal",   cost:25000, color:"#cc77ee", eyeColor:"#ffffff", accent:"#994dbb", plateColor:"#bb66dd", frillColor:"#dd99ff" },
+  { id:"rust",     label:"Rust",      cost:6000,  color:"#8a3a18", eyeColor:"#ffcc55", accent:"#5a2a10", plateColor:"#6a3015", frillColor:"#aa4422" },
+  { id:"obsidian", label:"Obsidian",  cost:35000, color:"#1a1a2a", eyeColor:"#44ddff", accent:"#0a0a18", plateColor:"#15152a", frillColor:"#2a2a3a" },
 ];
 
 // ─── UPGRADES ─────────────────────────────────────────────────────────────────
 const UPGRADES = [
-  { id:"jump",       label:"Stronger Legs",    desc:"+1.8 jump power per level", baseCost:30,  maxLevel:6, icon:"↑",  cat:"movement" },
-  { id:"dblJump",    label:"Double Jump",       desc:"Jump again mid-air",        baseCost:150, maxLevel:1, icon:"⇑",  cat:"movement" },
+  { id:"jump",       label:"Stronger Legs",    desc:"+1.8 jump power per level", baseCost:30,  maxLevel:6, icon:"ↁ",  cat:"movement" },
+  { id:"dblJump",    label:"Double Jump",       desc:"Jump again mid-air",        baseCost:150, maxLevel:1, icon:"⇁",  cat:"movement" },
   { id:"dash",       label:"Forward Dash",      desc:"Right arrow to dash fwd",   baseCost:200, maxLevel:1, icon:"▶▶", cat:"movement" },
   { id:"backdash",   label:"Back Dash",         desc:"Left arrow to dash back",   baseCost:200, maxLevel:1, icon:"◀◀", cat:"movement" },
-  { id:"fastdrop",   label:"Fast Drop",         desc:"Down arrow drops fast",     baseCost:100, maxLevel:1, icon:"↓↓", cat:"movement" },
-  { id:"duck",       label:"Duck",              desc:"Down arrow to crouch",      baseCost:80,  maxLevel:1, icon:"⬇",  cat:"movement" },
+  { id:"fastdrop",   label:"Fast Drop",         desc:"Down arrow drops fast",     baseCost:100, maxLevel:1, icon:"↓�", cat:"movement" },
+  { id:"duck",       label:"Duck",              desc:"Down arrow to crouch",      baseCost:80,  maxLevel:1, icon:"⬁",  cat:"movement" },
   { id:"dashCd",     label:"Dash Cooldown",     desc:"Reduce dash delay 10f/lv",  baseCost:120, maxLevel:4, icon:"↻",  cat:"movement" },
   { id:"fossil",     label:"Fossil Sense",      desc:"+20% bones earned/level",   baseCost:50,  maxLevel:10,icon:"◈",  cat:"income" },
-  { id:"combo",      label:"Combo Hunger",      desc:"+0.12 combo mult/level",    baseCost:80,  maxLevel:6, icon:"×",  cat:"income" },
-  { id:"magnet",     label:"Bone Magnet",       desc:"Attract nearby bones",      baseCost:120, maxLevel:3, icon:"◉",  cat:"income" },
+  { id:"combo",      label:"Combo Hunger",      desc:"+0.12 combo mult/level",    baseCost:80,  maxLevel:6, icon:"Á",  cat:"income" },
+  { id:"magnet",     label:"Bone Magnet",       desc:"Attract nearby bones",      baseCost:120, maxLevel:3, icon:"◈",  cat:"income" },
   { id:"nearMiss",   label:"Near Miss",         desc:"+3 bones on near misses",   baseCost:100, maxLevel:4, icon:"!",  cat:"income" },
   { id:"nightBonus", label:"Night Sight",       desc:"+25% bones at night/lv",    baseCost:160, maxLevel:4, icon:"☾",  cat:"income" },
-  { id:"transBonus", label:"Cycle Reward",      desc:"+25% day/night bonus/lv",   baseCost:180, maxLevel:4, icon:"◑",  cat:"income" },
+  { id:"transBonus", label:"Cycle Reward",      desc:"+25% day/night bonus/lv",   baseCost:180, maxLevel:4, icon:"◈",  cat:"income" },
   { id:"speedBonus", label:"Speed Bonus",       desc:"+0.5 bones/sec per speed",  baseCost:200, maxLevel:5, icon:"»",  cat:"income" },
-  { id:"shield",     label:"Bone Armor",        desc:"6% auto-revive chance/lv",  baseCost:70,  maxLevel:5, icon:"◎",  cat:"survival" },
+  { id:"shield",     label:"Bone Armor",        desc:"6% auto-revive chance/lv",  baseCost:70,  maxLevel:5, icon:"◈",  cat:"survival" },
   { id:"speed",      label:"Safe Start",        desc:"Start each run 15% slower", baseCost:50,  maxLevel:4, icon:"◀",  cat:"survival" },
   { id:"extraLife",  label:"Extra Life",        desc:"Start with +1 life",        baseCost:350, maxLevel:3, icon:"♥",  cat:"survival" },
-  { id:"invFrames",  label:"I-Frames",          desc:"+8 invincible frames/hit",  baseCost:250, maxLevel:4, icon:"★",  cat:"survival" },
-  { id:"miner",      label:"Bone Miner",        desc:"+0.3 bones/sec passive",    baseCost:200, maxLevel:6, icon:"⛏",  cat:"idle" },
-  { id:"camp",       label:"Bone Camp",         desc:"+0.8 bones/sec idle",       baseCost:400, maxLevel:4, icon:"⌂",  cat:"idle" },
-  { id:"research",   label:"Research Lab",      desc:"+1.5 bones/sec passive",    baseCost:800, maxLevel:3, icon:"⚗",  cat:"idle" },
-  { id:"pwShieldDur",label:"Shield Durability", desc:"+1 hit per shield",         baseCost:250, maxLevel:4, icon:"◎+", cat:"powerups" },
-  { id:"pwSpeedMult",label:"Speed Power",       desc:"+0.25x speed boost power",  baseCost:200, maxLevel:3, icon:"▶+", cat:"powerups" },
-  { id:"pwGiantDur", label:"Giant Duration",    desc:"+50 frames giant time",     baseCost:220, maxLevel:3, icon:"▲+", cat:"powerups" },
-  { id:"pwMagnetRng",label:"Magnet Range",      desc:"+60px magnet powerup range",baseCost:180, maxLevel:3, icon:"◉+", cat:"powerups" },
-  { id:"pwFrenzyDur",label:"Frenzy Duration",   desc:"+50 frames frenzy time",    baseCost:240, maxLevel:3, icon:"★+", cat:"powerups" },
-  { id:"pwRareDrop",    label:"Powerup Luck",      desc:"+6% powerup spawn rate/lv", baseCost:160, maxLevel:5, icon:"✦",  cat:"powerups" },
-  { id:"pwHeartChance", label:"Life Drop",          desc:"+4% heart spawn chance/lv", baseCost:300, maxLevel:5, icon:"♥+", cat:"powerups" },
+  { id:"invFrames",  label:"I-Frames",          desc:"+8 invincible frames/hit",  baseCost:250, maxLevel:4, icon:"☁",  cat:"survival" },
+  { id:"miner",      label:"Bone Miner",        desc:"+0.3 bones/sec passive",    baseCost:200, maxLevel:6, icon:"⛁",  cat:"idle" },
+  { id:"camp",       label:"Bone Camp",         desc:"+0.8 bones/sec idle",       baseCost:400, maxLevel:4, icon:"⌁",  cat:"idle" },
+  { id:"research",   label:"Research Lab",      desc:"+1.5 bones/sec passive",    baseCost:800, maxLevel:3, icon:"⚁",  cat:"idle" },
+  { id:"pwShieldDur",   label:"Shield Durability", desc:"+1 hit per shield",          baseCost:250, maxLevel:4, icon:"◈", cat:"powerups" },
+  { id:"pwSpeedMult",   label:"Speed Power",        desc:"+0.25x speed boost power",   baseCost:200, maxLevel:3, icon:"▶+", cat:"powerups" },
+  { id:"pwGiantDur",    label:"Giant Duration",     desc:"+50 frames giant time",      baseCost:220, maxLevel:3, icon:"▲+", cat:"powerups" },
+  { id:"pwMagnetRng",   label:"Magnet Range",       desc:"+60px magnet powerup range", baseCost:180, maxLevel:3, icon:"◈", cat:"powerups" },
+  { id:"pwFrenzyDur",   label:"Frenzy Duration",    desc:"+50 frames frenzy time",     baseCost:240, maxLevel:3, icon:"☁", cat:"powerups" },
+  { id:"pwRareDrop",    label:"Powerup Luck",       desc:"+6% powerup spawn rate/lv",  baseCost:160, maxLevel:5, icon:"✦",  cat:"powerups" },
+  { id:"pwHeartChance", label:"Life Drop",           desc:"+4% heart spawn chance/lv",  baseCost:300, maxLevel:5, icon:"♥+", cat:"powerups" },
+  { id:"pwGhostDur",    label:"Ghost Duration",     desc:"+50 frames ghost time",      baseCost:220, maxLevel:3, icon:"◈", cat:"powerups" },
+  { id:"pwTinyDur",     label:"Tiny Duration",      desc:"+50 frames tiny time",       baseCost:180, maxLevel:3, icon:"▽+", cat:"powerups" },
+  { id:"pwMeteorCount", label:"Meteor Blast",       desc:"+2 extra meteor clears",     baseCost:350, maxLevel:3, icon:"☁", cat:"powerups" },
+  { id:"pwDoublerDur",  label:"Doubler Duration",   desc:"+50 frames doubler time",    baseCost:200, maxLevel:3, icon:"Á", cat:"powerups" },
+  { id:"pwSlowDur",     label:"Slow Duration",      desc:"+50 frames slow time",       baseCost:180, maxLevel:3, icon:"⏱+", cat:"powerups" },
+  { id:"pwWindfallDur", label:"Windfall Duration",  desc:"+50 frames windfall time",   baseCost:200, maxLevel:3, icon:"◈", cat:"powerups" },
 ];
 
 const UPGRADE_CATS = ["movement","income","survival","idle","powerups"];
@@ -188,19 +313,6 @@ const ACHIEVEMENTS = [
   { id:"passive100",   label:"The Idle One",      desc:"Earn 100 bones passively in one session",req:(s)=>s.passiveEarned>=100,reward:1500,tier:"legend" },
 ];
 
-// ─── MOCK LEADERBOARD ─────────────────────────────────────────────────────────
-const MOCK_LEADERBOARD = [
-  { rank:1,  name:"DINOMASTER",   score:42830, dist:15220 },
-  { rank:2,  name:"BONECRUNCHER", score:38450, dist:12800 },
-  { rank:3,  name:"FOSSILKING",   score:31200, dist:10500 },
-  { rank:4,  name:"RAPTOR_ACE",   score:28750, dist:9600  },
-  { rank:5,  name:"ANCIENTREX",   score:24100, dist:8200  },
-  { rank:6,  name:"STEGOPROXY",   score:19800, dist:6700  },
-  { rank:7,  name:"JURASSIC_J",   score:16500, dist:5500  },
-  { rank:8,  name:"BONEYARD",     score:13200, dist:4400  },
-  { rank:9,  name:"TRIHORN99",    score:9800,  dist:3300  },
-  { rank:10, name:"NEWCOMER",     score:6200,  dist:2100  },
-];
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function getUpgradeCost(up, level) { return Math.floor(up.baseCost * Math.pow(1.8, level)); }
@@ -223,6 +335,29 @@ function getSceneryColors(scenery, nightBlend) {
     groundTop: s.groundTop,
     cloud:     s.cloudColor,
     accent:    s.accentColor,
+  };
+}
+
+// Per-scenery HUD palette: { hud, fossil, heart, bonePick }
+// hud = text/score color, fossil = diamond icon color, heart = heart fill, bonePick = pickup diamond
+const SCENERY_HUD = {
+  classic: { hud:["#222222","#dddddd"], fossil:["#888888","#ccccaa"], heart:["#dd2244","#ff4466"], bonePick:["#888888","#cccc99"] },
+  plains:  { hud:["#2a4a10","#aaddaa"], fossil:["#5a8a30","#88cc55"], heart:["#cc3322","#ff5544"], bonePick:["#6a9a40","#aadd66"] },
+  desert:  { hud:["#7a3a00","#ffcc66"], fossil:["#cc7700","#ffaa22"], heart:["#cc4400","#ff6622"], bonePick:["#cc8820","#ffcc44"] },
+  arctic:  { hud:["#224466","#aaddff"], fossil:["#4488bb","#88ccff"], heart:["#2255aa","#44aaff"], bonePick:["#5599cc","#aaddff"] },
+  volcano: { hud:["#ff6600","#ffaa44"], fossil:["#ff4400","#ff8844"], heart:["#ff2200","#ff6600"], bonePick:["#ff5500","#ffaa22"] },
+  jungle:  { hud:["#1a5a10","#88ff44"], fossil:["#2a8a10","#66dd22"], heart:["#228822","#44ff44"], bonePick:["#3a9a20","#88ee44"] },
+  ruins:   { hud:["#5a4a28","#ddcc88"], fossil:["#8a6a30","#ccaa55"], heart:["#884422","#cc7744"], bonePick:["#9a7a40","#ccaa55"] },
+  cave:    { hud:["#8844ff","#cc88ff"], fossil:["#aa44ff","#dd99ff"], heart:["#8822cc","#cc44ff"], bonePick:["#9933ee","#cc77ff"] },
+};
+function getHudColors(scenery, nightBlend) {
+  const p = SCENERY_HUD[scenery?.id] || SCENERY_HUD.classic;
+  const t = Math.min(1, nightBlend * 2); // 0=day, 1=night
+  return {
+    hud:     t < 0.5 ? p.hud[0]    : p.hud[1],
+    fossil:  t < 0.5 ? p.fossil[0] : p.fossil[1],
+    heart:   t < 0.5 ? p.heart[0]  : p.heart[1],
+    bonePick:t < 0.5 ? p.bonePick[0]: p.bonePick[1],
   };
 }
 
@@ -307,7 +442,7 @@ function drawDino(ctx, x, y, frame, dead, skin, design, isGiant, isDucking, isTi
       ctx.fillRect(x+16, y+DINO_H-DUCK_H-10, 22, 14);
       // Tail flush
       ctx.fillRect(x-8, y+DINO_H-DUCK_H+2, 12, 5);
-      // Neck connects cleanly — NO stripe here
+      // Neck connects cleanly  ENO stripe here
       // Eye
       ctx.fillStyle = dead ? "#555" : ec;
       ctx.fillRect(x+30, y+DINO_H-DUCK_H-8, 6, 6);
@@ -318,12 +453,12 @@ function drawDino(ctx, x, y, frame, dead, skin, design, isGiant, isDucking, isTi
       ctx.fillRect(x+8,  y+DINO_H-6, 7, 6);
       ctx.fillRect(x+22, y+DINO_H-6, 7, 6);
     } else {
-      // Body — one unified shape, no stripe
+      // Body  Eone unified shape, no stripe
       ctx.fillStyle = dead ? "#888" : c;
       ctx.fillRect(x+6, y+14, 28, 22);   // torso
-      // Neck+head as one block — NO neck stripe
+      // Neck+head as one block  ENO neck stripe
       ctx.fillRect(x+20, y+2, 20, 16);   // head+neck block
-      // Belly accent — only on belly, not the neck
+      // Belly accent  Eonly on belly, not the neck
       ctx.fillStyle = dead ? "#666" : ac;
       ctx.fillRect(x+8, y+26, 24, 6);    // belly stripe only on lower torso
       // Tail
@@ -386,7 +521,7 @@ function drawDino(ctx, x, y, frame, dead, skin, design, isGiant, isDucking, isTi
       ctx.fillRect(x+8,  y+DINO_H-5, 9, 5);
       ctx.fillRect(x+24, y+DINO_H-5, 9, 5);
     } else {
-      // Stocky body — unified, no neck stripe
+      // Stocky body  Eunified, no neck stripe
       ctx.fillStyle = dead ? "#888" : c;
       ctx.fillRect(x+2,  y+10, 34, 28);  // big torso
       ctx.fillRect(x+16, y+0,  22, 14);  // head block
@@ -436,7 +571,7 @@ function drawDino(ctx, x, y, frame, dead, skin, design, isGiant, isDucking, isTi
       ctx.fillStyle = dead ? "#888" : c;
       ctx.fillRect(x+4, y+14, 30, 24);  // torso
       ctx.fillRect(x+18, y+4, 18, 14); // head/neck unified
-      // Back plates — alternating heights
+      // Back plates  Ealternating heights
       ctx.fillStyle = dead ? "#666" : pc;
       const plateHeights = [10, 14, 16, 14, 10, 7];
       for(let i=0;i<6;i++) {
@@ -458,7 +593,7 @@ function drawDino(ctx, x, y, frame, dead, skin, design, isGiant, isDucking, isTi
       ctx.fillRect(x+28, y+6, 6, 6);
       ctx.fillStyle = "#000"; ctx.fillRect(x+30, y+8, 3, 3);
       if(dead) { ctx.fillStyle="#777"; ctx.fillRect(x+26,y+8,8,2); ctx.fillRect(x+29,y+6,2,6); }
-      // Legs — stego has 4 stout legs drawn as 2 pairs visible
+      // Legs  Estego has 4 stout legs drawn as 2 pairs visible
       ctx.fillStyle = dead ? "#888" : c;
       if(!dead) {
         if(f === 0) {
@@ -475,11 +610,11 @@ function drawDino(ctx, x, y, frame, dead, skin, design, isGiant, isDucking, isTi
 
   // ── PTERODACTYL ───────────────────────────────────────────────────────────
   } else if(id === "pterodac") {
-    // Pterodactyl always "flies" — no ground legs, wings always animate
+    // Pterodactyl always "flies"  Eno ground legs, wings always animate
     ctx.fillStyle = dead ? "#888" : c;
     // Body
     ctx.fillRect(x+10, y+16, 24, 16);
-    // Neck + head — no stripe
+    // Neck + head  Eno stripe
     ctx.fillRect(x+20, y+6,  18, 13);
     // Long beak/crest
     ctx.fillRect(x+30, y+2,  14, 4);
@@ -488,7 +623,7 @@ function drawDino(ctx, x, y, frame, dead, skin, design, isGiant, isDucking, isTi
     ctx.fillRect(x+10, y+10, 3, 8);
     ctx.fillRect(x+13, y+7,  3, 11);
     ctx.fillRect(x+16, y+5,  3, 13);
-    // Wings — flap based on frame (always animates regardless of ground)
+    // Wings  Eflap based on frame (always animates regardless of ground)
     ctx.fillStyle = dead ? "#777" : ac;
     if(wf === 0) {
       // Wings up
@@ -540,7 +675,7 @@ function drawDino(ctx, x, y, frame, dead, skin, design, isGiant, isDucking, isTi
       ctx.fillRect(x+2,  y+18, 36, 3);
       ctx.fillRect(x+2,  y+26, 36, 3);
       ctx.fillStyle = dead ? "#888" : c;
-      // Club tail — big
+      // Club tail  Ebig
       ctx.fillRect(x-6,  y+20, 10, 6);
       ctx.fillRect(x-12, y+18, 8,  10);
       ctx.fillStyle = dead ? "#666" : pc;
@@ -551,7 +686,7 @@ function drawDino(ctx, x, y, frame, dead, skin, design, isGiant, isDucking, isTi
       ctx.fillRect(x+28, y+6, 6, 6);
       ctx.fillStyle = "#000"; ctx.fillRect(x+30, y+8, 3, 3);
       if(dead) { ctx.fillStyle="#777"; ctx.fillRect(x+26,y+8,8,2); ctx.fillRect(x+29,y+6,2,6); }
-      // Legs — 4 stout legs
+      // Legs  E4 stout legs
       ctx.fillStyle = dead ? "#888" : c;
       if(!dead) {
         if(f === 0) {
@@ -583,7 +718,7 @@ function drawDino(ctx, x, y, frame, dead, skin, design, isGiant, isDucking, isTi
       ctx.fillStyle = dead ? "#888" : c;
       ctx.fillRect(x+4,  y+12, 30, 26);  // body
       ctx.fillRect(x+16, y+2,  24, 16);  // head
-      // Neck frill — dramatic
+      // Neck frill  Edramatic
       ctx.fillStyle = dead ? "#666" : fc;
       ctx.fillRect(x+14, y-6,  22, 10);
       ctx.fillRect(x+16, y-10, 18, 6);
@@ -638,7 +773,7 @@ function drawDino(ctx, x, y, frame, dead, skin, design, isGiant, isDucking, isTi
       ctx.fillStyle = dead ? "#666" : ac;
       ctx.fillRect(x+22, y+6,  10, 6);   // neck shading
       ctx.fillStyle = dead ? "#888" : c;
-      // Tail — long sweeping
+      // Tail  Elong sweeping
       ctx.fillRect(x-6,  y+24, 10, 5);
       ctx.fillRect(x-12, y+27, 8,  4);
       ctx.fillRect(x-18, y+29, 8,  3);
@@ -688,7 +823,7 @@ function drawDino(ctx, x, y, frame, dead, skin, design, isGiant, isDucking, isTi
       ctx.fillRect(x+20, y+2,  18, 14);  // head (croc-like snout)
       // Extended croc snout
       ctx.fillRect(x+32, y+6, 10, 5);   // snout extension
-      // Neural sail — dramatic fin on back
+      // Neural sail  Edramatic fin on back
       ctx.fillStyle = dead ? "#666" : fc;
       const sailH = [8, 14, 18, 22, 18, 14, 8];
       for(let i=0;i<7;i++) ctx.fillRect(x+4+i*5, y+8-sailH[i], 4, sailH[i]);
@@ -737,7 +872,7 @@ function drawDino(ctx, x, y, frame, dead, skin, design, isGiant, isDucking, isTi
       ctx.fillStyle = dead ? "#888" : c;
       ctx.fillRect(x+8,  y+14, 26, 22); // compact body
       ctx.fillRect(x+18, y+6,  18, 12); // neck
-      // DOME HEAD — defining feature
+      // DOME HEAD  Edefining feature
       ctx.fillStyle = dead ? "#666" : pc;
       ctx.fillRect(x+18, y-4,  18, 12); // dome
       ctx.fillRect(x+20, y-8,  14, 6);  // dome top
@@ -755,7 +890,7 @@ function drawDino(ctx, x, y, frame, dead, skin, design, isGiant, isDucking, isTi
       ctx.fillRect(x+30, y+8, 5, 5);
       ctx.fillStyle = "#000"; ctx.fillRect(x+31, y+9, 3, 3);
       if(dead) { ctx.fillStyle="#777"; ctx.fillRect(x+28,y+9,7,2); ctx.fillRect(x+31,y+7,2,5); }
-      // Legs — bipedal agile
+      // Legs  Ebipedal agile
       ctx.fillStyle = dead ? "#888" : c;
       if(!dead) {
         if(f === 0) {
@@ -787,7 +922,7 @@ function drawDino(ctx, x, y, frame, dead, skin, design, isGiant, isDucking, isTi
       ctx.fillStyle = dead ? "#888" : c;
       ctx.fillRect(x+6,  y+14, 28, 22); // body
       ctx.fillRect(x+18, y+4,  18, 14); // head
-      // Long tubular crest sweeping backward — iconic
+      // Long tubular crest sweeping backward  Eiconic
       ctx.fillStyle = dead ? "#666" : fc;
       ctx.fillRect(x+18, y-4,  8,  10); // crest base
       ctx.fillRect(x+10, y-8,  10, 6);  // crest mid
@@ -855,7 +990,7 @@ function drawDino(ctx, x, y, frame, dead, skin, design, isGiant, isDucking, isTi
       ctx.fillRect(x-8,  y+24, 8,  3);
       ctx.fillRect(x-14, y+26, 7,  3);
       ctx.fillRect(x-18, y+28, 6,  2);
-      // Arms — medium length
+      // Arms  Emedium length
       ctx.fillRect(x+12, y+17, 9, 5);
       ctx.fillRect(x+12, y+22, 7, 3);
       // Eye
@@ -863,7 +998,7 @@ function drawDino(ctx, x, y, frame, dead, skin, design, isGiant, isDucking, isTi
       ctx.fillRect(x+30, y+4, 6, 6);
       ctx.fillStyle = "#000"; ctx.fillRect(x+32, y+6, 3, 3);
       if(dead) { ctx.fillStyle="#777"; ctx.fillRect(x+28,y+6,8,2); ctx.fillRect(x+31,y+4,2,6); }
-      // Legs — very agile sprinter
+      // Legs  Every agile sprinter
       ctx.fillStyle = dead ? "#888" : c;
       if(!dead) {
         if(f === 0) {
@@ -883,9 +1018,9 @@ function drawDino(ctx, x, y, frame, dead, skin, design, isGiant, isDucking, isTi
 }
 
 // ─── DRAW: HEARTS ─────────────────────────────────────────────────────────────
-function drawHeart(ctx, x, y, size = 12) {
+function drawHeart(ctx, x, y, size = 12, color = "#dd2244") {
   const s = size / 12;
-  ctx.fillStyle = "#dd2244";
+  ctx.fillStyle = color;
   ctx.fillRect(x+size*0.08, y,          size*0.35, size*0.4);
   ctx.fillRect(x+size*0.55, y,          size*0.35, size*0.4);
   ctx.fillRect(x,           y+size*0.25,size,       size*0.38);
@@ -904,6 +1039,11 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
 
   if(o.otype === "bird") {
     const fw = Math.floor(frame/8)%2;
+    // All birds face left  Eflip horizontally around bird center
+    ctx.save();
+    ctx.translate(o.x+20, 0);
+    ctx.scale(-1, 1);
+    ctx.translate(-o.x-20, 0);
     if(sid==="classic") {
       // Wasteland: angular pixel crow/raven, dark with sharp wings
       const col = o._nightBlend > 0.5 ? "#dddddd" : "#333333";
@@ -926,7 +1066,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
       if(fw===0){ ctx.fillRect(o.x-2,o.y-4,22,8); ctx.fillRect(o.x+26,o.y+14,14,6); }
       else       { ctx.fillRect(o.x,o.y+4,20,6);  ctx.fillRect(o.x+26,o.y+16,12,5); }
     } else if(sid==="desert") {
-      // Desert: vulture — hunched, bald head, wide soaring wings
+      // Desert: vulture  Ehunched, bald head, wide soaring wings
       ctx.fillStyle="#5a3a18";
       ctx.fillRect(o.x+8,  o.y+8, 26, 10);  // body
       ctx.fillRect(o.x+22, o.y+2, 12, 10);  // hunched neck
@@ -936,7 +1076,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
       if(fw===0){ ctx.fillRect(o.x-6,o.y+2,28,7); ctx.fillRect(o.x+28,o.y+2,20,7); } // wide soar
       else       { ctx.fillRect(o.x-2,o.y+8,24,5); ctx.fillRect(o.x+28,o.y+8,16,5); }
     } else if(sid==="arctic") {
-      // Arctic: snowy owl — round white body, yellow eyes
+      // Arctic: snowy owl  Eround white body, yellow eyes
       ctx.fillStyle="#ddeeff";
       ctx.fillRect(o.x+6,  o.y+4, 26, 14);  // round body
       ctx.fillRect(o.x+18, o.y,   14, 10);  // round head
@@ -947,7 +1087,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
       if(fw===0){ ctx.fillRect(o.x-2,o.y-2,20,8); ctx.fillRect(o.x+30,o.y-2,14,8); }
       else       { ctx.fillRect(o.x+2,o.y+6,16,6); ctx.fillRect(o.x+30,o.y+6,10,6); }
     } else if(sid==="volcano") {
-      // Volcano: fire bat — dark red, leathery wings, glowing eyes
+      // Volcano: fire bat  Edark red, leathery wings, glowing eyes
       ctx.fillStyle="#6a1800";
       ctx.fillRect(o.x+8,  o.y+6, 22, 12);  // body
       ctx.fillRect(o.x+18, o.y+2, 12, 8);   // head
@@ -962,7 +1102,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
         ctx.fillRect(o.x+28,o.y+10,12,8); ctx.fillRect(o.x+38,o.y+14,6,6);
       }
     } else if(sid==="jungle") {
-      // Jungle: toucan — bright orange beak, black body, white chest
+      // Jungle: toucan  Ebright orange beak, black body, white chest
       ctx.fillStyle="#1a1a1a";
       ctx.fillRect(o.x+6,  o.y+6, 26, 12);  // body
       ctx.fillRect(o.x+18, o.y+2, 14, 10);  // head
@@ -974,7 +1114,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
       if(fw===0){ ctx.fillRect(o.x-2,o.y-2,22,8); ctx.fillRect(o.x+26,o.y+14,14,6); }
       else       { ctx.fillRect(o.x+2,o.y+4,18,6); ctx.fillRect(o.x+26,o.y+16,12,5); }
     } else if(sid==="ruins") {
-      // Ruins: archaeopteryx — feathered, brownish, primitive
+      // Ruins: archaeopteryx  Efeathered, brownish, primitive
       ctx.fillStyle="#7a5a30";
       ctx.fillRect(o.x+6,  o.y+6, 26, 10);  // body
       ctx.fillRect(o.x+20, o.y+2, 14, 8);   // head
@@ -986,7 +1126,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
       if(fw===0){ ctx.fillRect(o.x-2,o.y-4,22,8); ctx.fillRect(o.x+26,o.y+14,14,6); }
       else       { ctx.fillRect(o.x+2,o.y+4,18,6); ctx.fillRect(o.x+26,o.y+16,12,5); }
     } else if(sid==="cave") {
-      // Cave: glowing crystal bat — purple, bioluminescent
+      // Cave: glowing crystal bat  Epurple, bioluminescent
       ctx.fillStyle="#6633aa";
       ctx.fillRect(o.x+8,  o.y+6, 22, 12);  // body
       ctx.fillRect(o.x+18, o.y+2, 12, 8);   // head
@@ -1008,6 +1148,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
       if(fw===0){ ctx.fillRect(o.x+4,o.y-8,18,9); ctx.fillRect(o.x+18,o.y+16,16,7); }
       else       { ctx.fillRect(o.x+4,o.y+2,18,6); ctx.fillRect(o.x+18,o.y+18,14,6); }
     }
+    ctx.restore();
     return;
   }
 
@@ -1053,7 +1194,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
       else if(t===1){ctx.fillRect(o.x+8,g-66,10,66);ctx.fillRect(o.x,g-44,26,8);ctx.fillRect(o.x,g-56,10,15);ctx.fillRect(o.x+20,g-52,10,13);ctx.fillRect(o.x+20,g-64,14,10);}
       else{ctx.fillRect(o.x+4,g-44,9,44);ctx.fillRect(o.x+20,g-44,9,44);ctx.fillRect(o.x+4,g-56,9,15);ctx.fillRect(o.x+18,g-56,12,10);ctx.fillRect(o.x,g-28,32,8);}
     } else if(o.otype==="dune") {
-      // Sand dune — wide mound, must jump over
+      // Sand dune  Ewide mound, must jump over
       ctx.fillStyle="#e0a850";
       ctx.beginPath(); ctx.moveTo(o.x,g); ctx.lineTo(o.x+8,g-22); ctx.lineTo(o.x+28,g-22);
       ctx.lineTo(o.x+56,g); ctx.fill();
@@ -1064,7 +1205,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
       ctx.fillStyle="#c89040";
       ctx.fillRect(o.x+14,g-14,18,2); ctx.fillRect(o.x+18,g-10,12,2);
     } else if(o.otype==="tumbleweed") {
-      // Rolling tumbleweed — bounces as it moves
+      // Rolling tumbleweed  Ebounces as it moves
       const rot=(frame*0.12)%(Math.PI*2);
       const bounce=Math.abs(Math.sin(frame*0.18))*6;
       ctx.save();
@@ -1081,7 +1222,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
       ctx.beginPath(); ctx.arc(0,0,14,0,Math.PI*2); ctx.stroke();
       ctx.restore();
     } else if(o.otype==="sandworm") {
-      // Sandworm — bursts from ground, animated height
+      // Sandworm  Ebursts from ground, animated height
       const wh = o._wormH||0;
       if(wh>2){
         ctx.fillStyle="#c87820";
@@ -1099,7 +1240,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
         ctx.fillRect(o.x+2,g-8,36,8);
       }
     } else if(o.otype==="scorpion") {
-      // Scorpion — low ground enemy with raised stinger tail
+      // Scorpion  Elow ground enemy with raised stinger tail
       ctx.fillStyle="#8a4a10";
       ctx.fillRect(o.x+6,g-14,32,14);   // body
       ctx.fillRect(o.x+2,g-10,8,10);    // left claw
@@ -1135,7 +1276,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
       ctx.fillRect(o.x+10,g-h,12,h); ctx.fillRect(o.x+24,g-h*0.7,10,h*0.7); ctx.fillRect(o.x,g-h*0.5,10,h*0.5);
       ctx.fillStyle="#ddeeff"; ctx.fillRect(o.x+12,g-h,8,6); ctx.fillRect(o.x+26,g-h*0.7,6,4);
     } else if(o.otype==="icewall") {
-      // Thick ice wall — frosted blue blocks
+      // Thick ice wall  Efrosted blue blocks
       ctx.fillStyle="#6699bb";
       ctx.fillRect(o.x,g-34,16,34);
       ctx.fillStyle="#88bbdd";
@@ -1161,7 +1302,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
       ctx.fillRect(-10,6,4,4);   ctx.fillRect(6,6,4,4);
       ctx.restore();
     } else if(o.otype==="icicle") {
-      // Falling icicle — drops from top of screen
+      // Falling icicle  Edrops from top of screen
       const iy = o._icicleY ?? -20;
       ctx.fillStyle="#aaddff";
       ctx.fillRect(o.x+4,iy,10,24);
@@ -1178,7 +1319,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
         ctx.fillRect(o.x,g-4,36,4);
       }
     } else if(o.otype==="yeti") {
-      // Yeti — large white furry creature
+      // Yeti  Elarge white furry creature
       ctx.fillStyle="#ddeeff";
       ctx.fillRect(o.x+6,g-52,32,52);  // body
       ctx.fillRect(o.x+10,g-60,24,12); // head
@@ -1194,7 +1335,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
       ctx.fillStyle="#aabbcc";
       ctx.fillRect(o.x-2,g-28,5,8); ctx.fillRect(o.x+3,g-28,5,8);
       ctx.fillRect(o.x+36,g-28,5,8); ctx.fillRect(o.x+41,g-28,5,8);
-      // Eyes — angry red
+      // Eyes  Eangry red
       ctx.fillStyle="#ff2200";
       ctx.fillRect(o.x+13,g-58,6,6);
       ctx.fillRect(o.x+25,g-58,6,6);
@@ -1275,7 +1416,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
         ctx.fillRect(b.x-bsize/2+2,b.y-bsize/2+2,bsize-4,bsize-4);
       }
     } else if(o.otype==="firewall") {
-      // Tall wall of flames — must jump over
+      // Tall wall of flames  Emust jump over
       ctx.fillStyle="#3a1a08";
       ctx.fillRect(o.x+2,g-60,10,60);
       // Flame layers
@@ -1333,10 +1474,10 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
     }
   } else if(set === "jungle") {
     if(o.otype==="cactus") {
-      // Jungle trees — 3 distinct types based on type index
+      // Jungle trees  E3 distinct types based on type index
       const t=o.type||0;
       if(t===0) {
-        // Tall palm tree — thin trunk, fan of leaves at top
+        // Tall palm tree  Ethin trunk, fan of leaves at top
         ctx.fillStyle="#5a3a10";
         ctx.fillRect(o.x+12,g-58,8,58);  // trunk
         ctx.fillStyle="#1a6a10";
@@ -1347,7 +1488,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
         ctx.fillStyle="#2a8a20";
         ctx.fillRect(o.x+8,g-72,16,6);
       } else if(t===1) {
-        // Wide banyan tree — thick trunk, broad layered canopy
+        // Wide banyan tree  Ethick trunk, broad layered canopy
         ctx.fillStyle="#4a2a08";
         ctx.fillRect(o.x+8, g-50,16,50); // main trunk
         ctx.fillRect(o.x,   g-30,8, 30); // left root
@@ -1362,7 +1503,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
         ctx.fillStyle="#1a4a08";
         ctx.fillRect(o.x+4, g-56,3,20); ctx.fillRect(o.x+26,g-56,3,24);
       } else {
-        // Mushroom tree — fat spotted cap on stubby trunk
+        // Mushroom tree  Efat spotted cap on stubby trunk
         ctx.fillStyle="#6a3a18";
         ctx.fillRect(o.x+12,g-40,12,40); // trunk
         ctx.fillStyle="#cc3322"; // red cap
@@ -1382,7 +1523,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
       ctx.fillStyle="#1a3a10";
       ctx.fillRect(o.x+8, g-18,6,6); ctx.fillRect(o.x+22,g-16,5,5);
     } else if(o.otype==="vineTrap") {
-      // Vine trap — hanging vines that snap shut (animated)
+      // Vine trap  Ehanging vines that snap shut (animated)
       const snap = o._snapState||0; // 0=open, 1=closing, 2=closed
       ctx.fillStyle="#1a5a10";
       // Anchor bar at top
@@ -1401,7 +1542,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
       for(let i=0;i<3;i++) ctx.fillRect(o.x+4+i*5, g-openL, 3, 5);
       for(let i=0;i<3;i++) ctx.fillRect(o.x+26+i*5,g-openR, 3, 5);
     } else if(o.otype==="giantMushroom") {
-      // Giant mushroom — wide low obstacle, must jump over
+      // Giant mushroom  Ewide low obstacle, must jump over
       ctx.fillStyle="#6a3a18";
       ctx.fillRect(o.x+16,g-28,10,28); // stalk
       ctx.fillStyle="#dd4422"; // cap
@@ -1417,7 +1558,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
         ctx.fillRect(o.x+8,g-54,6,6); ctx.fillRect(o.x+28,g-52,5,5);
       }
     } else if(o.otype==="piranha") {
-      // Piranha plant — snapping mouth on a stem, chomps periodically
+      // Piranha plant  Esnapping mouth on a stem, chomps periodically
       const chomp = Math.floor(frame/18)%3===0;
       ctx.fillStyle="#1a6a10";
       ctx.fillRect(o.x+16,g-40,8,40); // stem
@@ -1442,7 +1583,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
       ctx.fillStyle="#000000";
       ctx.fillRect(o.x+12,g-60,3,3); ctx.fillRect(o.x+26,g-60,3,3);
     } else if(o.otype==="gorilla") {
-      // Gorilla — large ape that throws coconuts
+      // Gorilla  Elarge ape that throws coconuts
       ctx.fillStyle="#2a1a08";
       ctx.fillRect(o.x+6, g-52,32,52); // body
       ctx.fillRect(o.x+10,g-62,24,14); // head
@@ -1474,7 +1615,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
     }
   } else if(set === "ruins") {
     if(o.otype==="cactus") {
-      // Stone pillar stubs — short broken columns
+      // Stone pillar stubs  Eshort broken columns
       const t=o.type||0;
       const h=32+(t*10);
       ctx.fillStyle="#7a6a50";
@@ -1492,7 +1633,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
       ctx.fillStyle="#4a6a30";
       ctx.fillRect(o.x+8,g-h+8,5,4); ctx.fillRect(o.x+18,g-h+20,4,3);
     } else if(o.otype==="pillar") {
-      // Tall crumbling column — 3 height variants
+      // Tall crumbling column  E3 height variants
       const t=o.type||0;
       const h=44+t*8;
       ctx.fillStyle="#7a6a50";
@@ -1515,7 +1656,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
       ctx.fillStyle="#3a5a28";
       ctx.fillRect(o.x+8,g-h+10,6,4); ctx.fillRect(o.x+18,g-h*0.5+6,5,3);
     } else if(o.otype==="statue") {
-      // Stone idol — face with glowing eyes, shoots curse beam
+      // Stone idol  Eface with glowing eyes, shoots curse beam
       ctx.fillStyle="#7a6a50";
       ctx.fillRect(o.x+4,g-52,28,52);  // body/pedestal
       ctx.fillRect(o.x+8,g-60,20,12); // head
@@ -1582,7 +1723,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
       ctx.fillRect(-10,-6,4,4); ctx.fillRect(6,2,4,4);
       ctx.restore();
     } else if(o.otype==="golem") {
-      // Stone golem — stomps and throws rubble
+      // Stone golem  Estomps and throws rubble
       const stomp=Math.floor(frame/20)%2;
       ctx.fillStyle="#7a6a50";
       ctx.fillRect(o.x+6, g-58,30,58); // body
@@ -1595,7 +1736,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
       // Glowing eyes
       ctx.fillStyle="#88aaff";
       ctx.fillRect(o.x+13,g-63,4,4); ctx.fillRect(o.x+25,g-63,4,4);
-      // Arms — one raised when stomping
+      // Arms  Eone raised when stomping
       ctx.fillStyle="#7a6a50";
       ctx.fillRect(o.x-2,g-52,10,24);  // left arm
       if(stomp===0){
@@ -1629,7 +1770,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
     const glow3 = pulse===0 ? "#ff88ff" : "#dd55dd";
 
     if(o.otype==="cactus") {
-      // Crystal spire stubs — short formations
+      // Crystal spire stubs  Eshort formations
       const t=o.type||0;
       const h=30+t*10;
       ctx.fillStyle=glow2;
@@ -1643,7 +1784,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
       ctx.fillStyle=`rgba(136,68,255,0.15)`;
       ctx.fillRect(o.x-4,g-h-8,44,h+8);
     } else if(o.otype==="crystalSpire") {
-      // Tall glowing crystal formation — 3 variants
+      // Tall glowing crystal formation  E3 variants
       const t=o.type||0;
       const h=48+t*10;
       // Main spire
@@ -1674,7 +1815,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
         ctx.fillRect(o.x+18,g-h*0.4,2,2);
       }
     } else if(o.otype==="crystalCluster") {
-      // Wide low cluster — must jump over
+      // Wide low cluster  Emust jump over
       const heights=[28,22,32,18,26,20,30];
       for(let i=0;i<7;i++){
         const cx=o.x+i*8;
@@ -1691,7 +1832,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
       ctx.fillStyle="rgba(136,68,255,0.2)";
       ctx.fillRect(o.x-2,g-34,56,34);
     } else if(o.otype==="stalactite") {
-      // Hanging crystal stalactite — drops from ceiling
+      // Hanging crystal stalactite  Edrops from ceiling
       const sy = o._stalY ?? -30;
       // Main crystal
       ctx.fillStyle=glow2;
@@ -1716,7 +1857,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
         ctx.fillRect(o.x+14,sy+42,2,2);
       }
     } else if(o.otype==="crystalGolem") {
-      // Crystal golem — made of jagged crystal shards
+      // Crystal golem  Emade of jagged crystal shards
       ctx.fillStyle=glow2;
       ctx.fillRect(o.x+6, g-60,30,60); // body
       ctx.fillRect(o.x+8, g-70,26,14); // head
@@ -1749,7 +1890,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
         ctx.fillStyle="#ffffff"; ctx.fillRect(b.x+1,b.y+1,3,2);
       }
     } else if(o.otype==="voidPortal") {
-      // Swirling void portal — dark with purple ring
+      // Swirling void portal  Edark with purple ring
       const spin=Math.floor(frame/6)%4;
       // Dark void center
       ctx.fillStyle="#0a0010";
@@ -1778,7 +1919,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
       ctx.fillStyle="rgba(100,20,200,0.15)";
       ctx.fillRect(o.x-8,g-72,52,72);
     } else if(o.otype==="crystalMine") {
-      // Floating crystal mine — explodes into shards when close
+      // Floating crystal mine  Eexplodes into shards when close
       const my = o.y;
       const bob = Math.sin(frame*0.08)*4;
       const exploding = o._exploding||0;
@@ -1825,7 +1966,7 @@ function drawObstacleForScenery(ctx, o, scenery, frame) {
       ctx.fillStyle="#334422";
       for(let i=0;i<3;i++){const bx=o.x+i*14;ctx.beginPath();ctx.moveTo(bx+2,g);ctx.lineTo(bx+7,g-26);ctx.lineTo(bx+12,g);ctx.fill();}
     } else if(o.otype==="log") {
-      // Rolling log — grasslands
+      // Rolling log  Egrasslands
       const logRot = (frame*0.08)%(Math.PI*2);
       ctx.save();
       ctx.translate(o.x+22, g-9);
@@ -1908,15 +2049,24 @@ function drawBonePickup(ctx, x, y, col) {
 }
 
 // ─── DRAW: ENTITY SILHOUETTE ────────────────────────────────────────────────
-// The Unknown — a Lovecraftian horror glimpsed behind the clouds
+// The Unknown  Ea Lovecraftian horror glimpsed behind the clouds
 function drawEntitySilhouette(ctx, x, y, frame, alpha, scenery) {
   if(alpha <= 0) return;
   ctx.save();
   ctx.globalAlpha = alpha;
 
-  // Tint color varies per scenery for atmosphere
   const sid = scenery?.id || "classic";
-  const tint = sid==="cave"?"#220033":sid==="volcano"?"#1a0000":sid==="arctic"?"#001122":sid==="jungle"?"#001100":"#0a0010";
+  const silTints = {
+    classic: "#080808",
+    plains:  "#040e02",
+    desert:  "#180800",
+    arctic:  "#020810",
+    volcano: "#180200",
+    jungle:  "#020e04",
+    ruins:   "#0e0a04",
+    cave:    "#0a0018",
+  };
+  const tint = silTints[sid] || "#080808";
   ctx.fillStyle = tint;
 
   // Slow undulating breathe
@@ -1925,18 +2075,18 @@ function drawEntitySilhouette(ctx, x, y, frame, alpha, scenery) {
 
   const cx = x, cy = y;
 
-  // ── Massive central body — amorphous blob ─────────────────────────────────
+  // ── Massive central body  Eamorphous blob ─────────────────────────────────
   ctx.fillRect(cx-28, cy-20+breathe, 56, 44);
   ctx.fillRect(cx-36, cy-10+breathe, 72, 28);
   ctx.fillRect(cx-20, cy-32+breathe, 40, 16);
   ctx.fillRect(cx-14, cy-40+breathe, 28, 12);
-  // Asymmetric lumps — it is not symmetrical
+  // Asymmetric lumps  Eit is not symmetrical
   ctx.fillRect(cx+18, cy-28+breathe, 18, 20);
   ctx.fillRect(cx-38, cy-18+breathe, 14, 24);
   ctx.fillRect(cx+30, cy-8+breathe,  12, 18);
   ctx.fillRect(cx-44, cy-4+breathe,  10, 14);
 
-  // ── Writhing tentacles — 8 of them, each unique ───────────────────────────
+  // ── Writhing tentacles  E8 of them, each unique ───────────────────────────
   const tentacles = [
     { ox:-30, len:5, dir: 1 }, { ox:-18, len:6, dir:-1 },
     { ox: -6, len:7, dir: 1 }, { ox:  6, len:6, dir:-1 },
@@ -1952,7 +2102,7 @@ function drawEntitySilhouette(ctx, x, y, frame, alpha, scenery) {
     }
   });
 
-  // ── Upper appendages — reaching upward ────────────────────────────────────
+  // ── Upper appendages  Ereaching upward ────────────────────────────────────
   const arms = [
     { ox:-22, dir:-1 }, { ox: 22, dir: 1 }, { ox:-8, dir:-1 }, { ox: 8, dir: 1 },
   ];
@@ -1965,7 +2115,7 @@ function drawEntitySilhouette(ctx, x, y, frame, alpha, scenery) {
     }
   });
 
-  // ── Eyes — wrong number, wrong placement ──────────────────────────────────
+  // ── Eyes  Ewrong number, wrong placement ──────────────────────────────────
   // 5 eyes, none where you'd expect them
   const eyePulse = Math.floor(frame * 0.06) % 3 === 0;
   const eyeColor = eyePulse ? "#ff0000" : "#cc0000";
@@ -1976,7 +2126,7 @@ function drawEntitySilhouette(ctx, x, y, frame, alpha, scenery) {
   ctx.fillRect(cx+22, cy-14+breathe, 4, 4);
   ctx.fillRect(cx-28, cy-10+breathe, 3, 3);
 
-  // ── Mouth — a horizontal gash that shouldn't be there ─────────────────────
+  // ── Mouth  Ea horizontal gash that shouldn't be there ─────────────────────
   const mouthOpen = Math.sin(frame * 0.025) > 0.3;
   ctx.fillStyle = "#000000";
   ctx.fillRect(cx-16, cy-4+breathe, 32, mouthOpen ? 5 : 2);
@@ -1987,7 +2137,7 @@ function drawEntitySilhouette(ctx, x, y, frame, alpha, scenery) {
     ctx.fillRect(cx+8,  cy-4+breathe, 4, 4);
   }
 
-  // ── Fringe spines on top — like a crown of bone ───────────────────────────
+  // ── Fringe spines on top  Elike a crown of bone ───────────────────────────
   ctx.fillStyle = tint;
   for(let i = 0; i < 7; i++) {
     const sx = cx - 24 + i * 8;
@@ -2063,32 +2213,38 @@ export default function DinoIncremental() {
   const prevKeysRef = useRef({});
 
   const [screen,         setScreen]         = useState("menu");
-  const [fossils,        setFossils]        = useState(0);
-  const [totalFossils,   setTotalFossils]   = useState(0);
-  const [bestDist,       setBestDist]       = useState(0);
-  const [totalRuns,      setTotalRuns]      = useState(0);
-  const [upgradeLevels,  setUpgradeLevels]  = useState({});
-  const [ownedSkins,     setOwnedSkins]     = useState(["classic"]);
-  const [equippedSkin,   setEquippedSkin]   = useState("classic");
-  const [ownedDesigns,   setOwnedDesigns]   = useState(["raptor"]);
-  const [equippedDesign, setEquippedDesign] = useState("raptor");
-  const [ownedSceneries, setOwnedSceneries] = useState(["classic"]);
-  const [activeScenery,  setActiveScenery]  = useState("classic");
+  const [fossils,        setFossils]        = useLocalStorage("dino_fossils", 0);
+  const [totalFossils,   setTotalFossils]   = useLocalStorage("dino_totalFossils", 0);
+  const [bestDist,       setBestDist]       = useLocalStorage("dino_bestDist", 0);
+  const [totalRuns,      setTotalRuns]      = useLocalStorage("dino_totalRuns", 0);
+  const [upgradeLevels,  setUpgradeLevels]  = useLocalStorage("dino_upgradeLevels", {});
+  const [ownedSkins,     setOwnedSkins]     = useLocalStorage("dino_ownedSkins", ["classic"]);
+  const [equippedSkin,   setEquippedSkin]   = useLocalStorage("dino_equippedSkin", "classic");
+  const [ownedDesigns,   setOwnedDesigns]   = useLocalStorage("dino_ownedDesigns", ["raptor"]);
+  const [equippedDesign, setEquippedDesign] = useLocalStorage("dino_equippedDesign", "raptor");
+  const [ownedSceneries, setOwnedSceneries] = useLocalStorage("dino_ownedSceneries", ["classic"]);
+  const [activeScenery,  setActiveScenery]  = useLocalStorage("dino_activeScenery", "classic");
   const [lastRun,        setLastRun]        = useState(null);
   const [passiveRate,    setPassiveRate]    = useState(0);
   const [notification,   setNotification]   = useState(null);
   const [shopTab,        setShopTab]        = useState("movement");
-  const [achievStats,    setAchievStats]    = useState({
+  const [achievStats,    setAchievStats]    = useLocalStorage("dino_achievStats", {
     totalRuns:0, bestDist:0, totalBones:0, totalUpgrades:0,
     ownedSkins:1, ownedSceneries:1, maxCombo:0, nightCycles:0,
     totalNearMiss:0, giantCrushes:0, bestDistNoDash:0, passiveEarned:0, allMovementMax:false,
   });
-  const [unlockedAch,    setUnlockedAch]    = useState([]);
+  const [unlockedAch,    setUnlockedAch]    = useLocalStorage("dino_unlockedAch", []);
   const [pendingAch,     setPendingAch]     = useState([]);
   const [achivNotif,     setAchivNotif]     = useState(null);
   const [skinTab,        setSkinTab]        = useState("dino");
   const [passivePreviewId, setPassivePreviewId] = useState(null);
-  const [unlockedPowerups, setUnlockedPowerups] = useState([]);
+  const [unlockedPowerups, setUnlockedPowerups] = useLocalStorage("dino_unlockedPowerups", []);
+  const [lbData,           setLbData]           = useState([]);
+  const [lbLoading,        setLbLoading]        = useState(false);
+  const [lastRunRank,      setLastRunRank]       = useState(null);
+  const [lbRenaming,       setLbRenaming]        = useState(false);
+  const [lbNewName,        setLbNewName]         = useState("");
+  const [lbNameError,      setLbNameError]       = useState("");
 
   const getStats = useCallback((levels) => {
     const ul = levels || {};
@@ -2115,11 +2271,17 @@ export default function DinoIncremental() {
       passiveFossils: (ul.miner||0)*0.3+(ul.camp||0)*0.8+(ul.research||0)*1.5,
       shieldHits:     1+(ul.pwShieldDur||0),
       speedMult:      2.0+(ul.pwSpeedMult||0)*0.25,
-      giantDurBonus:  (ul.pwGiantDur||0)*50,
-      magnetRngBonus: (ul.pwMagnetRng||0)*60,
-      frenzyDurBonus: (ul.pwFrenzyDur||0)*50,
-      rareDrop:       (ul.pwRareDrop||0)*0.06,
-      heartChance:    (ul.pwHeartChance||0)*0.04,
+      giantDurBonus:    (ul.pwGiantDur||0)*50,
+      magnetRngBonus:   (ul.pwMagnetRng||0)*60,
+      frenzyDurBonus:   (ul.pwFrenzyDur||0)*50,
+      rareDrop:         (ul.pwRareDrop||0)*0.06,
+      heartChance:      (ul.pwHeartChance||0)*0.04,
+      ghostDurBonus:    (ul.pwGhostDur||0)*50,
+      tinyDurBonus:     (ul.pwTinyDur||0)*50,
+      meteorCountBonus: (ul.pwMeteorCount||0)*2,
+      doublerDurBonus:  (ul.pwDoublerDur||0)*50,
+      slowDurBonus:     (ul.pwSlowDur||0)*50,
+      windfallDurBonus: (ul.pwWindfallDur||0)*50,
     };
   }, []);
 
@@ -2162,6 +2324,13 @@ export default function DinoIncremental() {
     }
   },[pendingAch]);
 
+  // Auto-fetch leaderboard when screen opens
+  useEffect(()=>{
+    if(screen!=="leaderboard") return;
+    setLbLoading(true);
+    fetchLeaderboard().then(data=>{ setLbData(data); setLbLoading(false); });
+  },[screen]);
+
   const showNotif = useCallback((msg)=>{
     setNotification(msg);
     const t=setTimeout(()=>setNotification(null),2200);
@@ -2175,6 +2344,8 @@ export default function DinoIncremental() {
   // Menu dino preview
   const menuCanvasRef = useRef(null);
   const menuAnimRef   = useRef(null);
+  const [menuDinoClicks, setMenuDinoClicks] = useState(0);
+  const [showCredit, setShowCredit] = useState(false);
   useEffect(()=>{
     if(screen!=="menu"){ cancelAnimationFrame(menuAnimRef.current); return; }
     let f=0;
@@ -2236,7 +2407,7 @@ export default function DinoIncremental() {
       triFirstDestroyed:false,
       // Spino: night bonus tracked in render
       // Entity silhouette state
-      entity:{ x: CANVAS_W * 0.65, y: 60, alpha: 0, visible: false, timer: 60 + Math.random()*60, fadeDir: 0 },
+      entity:{ x: CANVAS_W * 0.65, y: 60, alpha: 0, visible: false, timer: 0, fadeDir: 0 },
     };
     keysRef.current={};
     prevKeysRef.current={};
@@ -2312,6 +2483,15 @@ export default function DinoIncremental() {
         giantCrushes:prev.giantCrushes+gs.giantCrushes,
         bestDistNoDash:gs.usedDash?prev.bestDistNoDash:Math.max(prev.bestDistNoDash,dist),
       }));
+      // Auto-submit run and check if it makes top 50
+      const playerName = getSavedName();
+      submitScore(playerName, dist, earned).then(async()=>{
+        const board = await fetchLeaderboard();
+        const myId = getPlayerId();
+        // Find rank of this specific run (same dist)
+        const rank = board.findIndex(r => r.player_id === myId && r.best_dist === dist);
+        setLastRunRank(rank >= 0 ? rank + 1 : null);
+      });
       setTimeout(()=>setScreen("gameover"),1100);
     };
 
@@ -2390,7 +2570,7 @@ export default function DinoIncremental() {
           const bonus=Math.floor(baseB*(1+gs.stats.transBonus)*spinoMult);
           gs.fossilsEarned+=bonus;
           addFloat(gs,`+${bonus} ${isNightNow?"DUSK BONUS":"DAWN BONUS"}`,CANVAS_W/2-50,70,isNightNow?"#aaaaff":"#ffdd44");
-          if(!isNightNow){ gs.moonX=CANVAS_W+80; gs.moonAlpha=0; }
+          if(!isNightNow){ gs.moonAlpha=0; }
         }
 
         // ── Powerup ticks ────────────────────────────────────────────────────
@@ -2407,7 +2587,8 @@ export default function DinoIncremental() {
         if(gs.activePowerups.meteor_pw&&!gs.activePowerups.meteor_pw.fired){
           gs.activePowerups.meteor_pw.fired=true;
           const n=gs.obstacles.length; gs.obstacles=[];
-          if(n>0){gs.fossilsEarned+=n*4;addFloat(gs,`METEOR! +${n*4}`,60,60,"#ee6600");}
+          const bonus=gs.stats.meteorCountBonus||0;
+          if(n>0){gs.fossilsEarned+=n*(4+bonus);addFloat(gs,`METEOR! +${n*(4+bonus)}`,60,60,"#ee6600");}
           delete gs.activePowerups.meteor_pw;
         }
 
@@ -2422,7 +2603,7 @@ export default function DinoIncremental() {
 
           if((k["Space"]||k["ArrowUp"]||k["KeyW"])&&!(pk["Space"]||pk["ArrowUp"]||pk["KeyW"])) doJump();
 
-          // Dash — full canvas bounds (10 to CANVAS_W-60)
+          // Dash  Efull canvas bounds (10 to CANVAS_W-60)
           if(gs.stats.hasDash&&k["ArrowRight"]&&!pk["ArrowRight"]&&gs.dino.dashTimer<=0&&gs.dino.dashCooldown<=0){
             gs.dino.dashTimer=10; gs.dino.dashDir=1; gs.dino.dashCooldown=baseDashCd; gs.usedDash=true;
           }
@@ -2471,7 +2652,7 @@ export default function DinoIncremental() {
           let otype,type=0,oy=0,bullets=[];
           if(sid2==="classic") {
             if(r<0.38){otype="cactus";type=Math.floor(Math.random()*(Math.min(4,Math.floor(tier/1.5)+1)+1));}
-            else if(r<0.55){otype="bird";oy=GROUND_Y-88-Math.random()*48;if(tier>3&&Math.random()<0.3)oy=GROUND_Y-44;}
+            else if(r<0.55){otype="bird";oy=GROUND_Y-88-Math.random()*48;if(tier>2&&Math.random()<0.45)oy=GROUND_Y-44;}
             else if(r<0.66&&tier>=1){otype="rock";}
             else if(r<0.76&&tier>=2){otype="spike";}
             else if(r<0.86&&tier>=2){otype="spike_cluster";}
@@ -2480,7 +2661,7 @@ export default function DinoIncremental() {
             else{otype="cactus";type=0;}
           } else if(sid2==="desert") {
             if(r<0.30){otype="cactus";type=Math.floor(Math.random()*(Math.min(2,Math.floor(tier/2))+1));}
-            else if(r<0.48){otype="bird";oy=GROUND_Y-88-Math.random()*48;if(tier>3&&Math.random()<0.3)oy=GROUND_Y-44;}
+            else if(r<0.48){otype="bird";oy=GROUND_Y-88-Math.random()*48;if(tier>2&&Math.random()<0.45)oy=GROUND_Y-44;}
             else if(r<0.62){otype="dune";}
             else if(r<0.74&&tier>=1){otype="tumbleweed";}
             else if(r<0.84&&tier>=2){otype="sandworm";}
@@ -2488,7 +2669,7 @@ export default function DinoIncremental() {
             else{otype="cactus";type=0;}
           } else if(sid2==="arctic") {
             if(r<0.28){otype="cactus";type=Math.floor(Math.random()*(Math.min(2,Math.floor(tier/2))+1));}
-            else if(r<0.44){otype="bird";oy=GROUND_Y-88-Math.random()*48;if(tier>3&&Math.random()<0.3)oy=GROUND_Y-44;}
+            else if(r<0.44){otype="bird";oy=GROUND_Y-88-Math.random()*48;if(tier>2&&Math.random()<0.45)oy=GROUND_Y-44;}
             else if(r<0.58){otype="icewall";}
             else if(r<0.70&&tier>=1){otype="snowball";}
             else if(r<0.82&&tier>=2){otype="icicle";oy=-20;}
@@ -2496,7 +2677,7 @@ export default function DinoIncremental() {
             else{otype="cactus";type=0;}
           } else if(sid2==="volcano") {
             if(r<0.26){otype="cactus";type=Math.floor(Math.random()*(Math.min(2,Math.floor(tier/2))+1));}
-            else if(r<0.40){otype="bird";oy=GROUND_Y-88-Math.random()*48;if(tier>3&&Math.random()<0.3)oy=GROUND_Y-44;}
+            else if(r<0.40){otype="bird";oy=GROUND_Y-88-Math.random()*48;if(tier>2&&Math.random()<0.45)oy=GROUND_Y-44;}
             else if(r<0.54){otype="lavarock";}
             else if(r<0.66&&tier>=1){otype="firePillar";}
             else if(r<0.76&&tier>=2){otype="lavaburst";bullets=[];}
@@ -2505,7 +2686,7 @@ export default function DinoIncremental() {
             else{otype="lavarock";}
           } else if(sid2==="jungle") {
             if(r<0.28){otype="cactus";type=Math.floor(Math.random()*3);}
-            else if(r<0.42){otype="bird";oy=GROUND_Y-88-Math.random()*48;if(tier>3&&Math.random()<0.3)oy=GROUND_Y-44;}
+            else if(r<0.42){otype="bird";oy=GROUND_Y-88-Math.random()*48;if(tier>2&&Math.random()<0.45)oy=GROUND_Y-44;}
             else if(r<0.54){otype="rock";}
             else if(r<0.66&&tier>=1){otype="giantMushroom";}
             else if(r<0.76&&tier>=1){otype="vineTrap";}
@@ -2514,7 +2695,7 @@ export default function DinoIncremental() {
             else{otype="cactus";type=0;}
           } else if(sid2==="ruins") {
             if(r<0.26){otype="cactus";type=Math.floor(Math.random()*(Math.min(2,Math.floor(tier/2))+1));}
-            else if(r<0.40){otype="bird";oy=GROUND_Y-88-Math.random()*48;if(tier>3&&Math.random()<0.3)oy=GROUND_Y-44;}
+            else if(r<0.40){otype="bird";oy=GROUND_Y-88-Math.random()*48;if(tier>2&&Math.random()<0.45)oy=GROUND_Y-44;}
             else if(r<0.54){otype="pillar";type=Math.floor(Math.random()*3);}
             else if(r<0.66&&tier>=1){otype="boulder";}
             else if(r<0.76&&tier>=2){otype="spiketrap";}
@@ -2523,7 +2704,7 @@ export default function DinoIncremental() {
             else{otype="pillar";type=0;}
           } else if(sid2==="cave") {
             if(r<0.22){otype="cactus";type=Math.floor(Math.random()*(Math.min(2,Math.floor(tier/2))+1));}
-            else if(r<0.36){otype="bird";oy=GROUND_Y-88-Math.random()*48;if(tier>3&&Math.random()<0.3)oy=GROUND_Y-44;}
+            else if(r<0.36){otype="bird";oy=GROUND_Y-88-Math.random()*48;if(tier>2&&Math.random()<0.45)oy=GROUND_Y-44;}
             else if(r<0.50){otype="crystalSpire";type=Math.floor(Math.random()*3);}
             else if(r<0.62&&tier>=1){otype="crystalCluster";}
             else if(r<0.72&&tier>=2){otype="stalactite";oy=-30;}
@@ -2534,7 +2715,7 @@ export default function DinoIncremental() {
           } else {
             // plains / grasslands
             if(r<0.36){otype="cactus";type=Math.floor(Math.random()*(Math.min(3,Math.floor(tier/1.5)+1)+1));}
-            else if(r<0.52){otype="bird";oy=GROUND_Y-88-Math.random()*48;if(tier>3&&Math.random()<0.3)oy=GROUND_Y-44;}
+            else if(r<0.52){otype="bird";oy=GROUND_Y-88-Math.random()*48;if(tier>2&&Math.random()<0.45)oy=GROUND_Y-44;}
             else if(r<0.64&&tier>=1){otype="rock";}
             else if(r<0.74&&tier>=2){otype="spike";}
             else if(r<0.84&&tier>=1){otype="log";}
@@ -2543,6 +2724,18 @@ export default function DinoIncremental() {
             else{otype="cactus";type=0;}
           }
           gs.obstacles.push({x:CANVAS_W+10,otype,type,y:oy,w:44,bullets,_shootTimer:0});
+          // Cluster: ground static obstacles sometimes spawn 1-2 more of the same type close together
+          const clusterTypes=["cactus","rock","spike","spike_cluster","wall","log","dune","icewall","lavarock","pillar","boulder","crystalSpire","crystalCluster"];
+          if(clusterTypes.includes(otype)&&tier>=1){
+            const clusterChance=0.28+tier*0.02; // ~28-48% chance of a cluster
+            const count=Math.random()<clusterChance?(Math.random()<0.3?2:1):0;
+            for(let ci=0;ci<count;ci++){
+              const gap=38+Math.random()*28; // tight gap between cluster members
+              const prevX=gs.obstacles[gs.obstacles.length-1].x;
+              const clusterType=Math.random()<0.5?type:Math.floor(Math.random()*(Math.min(4,Math.floor(tier/1.5)+1)+1));
+              gs.obstacles.push({x:prevX+gap,otype,type:clusterType,y:oy,w:44,bullets:[],_shootTimer:0});
+            }
+          }
           gs.lastObstacleFrame=gs.frame;
         }
 
@@ -2571,17 +2764,18 @@ export default function DinoIncremental() {
         // ── Move everything ──────────────────────────────────────────────────
         gs.obstacles=gs.obstacles.filter(o=>{
           o.x-=effSpeed*dt;
-          // Turret: shoot horizontal bullets, fires immediately on full entry
+          // Turret: shoot horizontal bullets, fires when 1/4 body visible
           if(o.otype==="turret"&&o.x<CANVAS_W-20&&o.x>-60){
-            const shootInterval=Math.max(60,120-tier*8);
-            if(!o._entryShot&&o.x<=CANVAS_W-40){
+            const shootInterval=Math.max(70,130-tier*8);
+            if(!o._entryShot&&o.x<=CANVAS_W-10){
               o._entryShot=true;
-              o._shootTimer=shootInterval; // trigger immediate shot
+              o._shootTimer=shootInterval;
             }
             o._shootTimer=(o._shootTimer||0)+dt;
             if(o._shootTimer>=shootInterval){
               o._shootTimer=0;
-              o.bullets.push({x:o.x+28,y:GROUND_Y-29,vx:-6-tier*0.3,vy:0});
+              const bSpd=effSpeed/gs.baseSpeed;
+              o.bullets.push({x:o.x+4,y:GROUND_Y-32,vx:(-7-tier*0.3)*bSpd,vy:0});
             }
             o.bullets=o.bullets.filter(b=>{b.x+=b.vx*dt;return b.x>-20;});
           }
@@ -2600,21 +2794,21 @@ export default function DinoIncremental() {
               o._icicleY=Math.min(GROUND_Y-34,(o._icicleY||0)+5*dt);
             }
           }
-          // Lavaburst: shoots lava blobs upward in arc, proximity triggered
+          // Lavaburst: shoots lava blobs upward in arc, fires when 1/4 body visible
           if(o.otype==="lavaburst"&&o.x<CANVAS_W-10&&o.x>-60){
             const dist=Math.abs(o.x-gs.dino.x);
-            const shootInterval=Math.max(70,130-tier*10);
-            if(!o._entryShot&&o.x<=CANVAS_W-40){
+            const shootInterval=Math.max(80,140-tier*8);
+            if(!o._entryShot&&o.x<=CANVAS_W-10){
               o._entryShot=true; o._shootTimer=shootInterval;
             }
             if(dist<300){
               o._shootTimer=(o._shootTimer||0)+dt;
               if(o._shootTimer>=shootInterval){
                 o._shootTimer=0;
-                // Shoot 3 blobs in a spread
-                o.bullets.push({x:o.x+14,y:GROUND_Y-22,vx:-1,vy:-8-tier*0.4});
-                o.bullets.push({x:o.x+20,y:GROUND_Y-22,vx:-3,vy:-9-tier*0.4});
-                o.bullets.push({x:o.x+20,y:GROUND_Y-22,vx:0, vy:-7-tier*0.4});
+                const bSpd=effSpeed/gs.baseSpeed;
+                o.bullets.push({x:o.x+14,y:GROUND_Y-22,vx:-1*bSpd,vy:(-8-tier*0.3)*bSpd});
+                o.bullets.push({x:o.x+20,y:GROUND_Y-22,vx:-3*bSpd,vy:(-9-tier*0.3)*bSpd});
+                o.bullets.push({x:o.x+20,y:GROUND_Y-22,vx:0,      vy:(-7-tier*0.3)*bSpd});
               }
             }
             o.bullets=o.bullets.filter(b=>{
@@ -2622,73 +2816,68 @@ export default function DinoIncremental() {
               return b.x>-30&&b.y<GROUND_Y;
             });
           }
-          // Demon: flies and shoots fireballs, entry shot
+          // Demon: flies and shoots fireballs, fires when 1/4 body visible
           if(o.otype==="demon"&&o.x<CANVAS_W-10&&o.x>-80){
-            const shootInterval=Math.max(70,140-tier*10);
-            if(!o._entryShot&&o.x<=CANVAS_W-44){
+            const shootInterval=Math.max(80,150-tier*8);
+            if(!o._entryShot&&o.x<=CANVAS_W-11){
               o._entryShot=true; o._shootTimer=shootInterval;
             }
             o._shootTimer=(o._shootTimer||0)+dt;
             if(o._shootTimer>=shootInterval){
               o._shootTimer=0;
-              o.bullets.push({x:o.x+4,y:o.y+14,vx:-7-tier*0.4,vy:0});
+              const bSpd=effSpeed/gs.baseSpeed;
+              o.bullets.push({x:o.x+4,y:o.y+14,vx:(-8-tier*0.3)*bSpd,vy:0});
             }
             o.bullets=o.bullets.filter(b=>{b.x+=b.vx*dt; return b.x>-20;});
           }
-          // Yeti: throw ice chunks, fires immediately on full entry
+          // Yeti: throw ice chunks, fires when 1/4 body visible
           if(o.otype==="yeti"&&o.x<CANVAS_W-20&&o.x>-60){
-            const shootInterval=Math.max(90,160-tier*10);
-            if(!o._entryShot&&o.x<=CANVAS_W-44){
+            const shootInterval=Math.max(90,160-tier*8);
+            if(!o._entryShot&&o.x<=CANVAS_W-11){
               o._entryShot=true;
               o._shootTimer=shootInterval;
             }
             o._shootTimer=(o._shootTimer||0)+dt;
             if(o._shootTimer>=shootInterval){
               o._shootTimer=0;
-              o.bullets.push({x:o.x+2,y:GROUND_Y-44,vx:-5-tier*0.3,vy:-4});
+              const bSpd=effSpeed/gs.baseSpeed;
+              o.bullets.push({x:o.x+4,y:GROUND_Y-44,vx:-(7+tier*0.3)*bSpd,vy:0});
             }
-            o.bullets=o.bullets.filter(b=>{
-              b.x+=b.vx*dt; b.y+=b.vy*dt; b.vy+=0.4*dt;
-              return b.x>-20&&b.y<GROUND_Y;
-            });
+            o.bullets=o.bullets.filter(b=>{b.x+=b.vx*dt; return b.x>-20;});
           }
-          // Scorpion: arc venom shots (parabolic), fires immediately on full entry
+          // Scorpion: arc venom shots (parabolic), fires when 1/4 body visible
           if(o.otype==="scorpion"&&o.x<CANVAS_W-20&&o.x>-60){
-            const shootInterval=Math.max(80,150-tier*10);
-            if(!o._entryShot&&o.x<=CANVAS_W-44){
+            const shootInterval=Math.max(90,160-tier*8);
+            if(!o._entryShot&&o.x<=CANVAS_W-11){
               o._entryShot=true;
               o._shootTimer=shootInterval;
             }
             o._shootTimer=(o._shootTimer||0)+dt;
             if(o._shootTimer>=shootInterval){
               o._shootTimer=0;
-              o.bullets.push({x:o.x+36,y:GROUND_Y-40,vx:-4-tier*0.25,vy:-5});
+              const bSpd=effSpeed/gs.baseSpeed;
+              o.bullets.push({x:o.x+36,y:GROUND_Y-40,vx:-(6+tier*0.3)*bSpd,vy:0});
             }
-            o.bullets=o.bullets.filter(b=>{
-              b.x+=b.vx*dt; b.y+=b.vy*dt; b.vy+=0.35*dt;
-              return b.x>-20&&b.y<GROUND_Y;
-            });
+            o.bullets=o.bullets.filter(b=>{b.x+=b.vx*dt; return b.x>-20;});
           }
           // VineTrap: snap shut when dino is close
           if(o.otype==="vineTrap"){
             const dist=Math.abs(o.x+20-gs.dino.x);
             o._snapState = dist<80 ? Math.min(1,(o._snapState||0)+0.15*dt) : Math.max(0,(o._snapState||0)-0.08*dt);
           }
-          // Gorilla: throw coconuts in arc, entry shot
+          // Gorilla: throw coconuts in arc, fires when 1/4 body visible
           if(o.otype==="gorilla"&&o.x<CANVAS_W-20&&o.x>-60){
-            const shootInterval=Math.max(80,150-tier*10);
-            if(!o._entryShot&&o.x<=CANVAS_W-44){
+            const shootInterval=Math.max(90,160-tier*8);
+            if(!o._entryShot&&o.x<=CANVAS_W-11){
               o._entryShot=true; o._shootTimer=shootInterval;
             }
             o._shootTimer=(o._shootTimer||0)+dt;
             if(o._shootTimer>=shootInterval){
               o._shootTimer=0;
-              o.bullets.push({x:o.x+2,y:GROUND_Y-50,vx:-5-tier*0.3,vy:-6});
+              const bSpd=effSpeed/gs.baseSpeed;
+              o.bullets.push({x:o.x+2,y:GROUND_Y-50,vx:-(7+tier*0.3)*bSpd,vy:0});
             }
-            o.bullets=o.bullets.filter(b=>{
-              b.x+=b.vx*dt; b.y+=b.vy*dt; b.vy+=0.45*dt;
-              return b.x>-20&&b.y<GROUND_Y;
-            });
+            o.bullets=o.bullets.filter(b=>{b.x+=b.vx*dt; return b.x>-20;});
           }
           // Spiketrap: extend/retract on timer
           if(o.otype==="spiketrap"){
@@ -2697,10 +2886,10 @@ export default function DinoIncremental() {
             const phase=(o._spikeTimer%cycle)/cycle;
             o._spikeH = phase<0.5 ? Math.min(28,phase*2*28) : Math.max(0,(1-phase)*2*28);
           }
-          // Statue: shoot horizontal curse beam when dino is nearby, entry shot
+          // Statue: shoot horizontal curse beam when dino is nearby, fires when 1/4 body visible
           if(o.otype==="statue"&&o.x<CANVAS_W-20&&o.x>-60){
-            const shootInterval=Math.max(90,160-tier*10);
-            if(!o._entryShot&&o.x<=CANVAS_W-36){
+            const shootInterval=Math.max(90,160-tier*8);
+            if(!o._entryShot&&o.x<=CANVAS_W-9){
               o._entryShot=true; o._shootTimer=shootInterval;
             }
             const dist=Math.abs(o.x-gs.dino.x);
@@ -2708,26 +2897,25 @@ export default function DinoIncremental() {
               o._shootTimer=(o._shootTimer||0)+dt;
               if(o._shootTimer>=shootInterval){
                 o._shootTimer=0;
-                o.bullets.push({x:o.x+4,y:GROUND_Y-52,vx:-6-tier*0.3,vy:0});
+                const bSpd=effSpeed/gs.baseSpeed;
+                o.bullets.push({x:o.x+4,y:GROUND_Y-52,vx:-(7+tier*0.3)*bSpd,vy:0});
               }
             }
             o.bullets=o.bullets.filter(b=>{b.x+=b.vx*dt; return b.x>-20;});
           }
-          // Golem: throw rubble in arc, entry shot
+          // Golem: throw rubble in arc, fires when 1/4 body visible
           if(o.otype==="golem"&&o.x<CANVAS_W-20&&o.x>-60){
-            const shootInterval=Math.max(80,140-tier*10);
-            if(!o._entryShot&&o.x<=CANVAS_W-44){
+            const shootInterval=Math.max(90,160-tier*8);
+            if(!o._entryShot&&o.x<=CANVAS_W-11){
               o._entryShot=true; o._shootTimer=shootInterval;
             }
             o._shootTimer=(o._shootTimer||0)+dt;
             if(o._shootTimer>=shootInterval){
               o._shootTimer=0;
-              o.bullets.push({x:o.x+34,y:GROUND_Y-52,vx:-5-tier*0.35,vy:-7});
+              const bSpd=effSpeed/gs.baseSpeed;
+              o.bullets.push({x:o.x+34,y:GROUND_Y-52,vx:-(7+tier*0.3)*bSpd,vy:0});
             }
-            o.bullets=o.bullets.filter(b=>{
-              b.x+=b.vx*dt; b.y+=b.vy*dt; b.vy+=0.45*dt;
-              return b.x>-20&&b.y<GROUND_Y;
-            });
+            o.bullets=o.bullets.filter(b=>{b.x+=b.vx*dt; return b.x>-20;});
           }
           // Stalactite: drop from ceiling when dino is nearby
           if(o.otype==="stalactite"){
@@ -2735,21 +2923,22 @@ export default function DinoIncremental() {
             const dist=Math.abs(o.x-gs.dino.x);
             if(dist<280||o._stalY>-30) o._stalY=Math.min(GROUND_Y-42,(o._stalY||0)+5.5*dt);
           }
-          // CrystalGolem: shoot 3-way crystal shard spread, entry shot
+          // CrystalGolem: shoot 3-way crystal shard spread, fires when 1/4 body visible
           if(o.otype==="crystalGolem"&&o.x<CANVAS_W-20&&o.x>-60){
-            const shootInterval=Math.max(80,150-tier*10);
-            if(!o._entryShot&&o.x<=CANVAS_W-44){
+            const shootInterval=Math.max(90,160-tier*8);
+            if(!o._entryShot&&o.x<=CANVAS_W-11){
               o._entryShot=true; o._shootTimer=shootInterval;
             }
             o._shootTimer=(o._shootTimer||0)+dt;
             if(o._shootTimer>=shootInterval){
               o._shootTimer=0;
-              o.bullets.push({x:o.x+4,y:GROUND_Y-50,vx:-6-tier*0.3,vy:0});
-              o.bullets.push({x:o.x+4,y:GROUND_Y-50,vx:-5-tier*0.25,vy:-3});
-              o.bullets.push({x:o.x+4,y:GROUND_Y-50,vx:-5-tier*0.25,vy:3});
+              const bSpd=effSpeed/gs.baseSpeed;
+              o.bullets.push({x:o.x+4,y:GROUND_Y-50,vx:-(7+tier*0.3)*bSpd,vy:0});
+              o.bullets.push({x:o.x+4,y:GROUND_Y-60,vx:-(6+tier*0.25)*bSpd,vy:0});
+              o.bullets.push({x:o.x+4,y:GROUND_Y-40,vx:-(6+tier*0.25)*bSpd,vy:0});
             }
             o.bullets=o.bullets.filter(b=>{
-              b.x+=b.vx*dt; b.y+=b.vy*dt;
+              b.x+=b.vx*dt;
               return b.x>-20&&b.y>0&&b.y<GROUND_Y;
             });
           }
@@ -2815,7 +3004,15 @@ export default function DinoIncremental() {
         }
 
         // ── Bullet collision (separate from obstacle body) ───────────────────
-        if(!hasGhost&&gs.dino.invTimer<=0){
+        // Giant mode: silently destroy all projectiles, no fossils awarded
+        if(hasGiant||hasSpdPw){
+          for(const o of gs.obstacles){
+            if(o.bullets&&o.bullets.length>0){
+              o.bullets=o.bullets.filter(b=>!rectsOverlap(DX,DY,DW,DH,b.x,b.y,8,4));
+            }
+          }
+        }
+        if(!hasGhost&&!hasGiant&&!hasSpdPw&&gs.dino.invTimer<=0){
           for(const o of gs.obstacles){
             if((o.otype!=="turret"&&o.otype!=="scorpion"&&o.otype!=="yeti"&&o.otype!=="lavaburst"&&o.otype!=="demon"&&o.otype!=="gorilla"&&o.otype!=="statue"&&o.otype!=="golem"&&o.otype!=="crystalGolem"&&o.otype!=="crystalMine")||!o.bullets) continue;
             for(let bi=o.bullets.length-1;bi>=0;bi--){
@@ -2947,7 +3144,14 @@ export default function DinoIncremental() {
               else{const b=Math.floor(20*gs.stats.fossilMult);gs.fossilsEarned+=b;addFloat(gs,`FULL HP +${b}`,gs.dino.x-10,gs.dino.y-28,"#ffdd44");}
             }
             else{
-              const dBonus=def.id==="giant_pw"?gs.stats.giantDurBonus:def.id==="frenzy_pw"?gs.stats.frenzyDurBonus:0;
+              const dBonus=def.id==="giant_pw"?gs.stats.giantDurBonus
+                :def.id==="frenzy_pw"?gs.stats.frenzyDurBonus
+                :def.id==="ghost_pw"?gs.stats.ghostDurBonus
+                :def.id==="tiny_pw"?gs.stats.tinyDurBonus
+                :def.id==="doubler_pw"?gs.stats.doublerDurBonus
+                :def.id==="slowmo_pw"?gs.stats.slowDurBonus
+                :def.id==="coinmania_pw"?gs.stats.windfallDurBonus
+                :0;
               gs.activePowerups[def.id]={timer:def.duration+dBonus,duration:def.duration+dBonus};
             }
             if(def.id!=="heart_pw") addFloat(gs,def.label+"!",CANVAS_W/2-28,96,def.color);
@@ -2960,8 +3164,8 @@ export default function DinoIncremental() {
         // ── Entity silhouette update ─────────────────────────────────────────
         const ent = gs.entity;
         if(!ent.visible) {
-          ent.timer -= dt;
-          if(ent.timer <= 0) {
+          // 1% chance per ~60 frames (once per second check)
+          if(gs.frame % 60 === 0 && Math.random() < 0.01) {
             ent.visible = true;
             ent.fadeDir = 1;
             ent.x = CANVAS_W * (0.5 + Math.random() * 0.35);
@@ -2976,15 +3180,12 @@ export default function DinoIncremental() {
             if(ent.timer <= 0) ent.fadeDir = -1;
           } else {
             ent.alpha = Math.max(0, ent.alpha - 0.002 * dt);
-            if(ent.alpha <= 0) {
-              ent.visible = false;
-              ent.timer = 60 + Math.random() * 60; // test: reappears every ~1-2s
-            }
+            if(ent.alpha <= 0) ent.visible = false;
           }
         }
       }
 
-      // ═══ RENDER ════════════════════════════════════════════════════════════
+      // ══╁ERENDER ════════════════════════════════════════════════════════════
       const B   = gs.nightBlend;
       const SCN = gs.scenery||SCENERIES[0];
       const SC  = getSceneryColors(SCN,B);
@@ -3000,18 +3201,15 @@ export default function DinoIncremental() {
       for(const o of gs.obstacles){ o._nightBlend=B; }
       for(const o of gs.obstacles) drawObstacleForScenery(ctx,o,SCN,gs.frame);
 
-      const isClassic=SCN.id==="classic";
-      const bonCol=isClassic?(B>0.5?"#cccc99":"#888888"):B>0.5?"#cccc88":"#8a7a60";
-      for(const p of gs.pickups){ if(!p.collected) drawBonePickup(ctx,p.x,p.y,bonCol); }
+      const HUD = getHudColors(SCN, B);
+      for(const p of gs.pickups){ if(!p.collected) drawBonePickup(ctx,p.x,p.y,HUD.bonePick); }
 
       for(const p of gs.powerupPickups){
         if(!p.collected){
           const pulse=0.8+Math.sin(gs.frame*0.14)*0.2;
           ctx.save(); ctx.globalAlpha=pulse;
-          ctx.fillStyle=p.def.color; ctx.fillRect(p.x-1,p.y-1,24,24);
-          ctx.fillStyle="#ffffff"; ctx.font="bold 9px 'Courier New'"; ctx.textAlign="center";
-          ctx.fillText(p.def.label.slice(0,3),p.x+11,p.y+14);
-          ctx.textAlign="left"; ctx.restore();
+          drawPowerupIcon(ctx,p.def.id,p.x,p.y,p.def.color);
+          ctx.restore();
         }
       }
 
@@ -3035,7 +3233,7 @@ export default function DinoIncremental() {
       if(hasFrenzyR){ctx.fillStyle=`rgba(220,30,100,${0.04+Math.sin(gs.frame*0.18)*0.03})`;ctx.fillRect(0,0,CANVAS_W,CANVAS_H);}
       if(hasDoublerR){ctx.fillStyle="rgba(255,220,30,0.06)";ctx.fillRect(0,0,CANVAS_W,CANVAS_H);}
 
-      // Draw dino — pass onGround so legs freeze mid-air
+      // Draw dino  Epass onGround so legs freeze mid-air
       drawDino(ctx,gs.dino.x,gs.dino.y,gs.frame,gs.dino.dead,
         gs.skin,gs.design,hasGiantR,gs.dino.ducking,hasTinyR,hasGhostR,
         gs.dino.invTimer, gs.dino.onGround, gs.deathAnim);
@@ -3048,10 +3246,12 @@ export default function DinoIncremental() {
       }
 
       // HUD
-      ctx.font="bold 14px 'Courier New'"; ctx.fillStyle=B<0.5?"#333":"#ccc";
-      ctx.fillText(`${Math.floor(gs.distance)}m`,CANVAS_W-90,24);
-      drawBoneCoin(ctx,10,8,13);
-      ctx.font="bold 13px 'Courier New'"; ctx.fillStyle=B<0.5?"#333":"#ccc";
+      ctx.font="bold 14px 'Courier New'"; ctx.fillStyle=HUD.hud;
+      ctx.textAlign="right";
+      ctx.fillText(`${Math.floor(gs.distance)}m`,CANVAS_W-8,24);
+      ctx.textAlign="left";
+      drawFossilDiamond(ctx,10+13/2,8+13/2,13,HUD.fossil);
+      ctx.font="bold 13px 'Courier New'"; ctx.fillStyle=HUD.hud;
       ctx.fillText(`${Math.floor(gs.fossilsEarned)}`,28,20);
 
       // Hearts
@@ -3059,12 +3259,12 @@ export default function DinoIncremental() {
         const heartSize=14,heartGap=4;
         const totalW=gs.lives*(heartSize+heartGap)-heartGap;
         const startX=CANVAS_W-totalW-8,heartY=CANVAS_H-heartSize-8;
-        for(let i=0;i<gs.lives;i++) drawHeart(ctx,startX+i*(heartSize+heartGap),heartY,heartSize);
+        for(let i=0;i<gs.lives;i++) drawHeart(ctx,startX+i*(heartSize+heartGap),heartY,heartSize,HUD.heart);
       }
 
       // Combo
       if(gs.combo>1){
-        ctx.fillStyle=B<0.5?"#334":"#99b";ctx.font="11px 'Courier New'";
+        ctx.fillStyle=HUD.hud;ctx.font="11px 'Courier New'";
         ctx.fillText(`x${gs.combo} COMBO`,12,40);
       }
 
@@ -3072,9 +3272,10 @@ export default function DinoIncremental() {
       const designId2 = gs.design?.id || "raptor";
       const passive = DINO_PASSIVES[designId2];
       if(passive){
-        ctx.fillStyle=B<0.5?"rgba(0,0,0,0.3)":"rgba(255,255,255,0.3)";
+        ctx.fillStyle=HUD.hud; ctx.globalAlpha=0.55;
         ctx.font="9px 'Courier New'";
-        ctx.fillText(`★ ${passive.label}`,12,54);
+        ctx.fillText(`[${passive.label}]`,12,54);
+        ctx.globalAlpha=1;
       }
 
       // Day/night label
@@ -3102,7 +3303,7 @@ export default function DinoIncremental() {
           const frac=Math.max(0,p.timer/p.duration);
           ctx.fillStyle="rgba(0,0,0,0.22)";ctx.fillRect(CANVAS_W-88,barY,76,6);
           ctx.fillStyle=def.color;ctx.fillRect(CANVAS_W-88,barY,Math.floor(76*frac),6);
-          ctx.fillStyle=B<0.5?"#333":"#ccc";ctx.font="9px 'Courier New'";
+          ctx.fillStyle=HUD.hud;ctx.font="9px 'Courier New'";
           ctx.fillText(def.label,CANVAS_W-88,barY+17);barY+=20;
         } else if(def.duration===0){
           ctx.fillStyle=def.color;ctx.font="bold 9px 'Courier New'";
@@ -3112,7 +3313,7 @@ export default function DinoIncremental() {
 
       // Raptor speed rush indicator
       if(designId2==="raptor"&&gs.raptorSpeedBonus>0){
-        ctx.fillStyle=B<0.5?"#226633":"#44cc66";ctx.font="9px 'Courier New'";
+        ctx.fillStyle=HUD.hud;ctx.font="9px 'Courier New'";
         ctx.fillText(`RUSH x${gs.raptorSpeedBonus} (+${(gs.raptorSpeedBonus*5)}%)`,12,68);
       }
 
@@ -3217,7 +3418,15 @@ export default function DinoIncremental() {
           <div style={{textAlign:"center",marginBottom:24}}>
             <div style={{fontSize:36,fontWeight:"bold",letterSpacing:4,marginBottom:2}}>DINO</div>
             <div style={{fontSize:14,letterSpacing:6,marginBottom:16,color:MUTED}}>UPGRADED</div>
-            <canvas ref={menuCanvasRef} width={80} height={70} style={{display:"block",margin:"0 auto 16px"}}/>
+            <div style={{position:"relative",display:"inline-block",margin:"0 auto 16px"}}>
+              <canvas ref={menuCanvasRef} width={80} height={70} style={{display:"block",cursor:"pointer"}}
+                onClick={()=>{
+                  const next=menuDinoClicks+1;
+                  setMenuDinoClicks(next);
+                  if(next>=5){setShowCredit(true);setMenuDinoClicks(0);setTimeout(()=>setShowCredit(false),3000);}
+                }}/>
+              {showCredit&&<div style={{position:"absolute",top:-20,left:"50%",transform:"translateX(-50%)",fontSize:9,color:"#888",whiteSpace:"nowrap",letterSpacing:1,pointerEvents:"none"}}>By Hasim Tordios</div>}
+            </div>
             <p style={{fontSize:11,color:MUTED,marginBottom:22,lineHeight:2,letterSpacing:1}}>
               Run. Collect bones. Upgrade. Evolve.<br/>Outlast the digital extinction.
             </p>
@@ -3230,8 +3439,8 @@ export default function DinoIncremental() {
             <button style={{...btn(false),width:"100%"}} onClick={()=>setScreen("skins")}>[ COLLECTION ]</button>
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-            <button style={{...btn(false),width:"100%"}} onClick={()=>setScreen("achievements")}>[ ACHIEV ]</button>
-            <button style={{...btn(false),width:"100%"}} onClick={()=>setScreen("leaderboard")}>[ SCORES ]</button>
+            <button style={{...btn(false),width:"100%",padding:"10px 2px",letterSpacing:0}} onClick={()=>setScreen("achievements")}>[ ACHIEVEMENTS ]</button>
+            <button style={{...btn(false),width:"100%",padding:"10px 2px",letterSpacing:0}} onClick={()=>setScreen("leaderboard")}>[ LEADERBOARDS ]</button>
           </div>
           {totalRuns>0&&(
             <div style={{marginTop:20,paddingTop:16,borderTop:"1px solid #ddd",fontSize:11,color:MUTED,textAlign:"center",lineHeight:2}}>
@@ -3268,6 +3477,13 @@ export default function DinoIncremental() {
               ))}
             </div>
           )}
+          {/* ── Auto-submitted rank badge ── */}
+          {lastRunRank !== null && (
+            <div style={{marginBottom:16,padding:"12px 14px",background:DARK,color:BG,textAlign:"center",letterSpacing:2,fontSize:11}}>
+              🏆 YOUR RUN RANKED <span style={{color:lastRunRank<=3?tierColors[lastRunRank===1?"gold":lastRunRank===2?"silver":"bronze"]:BG,fontWeight:"bold",fontSize:14}}>#{lastRunRank}</span> ON THE LEADERBOARD!
+              <div style={{fontSize:9,color:"#aaa",marginTop:4,letterSpacing:1}}>as {getSavedName()}</div>
+            </div>
+          )}
           <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap",marginBottom:10}}>
             <button style={btn(true)} onClick={startGame}>[ RUN AGAIN ]</button>
             <button style={btn(false)} onClick={()=>setScreen("shop")}>[ UPGRADES ]</button>
@@ -3285,7 +3501,7 @@ export default function DinoIncremental() {
     <div style={{...outer,justifyContent:"center",padding:0}}>
       <div style={{width:"100%",maxWidth:CANVAS_W,display:"flex",flexDirection:"column",alignItems:"center"}}>
         <div style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 4px",boxSizing:"border-box",fontFamily:F,fontSize:11,color:MUTED}}>
-          <span style={{letterSpacing:3,fontSize:10}}>DINO INCREMENTAL</span>
+          <span style={{letterSpacing:3,fontSize:10}}>DINO UPGRADED</span>
           <span style={{display:"flex",alignItems:"center",gap:4}}>
             <span style={{fontSize:14,color:DARK}}>◈</span>
             <b style={{color:DARK,fontSize:13}}>{Math.floor(fossils)}</b>
@@ -3322,7 +3538,7 @@ export default function DinoIncremental() {
             ))}
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
-            {catUpgrades.map(up=>{
+            {catUpgrades.filter(up=>shopTab!=="powerups").map(up=>{
               const level=upgradeLevels[up.id]||0;
               const maxed=level>=up.maxLevel;
               const cost=maxed?0:getUpgradeCost(up,level);
@@ -3347,29 +3563,77 @@ export default function DinoIncremental() {
               );
             })}
           </div>
-          {shopTab==="powerups"&&(
-            <>
-              <div style={{fontSize:9,letterSpacing:3,color:MUTED,marginBottom:8,marginTop:4}}>UNLOCK POWERUPS FOR IN-RUN SPAWNING</div>
+          {shopTab==="powerups"&&(()=>{
+            const pwUpgradeMap={
+              shield_pw:    ["pwShieldDur"],
+              speed_pw:     ["pwSpeedMult"],
+              giant_pw:     ["pwGiantDur"],
+              magnet_pw:    ["pwMagnetRng"],
+              frenzy_pw:    ["pwFrenzyDur"],
+              coinmania_pw: ["pwRareDrop","pwWindfallDur"],
+              ghost_pw:     ["pwGhostDur"],
+              tiny_pw:      ["pwTinyDur"],
+              meteor_pw:    ["pwMeteorCount"],
+              doubler_pw:   ["pwRareDrop","pwDoublerDur"],
+              heart_pw:     ["pwHeartChance"],
+              slowmo_pw:    ["pwSlowDur"],
+            };
+            return (
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
                 {POWERUP_DEFS.map(def=>{
                   const owned=unlockedPowerups.includes(def.id);
-                  const canAfford=fossils>=def.unlockCost;
+                  const canAffordUnlock=fossils>=def.unlockCost;
+                  const relatedUps=(pwUpgradeMap[def.id]||[]).map(uid=>UPGRADES.find(u=>u.id===uid)).filter(Boolean);
                   return (
-                    <div key={def.id} onClick={()=>!owned&&unlockPowerup(def)} style={{background:owned?"#ebe8e2":"#faf8f4",border:`2px solid ${owned?"#ccc":canAfford?BORDER:"#ccc"}`,padding:"11px",cursor:owned?"default":canAfford?"pointer":"not-allowed",opacity:owned?0.7:1,boxSizing:"border-box"}}>
-                      <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4}}>
-                        <span style={{width:10,height:10,background:def.color,display:"inline-block"}}/>
-                        <span style={{fontSize:11,fontWeight:"bold"}}>{def.label}</span>
+                    <div key={def.id} style={{background:owned?"#faf8f4":"#f5f2ec",border:`2px solid ${owned?BORDER:canAffordUnlock?"#aaa":"#ccc"}`,padding:"11px",boxSizing:"border-box",minHeight:160}}>
+                      {/* Header: icon + name */}
+                      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:6}}>
+                        <canvas width={22} height={22} style={{display:"block",flexShrink:0,background:"transparent"}}
+                          ref={el=>{ if(!el) return; const c=el.getContext("2d"); c.clearRect(0,0,22,22); drawPowerupIcon(c,def.id,0,0,def.color); }}/>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:11,fontWeight:"bold",letterSpacing:1}}>{def.label}</div>
+                          <div style={{fontSize:9,color:MUTED,lineHeight:1.4}}>{def.desc}</div>
+                        </div>
                       </div>
-                      <div style={{fontSize:10,color:MUTED,marginBottom:6,lineHeight:1.5}}>{def.desc}</div>
-                      <div style={{fontSize:11,fontWeight:"bold",color:owned?"#bbb":canAfford?DARK:"#bbb"}}>
-                        {owned?"UNLOCKED":`◈ ${def.unlockCost}`}
-                      </div>
+                      {/* Unlock button  Eonly shown when not yet unlocked */}
+                      {!owned&&(
+                        <div onClick={()=>unlockPowerup(def)}
+                          style={{fontSize:10,fontWeight:"bold",padding:"4px 8px",marginBottom:relatedUps.length?8:0,
+                            background:canAffordUnlock?DARK:"#ccc",
+                            color:"#f0ede6",cursor:canAffordUnlock?"pointer":"not-allowed",
+                            textAlign:"center",letterSpacing:1}}>
+                          {`◈ ${def.unlockCost} UNLOCK`}
+                        </div>
+                      )}
+                      {/* Inline upgrades  Eonly shown once unlocked */}
+                      {owned&&relatedUps.map(up=>{
+                        const level=upgradeLevels[up.id]||0;
+                        const maxed=level>=up.maxLevel;
+                        const cost=maxed?0:getUpgradeCost(up,level);
+                        const canAfford=fossils>=cost;
+                        return (
+                          <div key={up.id} onClick={()=>!maxed&&buyUpgrade(up)}
+                            style={{borderTop:"1px solid #ddd",paddingTop:6,cursor:maxed?"default":canAfford?"pointer":"not-allowed",opacity:maxed?0.6:1}}>
+                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
+                              <span style={{fontSize:10,fontWeight:"bold"}}>{up.label}</span>
+                              <span style={{fontSize:9,color:MUTED}}>{level}/{up.maxLevel}</span>
+                            </div>
+                            <div style={{fontSize:9,color:MUTED,marginBottom:4,lineHeight:1.4}}>{up.desc}</div>
+                            <div style={{height:2,background:"#e0ddd8",marginBottom:4,overflow:"hidden"}}>
+                              <div style={{height:"100%",background:def.color,width:`${Math.min(100,(level/up.maxLevel)*100)}%`}}/>
+                            </div>
+                            <div style={{fontSize:10,fontWeight:"bold",color:maxed?"#bbb":canAfford?DARK:"#bbb"}}>
+                              {maxed?"MAX":`◈ ${cost}`}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   );
                 })}
               </div>
-            </>
-          )}
+            );
+          })()}
           <div style={{padding:"12px",border:"1px solid #ddd",background:"#f5f2ec",marginBottom:12,fontSize:10,color:MUTED}}>
             <div style={{letterSpacing:3,marginBottom:8,fontSize:9}}>CURRENT STATS</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:5}}>
@@ -3429,7 +3693,7 @@ export default function DinoIncremental() {
                   }} style={{background:active?"#ece8e0":"#faf8f4",border:`2px solid ${active?BORDER:"#ddd"}`,padding:"12px 10px",textAlign:"center",cursor:"pointer",position:"relative",overflow:"hidden"}}>
                     {showingPassive&&(
                       <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.82)",display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center",padding:"10px",zIndex:2}}>
-                        <div style={{fontSize:10,color:"#88dd88",fontWeight:"bold",marginBottom:6,letterSpacing:1}}>★ {passive.label}</div>
+                        <div style={{fontSize:10,color:"#88dd88",fontWeight:"bold",marginBottom:6,letterSpacing:1,display:"flex",alignItems:"center"}}>{PASSIVE_ICONS[d.id]}{passive.label}</div>
                         <div style={{fontSize:9,color:"#ddd",lineHeight:1.6,textAlign:"center"}}>{passive.desc}</div>
                         <div style={{fontSize:8,color:"#888",marginTop:8}}>tap to close</div>
                       </div>
@@ -3439,8 +3703,9 @@ export default function DinoIncremental() {
                     <div style={{fontSize:12,fontWeight:"bold",letterSpacing:1}}>{d.label}</div>
                     <div style={{fontSize:9,color:MUTED,margin:"3px 0 4px",lineHeight:1.5}}>{d.desc}</div>
                     {passive&&(
-                      <div style={{fontSize:9,color:"#448844",margin:"3px 0 6px",lineHeight:1.4,textAlign:"left",background:"#e8f0e8",padding:"4px 6px"}}>
-                        <b>★ {passive.label}</b>{active&&<span style={{color:MUTED,fontSize:8}}> (tap)</span>}
+                      <div style={{fontSize:9,color:"#448844",margin:"3px 0 6px",lineHeight:1.4,textAlign:"left",background:"#e8f0e8",padding:"4px 6px",display:"flex",alignItems:"center",gap:4}}>
+                        <span style={{color:"#448844",flexShrink:0}}>{PASSIVE_ICONS[d.id]}</span>
+                        <b>{passive.label}</b>{active&&<span style={{color:MUTED,fontSize:8}}> (tap)</span>}
                       </div>
                     )}
                     <div style={{fontSize:11,fontWeight:"bold",color:active?"#aaa":owned?"#448844":DARK}}>
@@ -3547,36 +3812,121 @@ export default function DinoIncremental() {
     </div>
   );
 
-  if(screen==="leaderboard") return (
-    <div style={outer}>
-      <div style={{...wrap(520)}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-          <div>
-            <div style={{fontSize:10,letterSpacing:4,color:MUTED}}>GLOBAL</div>
-            <div style={{fontSize:20,fontWeight:"bold",letterSpacing:2}}>LEADERBOARD</div>
-          </div>
-          <div style={{fontSize:9,color:MUTED,letterSpacing:2}}>TOP 10</div>
-        </div>
-        <div style={{border:"1px solid #ddd",marginBottom:16}}>
-          <div style={{display:"grid",gridTemplateColumns:"40px 1fr 1fr 1fr",background:DARK,color:BG,padding:"8px 12px",fontSize:9,letterSpacing:2}}>
-            <span>#</span><span>PLAYER</span><span>SCORE</span><span>DIST</span>
-          </div>
-          {MOCK_LEADERBOARD.map((r,i)=>(
-            <div key={r.rank} style={{display:"grid",gridTemplateColumns:"40px 1fr 1fr 1fr",padding:"10px 12px",fontSize:11,fontWeight:"bold",background:i%2===0?"#faf8f4":"#f5f2ec",borderBottom:"1px solid #e8e5e0"}}>
-              <span style={{color:r.rank<=3?tierColors[r.rank===1?"gold":r.rank===2?"silver":"bronze"]:MUTED}}>{r.rank}</span>
-              <span style={{letterSpacing:1}}>{r.name}</span>
-              <span>{r.score.toLocaleString()}</span>
-              <span style={{color:MUTED}}>{r.dist.toLocaleString()}m</span>
+  if(screen==="leaderboard") {
+    const myId=getPlayerId();
+    const top3=lbData.slice(0,3);
+    const rest=lbData.slice(3);
+    // Podium slot order: 2nd (left), 1st (center), 3rd (right)
+    const podiumSlots=[{pos:1,h:88,color:tierColors.silver,label:"2ND"},{pos:0,h:120,color:tierColors.gold,label:"1ST"},{pos:2,h:64,color:tierColors.bronze,label:"3RD"}];
+    return (
+      <div style={outer}>
+        <div style={{...wrap(520)}}>
+          {/* Header */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <div>
+              <div style={{fontSize:10,letterSpacing:4,color:MUTED}}>GLOBAL</div>
+              <div style={{fontSize:20,fontWeight:"bold",letterSpacing:2}}>LEADERBOARD</div>
             </div>
-          ))}
+            <button style={{...btn(false,true),fontSize:9}} onClick={async()=>{
+              setLbLoading(true);
+              const data=await fetchLeaderboard();
+              setLbData(data);
+              setLbLoading(false);
+            }}>[ REFRESH ]</button>
+          </div>
+
+          {/* Rename */}
+          <div style={{marginBottom:14,padding:"10px 12px",background:"#f5f2ec",border:"1px solid #ddd"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"nowrap",overflow:"hidden"}}>
+              <span style={{fontSize:10,color:MUTED,letterSpacing:1}}>YOUR NAME:</span>
+              {lbRenaming ? (
+                <>
+                  <input autoFocus value={lbNewName}
+                    onChange={e=>{ setLbNewName(e.target.value.toUpperCase().slice(0,20)); setLbNameError(""); }}
+                    onKeyDown={e=>{
+                      if(e.key==="Enter"){
+                        const t=lbNewName.trim();
+                        if(!t) return;
+                        isNameTaken(t).then(taken=>{
+                          if(taken){ setLbNameError("Name already taken!"); }
+                          else { savePlayerName(t); showNotif("Name updated!"); setLbRenaming(false); setLbNameError(""); }
+                        });
+                      }
+                      if(e.key==="Escape"){ setLbRenaming(false); setLbNameError(""); }
+                    }}
+                    style={{fontFamily:F,fontSize:11,fontWeight:"bold",padding:"4px 8px",border:`2px solid ${lbNameError?"#cc2200":BORDER}`,background:BG,letterSpacing:2,width:130,textTransform:"uppercase"}}
+                    maxLength={20} placeholder="ENTER NAME"
+                  />
+                  <button style={btn(true,true)} onClick={()=>{
+                    const t=lbNewName.trim();
+                    if(!t) return;
+                    isNameTaken(t).then(taken=>{
+                      if(taken){ setLbNameError("Name already taken!"); }
+                      else { savePlayerName(t); showNotif("Name updated!"); setLbRenaming(false); setLbNameError(""); }
+                    });
+                  }}>[ SAVE ]</button>
+                  <button style={btn(false,true)} onClick={()=>{ setLbRenaming(false); setLbNameError(""); }}>[ CANCEL ]</button>
+                </>
+              ) : (
+                <>
+                  <span style={{fontSize:11,fontWeight:"bold",letterSpacing:2,color:DARK}}>{getSavedName()}</span>
+                  <button style={btn(false,true)} onClick={()=>{ setLbNewName(getSavedName()); setLbRenaming(true); setLbNameError(""); }}>[ RENAME ]</button>
+                </>
+              )}
+            </div>
+            {lbNameError&&<div style={{fontSize:10,color:"#cc2200",marginTop:6,letterSpacing:1}}>{lbNameError}</div>}
+          </div>
+
+          {lbLoading ? (
+            <div style={{textAlign:"center",padding:40,fontSize:11,color:MUTED,letterSpacing:3}}>LOADING...</div>
+          ) : lbData.length===0 ? (
+            <div style={{textAlign:"center",padding:40,fontSize:11,color:MUTED,letterSpacing:2,border:"1px solid #ddd",marginBottom:16}}>No scores yet. Be the first!</div>
+          ) : (
+            <>
+              {/* ── Podium (top 3) ── */}
+              <div style={{background:"#faf8f4",border:`2px solid ${BORDER}`,padding:"20px 16px 0",marginBottom:0}}>
+                <div style={{display:"flex",alignItems:"flex-end",justifyContent:"center",gap:8}}>
+                  {podiumSlots.map(({pos,h,color,label})=>{
+                    const entry=top3[pos];
+                    if(!entry) return <div key={pos} style={{width:120}}/> ;
+                    const isMe=entry.player_id===myId;
+                    return (
+                      <div key={pos} style={{display:"flex",flexDirection:"column",alignItems:"center",width:120}}>
+                        <div style={{fontSize:11,fontWeight:"bold",color,letterSpacing:1,textAlign:"center",maxWidth:110,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginBottom:2}}>
+                          {entry.name}{isMe&&" ◀"}
+                        </div>
+                        <div style={{fontSize:10,color:MUTED,marginBottom:6}}>{entry.best_dist.toLocaleString()}m</div>
+                        <div style={{width:"100%",height:h,background:color,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-start",paddingTop:10,boxSizing:"border-box",outline:isMe?`3px solid #448844`:"none"}}>
+                          <div style={{fontSize:18,fontWeight:"bold",color:"#fff",letterSpacing:2}}>{label}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* ── Ranks 4 E0 ── */}
+              {rest.length>0&&(
+                <div style={{border:"1px solid #ddd",borderTop:"none",marginBottom:14}}>
+                  {rest.map((r,i)=>{
+                    const isMe=r.player_id===myId;
+                    return (
+                      <div key={r.id} style={{display:"grid",gridTemplateColumns:"36px 1fr 72px",padding:"7px 12px",fontSize:11,fontWeight:"bold",background:isMe?"#e8f0e8":i%2===0?"#faf8f4":"#f5f2ec",borderBottom:"1px solid #e8e5e0",borderLeft:isMe?`3px solid #448844`:"3px solid transparent"}}>
+                        <span style={{color:MUTED,fontSize:10}}>{i+4}</span>
+                        <span style={{letterSpacing:1,color:isMe?"#448844":DARK,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.name}{isMe&&" ◀"}</span>
+                        <span style={{textAlign:"right",color:MUTED}}>{r.best_dist.toLocaleString()}m</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+          <button style={{...btn(false),width:"100%",marginTop:lbData.length>0?0:0}} onClick={()=>setScreen("menu")}>[ BACK ]</button>
         </div>
-        <div style={{padding:"14px",background:"#f0ede6",border:"1px solid #ddd",marginBottom:12,fontSize:10,color:MUTED,textAlign:"center",lineHeight:2}}>
-          Leaderboard functionality coming soon.
-        </div>
-        <button style={{...btn(false),width:"100%"}} onClick={()=>setScreen("menu")}>[ BACK ]</button>
       </div>
-    </div>
-  );
+    );
+  }
 
   return null;
 }
