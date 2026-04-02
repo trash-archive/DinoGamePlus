@@ -3417,7 +3417,7 @@ export default function DinoIncremental() {
         <div style={card}>
           <div style={{textAlign:"center",marginBottom:24}}>
             <div style={{fontSize:36,fontWeight:"bold",letterSpacing:4,marginBottom:2}}>DINO</div>
-            <div style={{fontSize:14,letterSpacing:6,marginBottom:16,color:MUTED}}>UPGRADED</div>
+            <div style={{fontSize:14,letterSpacing:6,marginBottom:16,color:MUTED}}>REIMAGINED</div>
             <div style={{position:"relative",display:"inline-block",margin:"0 auto 16px"}}>
               <canvas ref={menuCanvasRef} width={80} height={70} style={{display:"block",cursor:"pointer"}}
                 onClick={()=>{
@@ -3501,7 +3501,7 @@ export default function DinoIncremental() {
     <div style={{...outer,justifyContent:"center",padding:0}}>
       <div style={{width:"100%",maxWidth:CANVAS_W,display:"flex",flexDirection:"column",alignItems:"center"}}>
         <div style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 4px",boxSizing:"border-box",fontFamily:F,fontSize:11,color:MUTED}}>
-          <span style={{letterSpacing:3,fontSize:10}}>DINO UPGRADED</span>
+          <span style={{letterSpacing:3,fontSize:10}}>DINO REIMAGINED</span>
           <span style={{display:"flex",alignItems:"center",gap:4}}>
             <span style={{fontSize:14,color:DARK}}>◈</span>
             <b style={{color:DARK,fontSize:13}}>{Math.floor(fossils)}</b>
