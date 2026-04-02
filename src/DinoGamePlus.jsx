@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { submitScore, fetchLeaderboard, isNameTaken } from "./leaderboard";
-import { getSavedName, savePlayerName, getPlayerId } from "./supabase";
+import { submitScore, fetchLeaderboard } from "./leaderboard";
+import { getSavedName, getPlayerId } from "./supabase";
 
 // ─── LOCAL STORAGE HOOK ───────────────────────────────────────────────────────
 function useLocalStorage(key, defaultValue) {
@@ -16,6 +16,10 @@ function useLocalStorage(key, defaultValue) {
   return [value, setValue];
 }
 import { drawPowerupIcon } from "./rendering/drawPowerups";
+import GameOverScreen from "./GameOverScreen";
+import MenuScreen from "./MenuScreen";
+import AchievementsScreen, { ACHIEVEMENTS } from "./AchievementsScreen";
+import LeaderboardScreen from "./LeaderboardScreen";
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 const GRAVITY    = 0.55;
@@ -272,46 +276,6 @@ const POWERUP_DEFS = [
   { id:"heart_pw",     color:"#dd2244", label:"HEART",    duration:0,   desc:"Gain +1 life (max 4)",    unlockCost:180 },
 ];
 
-// ─── ACHIEVEMENTS ─────────────────────────────────────────────────────────────
-const ACHIEVEMENTS = [
-  { id:"first_run",    label:"First Steps",      desc:"Complete your first run",               req:(s)=>s.totalRuns>=1,       reward:10,  tier:"bronze" },
-  { id:"run10",        label:"Getting Started",   desc:"Complete 10 runs",                      req:(s)=>s.totalRuns>=10,      reward:25,  tier:"bronze" },
-  { id:"dist100",      label:"Century Run",       desc:"Run 100m in a single run",              req:(s)=>s.bestDist>=100,      reward:20,  tier:"bronze" },
-  { id:"earn50",       label:"Bone Collector",    desc:"Earn 50 bones total",                   req:(s)=>s.totalBones>=50,     reward:15,  tier:"bronze" },
-  { id:"first_upgrade",label:"Evolution Begins",  desc:"Buy your first upgrade",                req:(s)=>s.totalUpgrades>=1,   reward:15,  tier:"bronze" },
-  { id:"first_skin",   label:"Fashion Forward",   desc:"Unlock a new skin",                     req:(s)=>s.ownedSkins>=2,      reward:20,  tier:"bronze" },
-  { id:"combo5",       label:"Combo Starter",     desc:"Reach a x5 combo",                      req:(s)=>s.maxCombo>=5,        reward:25,  tier:"bronze" },
-  { id:"run50",        label:"Seasoned Runner",   desc:"Complete 50 runs",                      req:(s)=>s.totalRuns>=50,      reward:60,  tier:"silver" },
-  { id:"dist500",      label:"Long Haul",         desc:"Run 500m in a single run",              req:(s)=>s.bestDist>=500,      reward:50,  tier:"silver" },
-  { id:"dist1000",     label:"Marathoner",        desc:"Run 1000m in a single run",             req:(s)=>s.bestDist>=1000,     reward:100, tier:"silver" },
-  { id:"earn500",      label:"Fossil Hunter",     desc:"Earn 500 bones total",                  req:(s)=>s.totalBones>=500,    reward:75,  tier:"silver" },
-  { id:"earn2000",     label:"Bone Hoarder",      desc:"Earn 2,000 bones total",                req:(s)=>s.totalBones>=2000,   reward:150, tier:"silver" },
-  { id:"upgrade10",    label:"Evolving Fast",     desc:"Buy 10 upgrades",                       req:(s)=>s.totalUpgrades>=10,  reward:80,  tier:"silver" },
-  { id:"combo15",      label:"Combo Artist",      desc:"Reach a x15 combo",                     req:(s)=>s.maxCombo>=15,       reward:75,  tier:"silver" },
-  { id:"night3",       label:"Night Owl",         desc:"Survive 3 full night cycles",           req:(s)=>s.nightCycles>=3,     reward:80,  tier:"silver" },
-  { id:"nearmiss20",   label:"Daredevil",         desc:"Land 20 near misses",                   req:(s)=>s.totalNearMiss>=20,  reward:60,  tier:"silver" },
-  { id:"skin5",        label:"Collector",         desc:"Own 5 skins",                           req:(s)=>s.ownedSkins>=5,      reward:100, tier:"silver" },
-  { id:"scenery3",     label:"World Traveler",    desc:"Own 3 sceneries",                       req:(s)=>s.ownedSceneries>=3,  reward:120, tier:"silver" },
-  { id:"all_movement", label:"Full Mobility",     desc:"Max all movement upgrades",             req:(s)=>s.allMovementMax,     reward:200, tier:"silver" },
-  { id:"run200",       label:"Unstoppable",       desc:"Complete 200 runs",                     req:(s)=>s.totalRuns>=200,     reward:250, tier:"gold" },
-  { id:"dist3000",     label:"Jurassic Journey",  desc:"Run 3,000m in a single run",            req:(s)=>s.bestDist>=3000,     reward:300, tier:"gold" },
-  { id:"dist5000",     label:"Epoch Runner",      desc:"Run 5,000m in a single run",            req:(s)=>s.bestDist>=5000,     reward:500, tier:"gold" },
-  { id:"earn10k",      label:"Fossil Fortune",    desc:"Earn 10,000 bones total",               req:(s)=>s.totalBones>=10000,  reward:400, tier:"gold" },
-  { id:"earn50k",      label:"Bone Baron",        desc:"Earn 50,000 bones total",               req:(s)=>s.totalBones>=50000,  reward:1000,tier:"gold" },
-  { id:"combo30",      label:"Combo God",         desc:"Reach a x30 combo",                     req:(s)=>s.maxCombo>=30,       reward:300, tier:"gold" },
-  { id:"night10",      label:"Creature of Night", desc:"Survive 10 full night cycles",          req:(s)=>s.nightCycles>=10,    reward:350, tier:"gold" },
-  { id:"upgrade30",    label:"Fully Evolved",     desc:"Buy 30 upgrades total",                 req:(s)=>s.totalUpgrades>=30,  reward:400, tier:"gold" },
-  { id:"all_skins",    label:"Wardrobe Complete", desc:"Own all 12 skins",                      req:(s)=>s.ownedSkins>=12,     reward:600, tier:"gold" },
-  { id:"giant10",      label:"Giant Slayer",      desc:"Crush 10 obstacles as GIANT",           req:(s)=>s.giantCrushes>=10,   reward:200, tier:"gold" },
-  { id:"dist15000",    label:"Endless Wanderer",  desc:"Run 15,000m in a single run",           req:(s)=>s.bestDist>=15000,    reward:2000,tier:"legend" },
-  { id:"earn500k",     label:"Fossil King",       desc:"Earn 500,000 bones total",              req:(s)=>s.totalBones>=500000, reward:5000,tier:"legend" },
-  { id:"run1000",      label:"The Long Game",     desc:"Complete 1,000 runs",                   req:(s)=>s.totalRuns>=1000,    reward:3000,tier:"legend" },
-  { id:"combo60",      label:"Untouchable",       desc:"Reach a x60 combo in one run",          req:(s)=>s.maxCombo>=60,       reward:1500,tier:"legend" },
-  { id:"nearmiss200",  label:"Ghost of the Plains",desc:"Land 200 near misses total",           req:(s)=>s.totalNearMiss>=200, reward:2000,tier:"legend" },
-  { id:"dist1_nodash", label:"Pure Runner",       desc:"Run 2,000m without ever dashing",       req:(s)=>s.bestDistNoDash>=2000,reward:2500,tier:"legend" },
-  { id:"all_sceneries",label:"Master Explorer",   desc:"Own all sceneries",                     req:(s)=>s.ownedSceneries>=8,  reward:4000,tier:"legend" },
-  { id:"passive100",   label:"The Idle One",      desc:"Earn 100 bones passively in one session",req:(s)=>s.passiveEarned>=100,reward:1500,tier:"legend" },
-];
 
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -2241,10 +2205,7 @@ export default function DinoIncremental() {
   const [unlockedPowerups, setUnlockedPowerups] = useLocalStorage("dino_unlockedPowerups", []);
   const [lbData,           setLbData]           = useState([]);
   const [lbLoading,        setLbLoading]        = useState(false);
-  const [lastRunRank,      setLastRunRank]       = useState(null);
-  const [lbRenaming,       setLbRenaming]        = useState(false);
-  const [lbNewName,        setLbNewName]         = useState("");
-  const [lbNameError,      setLbNameError]       = useState("");
+  const [lastRunRank,      setLastRunRank]       = useState(null);
 
   const getStats = useCallback((levels) => {
     const ul = levels || {};
@@ -3412,92 +3373,18 @@ export default function DinoIncremental() {
 
   // ─── SCREENS ─────────────────────────────────────────────────────────────
   if(screen==="menu") return (
-    <div style={{...outer,justifyContent:"center"}}>
-      <div style={{...wrap(480),display:"flex",flexDirection:"column",alignItems:"center"}}>
-        <div style={card}>
-          <div style={{textAlign:"center",marginBottom:24}}>
-            <div style={{fontSize:36,fontWeight:"bold",letterSpacing:4,marginBottom:2}}>DINO</div>
-            <div style={{fontSize:14,letterSpacing:6,marginBottom:16,color:MUTED}}>REIMAGINED</div>
-            <div style={{position:"relative",display:"inline-block",margin:"0 auto 16px"}}>
-              <canvas ref={menuCanvasRef} width={80} height={70} style={{display:"block",cursor:"pointer"}}
-                onClick={()=>{
-                  const next=menuDinoClicks+1;
-                  setMenuDinoClicks(next);
-                  if(next>=5){setShowCredit(true);setMenuDinoClicks(0);setTimeout(()=>setShowCredit(false),3000);}
-                }}/>
-              {showCredit&&<div style={{position:"absolute",top:-20,left:"50%",transform:"translateX(-50%)",fontSize:9,color:"#888",whiteSpace:"nowrap",letterSpacing:1,pointerEvents:"none"}}>By Hasim Tordios</div>}
-            </div>
-            <p style={{fontSize:11,color:MUTED,marginBottom:22,lineHeight:2,letterSpacing:1}}>
-              Run. Collect bones. Upgrade. Evolve.<br/>Outlast the digital extinction.
-            </p>
-          </div>
-          <div style={{marginBottom:8}}>
-            <button style={{...btn(true),width:"100%",fontSize:14,padding:"13px 0",letterSpacing:4}} onClick={startGame}>[ RUN ]</button>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
-            <button style={{...btn(false),width:"100%"}} onClick={()=>setScreen("shop")}>[ UPGRADES ]</button>
-            <button style={{...btn(false),width:"100%"}} onClick={()=>setScreen("skins")}>[ COLLECTION ]</button>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-            <button style={{...btn(false),width:"100%",padding:"10px 2px",letterSpacing:0}} onClick={()=>setScreen("achievements")}>[ ACHIEVEMENTS ]</button>
-            <button style={{...btn(false),width:"100%",padding:"10px 2px",letterSpacing:0}} onClick={()=>setScreen("leaderboard")}>[ LEADERBOARDS ]</button>
-          </div>
-          {totalRuns>0&&(
-            <div style={{marginTop:20,paddingTop:16,borderTop:"1px solid #ddd",fontSize:11,color:MUTED,textAlign:"center",lineHeight:2}}>
-              <div>BEST <b style={{color:DARK}}>{bestDist}m</b> &nbsp;|&nbsp; RUNS <b style={{color:DARK}}>{totalRuns}</b></div>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
-                <span style={{fontSize:16,color:DARK}}>◈</span>
-                <b style={{color:DARK}}>{Math.floor(fossils)}</b>
-                {passiveRate>0&&<span style={{color:MUTED,fontSize:10}}>(+{passiveRate.toFixed(1)}/s)</span>}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-      {notification&&<div style={notifBox}>{notification}</div>}
-      {achivNotif&&<div style={achivNotifBox}>{achivNotif}</div>}
-    </div>
+    <MenuScreen
+      menuCanvasRef={menuCanvasRef}
+      menuDinoClicks={menuDinoClicks} setMenuDinoClicks={setMenuDinoClicks}
+      showCredit={showCredit} setShowCredit={setShowCredit}
+      startGame={startGame} setScreen={setScreen}
+      totalRuns={totalRuns} bestDist={bestDist} fossils={fossils} passiveRate={passiveRate}
+      notification={notification} achivNotif={achivNotif}
+      F={F} BG={BG} DARK={DARK} BORDER={BORDER} MUTED={MUTED}
+    />
   );
 
-  if(screen==="gameover") return (
-    <div style={{...outer,justifyContent:"center"}}>
-      <div style={{...wrap(460),display:"flex",flexDirection:"column",alignItems:"center"}}>
-        <div style={card}>
-          <div style={{textAlign:"center",marginBottom:22}}>
-            <div style={{fontSize:11,letterSpacing:5,color:MUTED,marginBottom:6}}>EXTINCT</div>
-            <div style={{fontSize:28,fontWeight:"bold",letterSpacing:3}}>GAME OVER</div>
-          </div>
-          {lastRun&&(
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:22}}>
-              {[["DISTANCE",`${lastRun.dist}m`],["BONES EARNED",`${lastRun.fossils}`],["BEST DIST",`${bestDist}m`],["TOTAL BONES",`${Math.floor(fossils)}`]].map(([l,v])=>(
-                <div key={l} style={{background:"#f0ede6",border:"1px solid #ddd",padding:"10px 8px",textAlign:"center"}}>
-                  <div style={{fontSize:9,letterSpacing:2,color:MUTED,marginBottom:4}}>{l}</div>
-                  <div style={{fontSize:16,fontWeight:"bold"}}>{v}</div>
-                </div>
-              ))}
-            </div>
-          )}
-          {/* ── Auto-submitted rank badge ── */}
-          {lastRunRank !== null && (
-            <div style={{marginBottom:16,padding:"12px 14px",background:DARK,color:BG,textAlign:"center",letterSpacing:2,fontSize:11}}>
-              🏆 YOUR RUN RANKED <span style={{color:lastRunRank<=3?tierColors[lastRunRank===1?"gold":lastRunRank===2?"silver":"bronze"]:BG,fontWeight:"bold",fontSize:14}}>#{lastRunRank}</span> ON THE LEADERBOARD!
-              <div style={{fontSize:9,color:"#aaa",marginTop:4,letterSpacing:1}}>as {getSavedName()}</div>
-            </div>
-          )}
-          <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap",marginBottom:10}}>
-            <button style={btn(true)} onClick={startGame}>[ RUN AGAIN ]</button>
-            <button style={btn(false)} onClick={()=>setScreen("shop")}>[ UPGRADES ]</button>
-          </div>
-          <button style={{...btn(false),width:"100%",borderColor:"#ddd",color:MUTED,fontSize:10}} onClick={()=>setScreen("menu")}>[ MENU ]</button>
-          <div style={{textAlign:"center",marginTop:12,fontSize:10,color:MUTED,letterSpacing:1}}>PRESS ENTER OR SPACE TO RUN AGAIN</div>
-        </div>
-      </div>
-      {notification&&<div style={notifBox}>{notification}</div>}
-      {achivNotif&&<div style={achivNotifBox}>{achivNotif}</div>}
-    </div>
-  );
-
-  if(screen==="game") return (
+  if(screen==="game"||screen==="gameover") return (
     <div style={{...outer,justifyContent:"center",padding:0}}>
       <div style={{width:"100%",maxWidth:CANVAS_W,display:"flex",flexDirection:"column",alignItems:"center"}}>
         <div style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 4px",boxSizing:"border-box",fontFamily:F,fontSize:11,color:MUTED}}>
@@ -3508,9 +3395,22 @@ export default function DinoIncremental() {
           </span>
         </div>
         <div style={{border:`2px solid ${BORDER}`,lineHeight:0,width:"100%"}}>
-          <canvas ref={canvasRef} width={CANVAS_W} height={CANVAS_H} style={{display:"block",width:"100%"}} onClick={doJump}/>
+          <canvas ref={canvasRef} width={CANVAS_W} height={CANVAS_H} style={{display:"block",width:"100%"}} onClick={screen==="game"?doJump:undefined}/>
+          {screen==="gameover"&&(
+            <GameOverScreen
+              lastRun={lastRun}
+              bestDist={bestDist}
+              lastRunRank={lastRunRank}
+              getSavedName={getSavedName}
+              onRunAgain={startGame}
+              onUpgrades={()=>setScreen("shop")}
+              onMenu={()=>setScreen("menu")}
+            />
+          )}
         </div>
       </div>
+      {notification&&<div style={notifBox}>{notification}</div>}
+      {achivNotif&&<div style={achivNotifBox}>{achivNotif}</div>}
     </div>
   );
 
@@ -3771,162 +3671,22 @@ export default function DinoIncremental() {
   }
 
   if(screen==="achievements") return (
-    <div style={outer}>
-      <div style={{...wrap(600)}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-          <div>
-            <div style={{fontSize:10,letterSpacing:4,color:MUTED}}>HALL OF FAME</div>
-            <div style={{fontSize:20,fontWeight:"bold",letterSpacing:2}}>ACHIEVEMENTS</div>
-          </div>
-          <div style={{fontSize:12,color:MUTED}}>{unlockedAch.length}/{ACHIEVEMENTS.length}</div>
-        </div>
-        {["bronze","silver","gold","legend"].map(tier=>{
-          const tierAchs=ACHIEVEMENTS.filter(a=>a.tier===tier);
-          return (
-            <div key={tier} style={{marginBottom:18}}>
-              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
-                <div style={{width:10,height:10,background:tierColors[tier]}}/>
-                <span style={{fontSize:10,letterSpacing:3,color:tierColors[tier],fontWeight:"bold"}}>{tier.toUpperCase()}</span>
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                {tierAchs.map(a=>{
-                  const done=unlockedAch.includes(a.id);
-                  return (
-                    <div key={a.id} style={{background:done?"#faf8f4":"#ebe8e2",border:`1px solid ${done?tierColors[a.tier]:"#ccc"}`,padding:"10px",boxSizing:"border-box",opacity:done?1:0.5}}>
-                      <div style={{fontSize:11,fontWeight:"bold",marginBottom:3,color:done?DARK:MUTED}}>{a.label}</div>
-                      <div style={{fontSize:9,color:MUTED,marginBottom:5,lineHeight:1.6}}>{a.desc}</div>
-                      <div style={{fontSize:9,color:done?tierColors[a.tier]:MUTED,fontWeight:"bold"}}>
-                        {done?"UNLOCKED":`+${a.reward} bones`}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-        <button style={{...btn(false),width:"100%"}} onClick={()=>setScreen("menu")}>[ BACK ]</button>
-      </div>
-      {notification&&<div style={notifBox}>{notification}</div>}
-      {achivNotif&&<div style={achivNotifBox}>{achivNotif}</div>}
-    </div>
+    <AchievementsScreen
+      unlockedAch={unlockedAch}
+      notification={notification} achivNotif={achivNotif}
+      onBack={()=>setScreen("menu")}
+      F={F} BG={BG} DARK={DARK} BORDER={BORDER} MUTED={MUTED}
+    />
   );
 
-  if(screen==="leaderboard") {
-    const myId=getPlayerId();
-    const top3=lbData.slice(0,3);
-    const rest=lbData.slice(3);
-    // Podium slot order: 2nd (left), 1st (center), 3rd (right)
-    const podiumSlots=[{pos:1,h:88,color:tierColors.silver,label:"2ND"},{pos:0,h:120,color:tierColors.gold,label:"1ST"},{pos:2,h:64,color:tierColors.bronze,label:"3RD"}];
-    return (
-      <div style={outer}>
-        <div style={{...wrap(520)}}>
-          {/* Header */}
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-            <div>
-              <div style={{fontSize:10,letterSpacing:4,color:MUTED}}>GLOBAL</div>
-              <div style={{fontSize:20,fontWeight:"bold",letterSpacing:2}}>LEADERBOARD</div>
-            </div>
-            <button style={{...btn(false,true),fontSize:9}} onClick={async()=>{
-              setLbLoading(true);
-              const data=await fetchLeaderboard();
-              setLbData(data);
-              setLbLoading(false);
-            }}>[ REFRESH ]</button>
-          </div>
-
-          {/* Rename */}
-          <div style={{marginBottom:14,padding:"10px 12px",background:"#f5f2ec",border:"1px solid #ddd"}}>
-            <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"nowrap",overflow:"hidden"}}>
-              <span style={{fontSize:10,color:MUTED,letterSpacing:1}}>YOUR NAME:</span>
-              {lbRenaming ? (
-                <>
-                  <input autoFocus value={lbNewName}
-                    onChange={e=>{ setLbNewName(e.target.value.toUpperCase().slice(0,20)); setLbNameError(""); }}
-                    onKeyDown={e=>{
-                      if(e.key==="Enter"){
-                        const t=lbNewName.trim();
-                        if(!t) return;
-                        isNameTaken(t).then(taken=>{
-                          if(taken){ setLbNameError("Name already taken!"); }
-                          else { savePlayerName(t); showNotif("Name updated!"); setLbRenaming(false); setLbNameError(""); }
-                        });
-                      }
-                      if(e.key==="Escape"){ setLbRenaming(false); setLbNameError(""); }
-                    }}
-                    style={{fontFamily:F,fontSize:11,fontWeight:"bold",padding:"4px 8px",border:`2px solid ${lbNameError?"#cc2200":BORDER}`,background:BG,letterSpacing:2,width:130,textTransform:"uppercase"}}
-                    maxLength={20} placeholder="ENTER NAME"
-                  />
-                  <button style={btn(true,true)} onClick={()=>{
-                    const t=lbNewName.trim();
-                    if(!t) return;
-                    isNameTaken(t).then(taken=>{
-                      if(taken){ setLbNameError("Name already taken!"); }
-                      else { savePlayerName(t); showNotif("Name updated!"); setLbRenaming(false); setLbNameError(""); }
-                    });
-                  }}>[ SAVE ]</button>
-                  <button style={btn(false,true)} onClick={()=>{ setLbRenaming(false); setLbNameError(""); }}>[ CANCEL ]</button>
-                </>
-              ) : (
-                <>
-                  <span style={{fontSize:11,fontWeight:"bold",letterSpacing:2,color:DARK}}>{getSavedName()}</span>
-                  <button style={btn(false,true)} onClick={()=>{ setLbNewName(getSavedName()); setLbRenaming(true); setLbNameError(""); }}>[ RENAME ]</button>
-                </>
-              )}
-            </div>
-            {lbNameError&&<div style={{fontSize:10,color:"#cc2200",marginTop:6,letterSpacing:1}}>{lbNameError}</div>}
-          </div>
-
-          {lbLoading ? (
-            <div style={{textAlign:"center",padding:40,fontSize:11,color:MUTED,letterSpacing:3}}>LOADING...</div>
-          ) : lbData.length===0 ? (
-            <div style={{textAlign:"center",padding:40,fontSize:11,color:MUTED,letterSpacing:2,border:"1px solid #ddd",marginBottom:16}}>No scores yet. Be the first!</div>
-          ) : (
-            <>
-              {/* ── Podium (top 3) ── */}
-              <div style={{background:"#faf8f4",border:`2px solid ${BORDER}`,padding:"20px 16px 0",marginBottom:0}}>
-                <div style={{display:"flex",alignItems:"flex-end",justifyContent:"center",gap:8}}>
-                  {podiumSlots.map(({pos,h,color,label})=>{
-                    const entry=top3[pos];
-                    if(!entry) return <div key={pos} style={{width:120}}/> ;
-                    const isMe=entry.player_id===myId;
-                    return (
-                      <div key={pos} style={{display:"flex",flexDirection:"column",alignItems:"center",width:120}}>
-                        <div style={{fontSize:11,fontWeight:"bold",color,letterSpacing:1,textAlign:"center",maxWidth:110,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginBottom:2}}>
-                          {entry.name}{isMe&&" ◀"}
-                        </div>
-                        <div style={{fontSize:10,color:MUTED,marginBottom:6}}>{entry.best_dist.toLocaleString()}m</div>
-                        <div style={{width:"100%",height:h,background:color,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-start",paddingTop:10,boxSizing:"border-box",outline:isMe?`3px solid #448844`:"none"}}>
-                          <div style={{fontSize:18,fontWeight:"bold",color:"#fff",letterSpacing:2}}>{label}</div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* ── Ranks 4 E0 ── */}
-              {rest.length>0&&(
-                <div style={{border:"1px solid #ddd",borderTop:"none",marginBottom:14}}>
-                  {rest.map((r,i)=>{
-                    const isMe=r.player_id===myId;
-                    return (
-                      <div key={r.id} style={{display:"grid",gridTemplateColumns:"36px 1fr 72px",padding:"7px 12px",fontSize:11,fontWeight:"bold",background:isMe?"#e8f0e8":i%2===0?"#faf8f4":"#f5f2ec",borderBottom:"1px solid #e8e5e0",borderLeft:isMe?`3px solid #448844`:"3px solid transparent"}}>
-                        <span style={{color:MUTED,fontSize:10}}>{i+4}</span>
-                        <span style={{letterSpacing:1,color:isMe?"#448844":DARK,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.name}{isMe&&" ◀"}</span>
-                        <span style={{textAlign:"right",color:MUTED}}>{r.best_dist.toLocaleString()}m</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </>
-          )}
-          <button style={{...btn(false),width:"100%",marginTop:lbData.length>0?0:0}} onClick={()=>setScreen("menu")}>[ BACK ]</button>
-        </div>
-      </div>
-    );
-  }
+  if(screen==="leaderboard") return (
+    <LeaderboardScreen
+      lbData={lbData} setLbData={setLbData}
+      lbLoading={lbLoading} setLbLoading={setLbLoading}
+      onBack={()=>setScreen("menu")}
+      showNotif={showNotif}
+    />
+  );
 
   return null;
 }
