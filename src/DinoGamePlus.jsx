@@ -20,6 +20,9 @@ import GameOverScreen from "./GameOverScreen";
 import MenuScreen from "./MenuScreen";
 import AchievementsScreen, { ACHIEVEMENTS } from "./AchievementsScreen";
 import LeaderboardScreen from "./LeaderboardScreen";
+import ShopScreen from "./ShopScreen";
+import { UPGRADES, UPGRADE_CATS, POWERUP_DEFS, getUpgradeCost } from "./data/gameData";
+import { SCENERIES, SKINS, DINO_DESIGNS, DINO_PASSIVES, PASSIVE_ICONS } from "./data/collectionData.jsx";
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 const GRAVITY    = 0.55;
@@ -60,226 +63,7 @@ function drawBoneCoin(ctx, x, y, size = 10) {
   drawFossilDiamond(ctx, x + size / 2, y + size / 2, size, "#888888");
 }
 
-// ─── SCENERIES ────────────────────────────────────────────────────────────────
-const SCENERIES = [
-  { id:"classic",  label:"Wasteland",     cost:0,    desc:"The digital wasteland  Ewhere it all began",  dayBg:"#f5f5f0", nightBg:"#111118", groundColor:"#222222", groundTop:"#444444", cloudColor:"#dddddd", obstacleSet:"plants",  accentColor:"#444444" },
-  { id:"plains",   label:"Grasslands",    cost:3000,  desc:"The classic prehistoric plains",               dayBg:"#e8f4d4", nightBg:"#0d1a0a", groundColor:"#5a3e1b", groundTop:"#6b8c3e", cloudColor:"#c8ddb0", obstacleSet:"plants",  accentColor:"#6b8c3e" },
-  { id:"desert",   label:"Desert",        cost:6000,  desc:"Scorching sands and ancient dunes",            dayBg:"#f5dfa0", nightBg:"#1a0d00", groundColor:"#c4883a", groundTop:"#e0a850", cloudColor:"#f0d080", obstacleSet:"desert",  accentColor:"#e07020" },
-  { id:"arctic",   label:"Arctic Tundra", cost:10000, desc:"Frozen wastes from the ice age",              dayBg:"#d8eeff", nightBg:"#050a14", groundColor:"#8ab0cc", groundTop:"#ddeeff", cloudColor:"#eef6ff", obstacleSet:"arctic",  accentColor:"#88ccee" },
-  { id:"volcano",  label:"Volcanic Rift", cost:18000, desc:"Lava flows and volcanic fury",                dayBg:"#2a0800", nightBg:"#0a0200", groundColor:"#3a1a08", groundTop:"#8a2a00", cloudColor:"#6a2a10", obstacleSet:"volcano", accentColor:"#ff4400" },
-  { id:"jungle",   label:"Dense Jungle",  cost:25000, desc:"Ancient overgrown rainforest",                dayBg:"#0a2a10", nightBg:"#020a04", groundColor:"#1a3a10", groundTop:"#2a5a18", cloudColor:"#1a3a20", obstacleSet:"jungle",  accentColor:"#44aa22" },
-  { id:"ruins",    label:"Ancient Ruins", cost:40000, desc:"Crumbling stone temples of the ancients",     dayBg:"#d4c8a0", nightBg:"#0a0808", groundColor:"#8a7a5a", groundTop:"#a89878", cloudColor:"#c4b888", obstacleSet:"ruins",   accentColor:"#a08050" },
-  { id:"cave",     label:"Crystal Cave",  cost:75000, desc:"Glowing crystals in the deep earth",          dayBg:"#080418", nightBg:"#020108", groundColor:"#2a1a4a", groundTop:"#3a2a6a", cloudColor:"#3a2a6a", obstacleSet:"cave",    accentColor:"#8844ff" },
-];
-
-// ─── DINO PASSIVE SKILLS ──────────────────────────────────────────────────────
-// Each dino has a unique passive that modifies gameplay
-// Pixel-style SVG icons for dino passives — inline, theme-consistent
-const S = {display:"inline",verticalAlign:"middle",marginRight:3,shapeRendering:"crispEdges"};
-const PASSIVE_ICONS = {
-  // Lightning bolt — centred on 10×10
-  raptor:
-    <svg width="12" height="12" viewBox="0 0 10 10" style={S}>
-      <rect x="5" y="0" width="3" height="4" fill="currentColor"/>
-      <rect x="2" y="3" width="6" height="3" fill="currentColor"/>
-      <rect x="2" y="6" width="3" height="4" fill="currentColor"/>
-    </svg>,
-  // Skull — symmetric 8-wide dome + 2 eye holes + 2 fangs
-  trex:
-    <svg width="12" height="12" viewBox="0 0 10 10" style={S}>
-      <rect x="1" y="1" width="8" height="5" fill="currentColor"/>
-      <rect x="0" y="3" width="2" height="3" fill="currentColor"/>
-      <rect x="8" y="3" width="2" height="3" fill="currentColor"/>
-      <rect x="2" y="6" width="2" height="3" fill="currentColor"/>
-      <rect x="6" y="6" width="2" height="3" fill="currentColor"/>
-      <rect x="2" y="2" width="2" height="2" fill="#f0ede6"/>
-      <rect x="6" y="2" width="2" height="2" fill="#f0ede6"/>
-    </svg>,
-  // Shield — symmetric kite shape
-  stego:
-    <svg width="12" height="12" viewBox="0 0 10 10" style={S}>
-      <rect x="1" y="0" width="8" height="6" fill="currentColor"/>
-      <rect x="2" y="6" width="6" height="2" fill="currentColor"/>
-      <rect x="3" y="8" width="4" height="1" fill="currentColor"/>
-      <rect x="4" y="9" width="2" height="1" fill="currentColor"/>
-    </svg>,
-  // Wing sweep — diagonal S-curve, symmetric about centre
-  pterodac:
-    <svg width="12" height="12" viewBox="0 0 10 10" style={S}>
-      <rect x="0" y="1" width="4" height="2" fill="currentColor"/>
-      <rect x="1" y="0" width="2" height="1" fill="currentColor"/>
-      <rect x="3" y="3" width="4" height="2" fill="currentColor"/>
-      <rect x="6" y="5" width="4" height="2" fill="currentColor"/>
-      <rect x="7" y="7" width="2" height="1" fill="currentColor"/>
-    </svg>,
-  // Club on handle — centred
-  anky:
-    <svg width="12" height="12" viewBox="0 0 10 10" style={S}>
-      <rect x="4" y="0" width="2" height="4" fill="currentColor"/>
-      <rect x="1" y="4" width="8" height="4" fill="currentColor"/>
-      <rect x="0" y="5" width="2" height="2" fill="currentColor"/>
-      <rect x="8" y="5" width="2" height="2" fill="currentColor"/>
-    </svg>,
-  // Right-pointing arrow — centred vertically
-  tri:
-    <svg width="12" height="12" viewBox="0 0 10 10" style={S}>
-      <rect x="0" y="4" width="6" height="2" fill="currentColor"/>
-      <rect x="4" y="2" width="2" height="2" fill="currentColor"/>
-      <rect x="4" y="6" width="2" height="2" fill="currentColor"/>
-      <rect x="6" y="1" width="2" height="3" fill="currentColor"/>
-      <rect x="6" y="6" width="2" height="3" fill="currentColor"/>
-      <rect x="8" y="3" width="2" height="4" fill="currentColor"/>
-    </svg>,
-  // U-magnet — perfectly symmetric, coloured poles
-  brachio:
-    <svg width="12" height="12" viewBox="0 0 10 10" style={S}>
-      <rect x="0" y="0" width="3" height="7" fill="currentColor"/>
-      <rect x="7" y="0" width="3" height="7" fill="currentColor"/>
-      <rect x="3" y="7" width="4" height="3" fill="currentColor"/>
-      <rect x="0" y="0" width="3" height="3" fill="#cc2200"/>
-      <rect x="7" y="0" width="3" height="3" fill="#2255cc"/>
-    </svg>,
-  // Crescent moon — open on right side
-  spino:
-    <svg width="12" height="12" viewBox="0 0 10 10" style={S}>
-      <rect x="2" y="0" width="5" height="2" fill="currentColor"/>
-      <rect x="1" y="2" width="3" height="6" fill="currentColor"/>
-      <rect x="2" y="8" width="5" height="2" fill="currentColor"/>
-      <rect x="6" y="1" width="2" height="2" fill="currentColor"/>
-      <rect x="7" y="3" width="2" height="4" fill="currentColor"/>
-      <rect x="6" y="7" width="2" height="2" fill="currentColor"/>
-    </svg>,
-  // Dome head — wide flat base + rounded top
-  pachy:
-    <svg width="12" height="12" viewBox="0 0 10 10" style={S}>
-      <rect x="3" y="0" width="4" height="1" fill="currentColor"/>
-      <rect x="2" y="1" width="6" height="2" fill="currentColor"/>
-      <rect x="1" y="3" width="8" height="3" fill="currentColor"/>
-      <rect x="0" y="7" width="10" height="2" fill="currentColor"/>
-    </svg>,
-  // Sound wave bars — 4 bars symmetric around centre
-  para:
-    <svg width="12" height="12" viewBox="0 0 10 10" style={S}>
-      <rect x="0" y="3" width="2" height="4" fill="currentColor"/>
-      <rect x="3" y="1" width="2" height="8" fill="currentColor"/>
-      <rect x="6" y="1" width="2" height="8" fill="currentColor"/>
-      <rect x="9" y="3" width="1" height="4" fill="currentColor"/>
-    </svg>,
-  // Venom drop — symmetric teardrop
-  dilopho:
-    <svg width="12" height="12" viewBox="0 0 10 10" style={S}>
-      <rect x="4" y="0" width="2" height="3" fill="currentColor"/>
-      <rect x="3" y="3" width="4" height="2" fill="currentColor"/>
-      <rect x="2" y="5" width="6" height="2" fill="currentColor"/>
-      <rect x="3" y="7" width="4" height="2" fill="currentColor"/>
-      <rect x="4" y="9" width="2" height="1" fill="currentColor"/>
-    </svg>,
-};
-
-const DINO_PASSIVES = {
-  raptor:    { label:"Speed Rush",      desc:"Every 200m grants +5% bone income permanently this run. Sprint energy!" },
-  trex:      { label:"Apex Predator",   desc:"Obstacles destroyed while giant give +8 bones instead of 4. Dominance!" },
-  stego:     { label:"Plate Armor",     desc:"Shield proc chance doubled. The back plates absorb punishment." },
-  pterodac:  { label:"Thermal Lift",    desc:"Airborne bone pickups give 2x value. Soar high for greater rewards." },
-  anky:      { label:"Club Sweep",      desc:"Near misses also destroy the obstacle. The club tail clears the path." },
-  tri:       { label:"Horn Charge",     desc:"First obstacle each run is automatically destroyed. Charge through!" },
-  brachio:   { label:"Long Reach",      desc:"Bone magnet range +120px. The long neck scoops up everything nearby." },
-  spino:     { label:"Sail Power",      desc:"+30% bones earned during night. The solar sail thrives in moonlight." },
-  pachy:     { label:"Headbutt",        desc:"Dying grants 1 free auto-revive per run (once). Hard-headed survivor." },
-  para:      { label:"Resonance",       desc:"Combo multiplier decays 40% slower. The crest amplifies momentum." },
-  dilopho:   { label:"Venom Spit",      desc:"15% chance each obstacle is dissolved before contact. Toxic aura!" },
-};
-
-// ─── DINO DESIGNS ─────────────────────────────────────────────────────────────
-const DINO_DESIGNS = [
-  { id:"raptor",   label:"Raptor",        cost:0,    desc:"Fast and lean  Ethe classic runner" },
-  { id:"trex",     label:"T-Rex",         cost:2500,  desc:"Stocky and powerful apex predator" },
-  { id:"stego",    label:"Stegosaurus",   cost:3500,  desc:"Armored with iconic back plates" },
-  { id:"pterodac", label:"Pterodactyl",   cost:5000,  desc:"Winged flyer, soars above danger" },
-  { id:"anky",     label:"Ankylosaurus",  cost:7000,  desc:"Club tail, heavy armored tank" },
-  { id:"tri",      label:"Triceratops",   cost:9000,  desc:"Three-horned charging powerhouse" },
-  { id:"brachio",  label:"Brachiosaurus", cost:12000, desc:"Towering long-neck gentle giant" },
-  { id:"spino",    label:"Spinosaurus",   cost:18000, desc:"Sail-backed river predator" },
-  { id:"pachy",    label:"Pachycephalosaurus", cost:15000, desc:"Dome-headed headbutter" },
-  { id:"para",     label:"Parasaurolophus", cost:20000, desc:"Crested hadrosaur, crest resonates" },
-  { id:"dilopho",  label:"Dilophosaurus", cost:30000, desc:"Frilled venomous sprinter" },
-];
-
-// ─── SKINS ────────────────────────────────────────────────────────────────────
-const SKINS = [
-  { id:"classic",  label:"Classic",   cost:0,   color:"#2a2a2a", eyeColor:"#f0f0f0", accent:"#3a3a3a", plateColor:"#333",    frillColor:"#444" },
-  { id:"bone",     label:"Bone",      cost:1500,  color:"#d4c9a8", eyeColor:"#3a6a2a", accent:"#c0b48e", plateColor:"#c8bd9c", frillColor:"#b8a880" },
-  { id:"neon",     label:"Neon",      cost:2500,  color:"#00cc66", eyeColor:"#ffffff", accent:"#00aa44", plateColor:"#00aa55", frillColor:"#00ff88" },
-  { id:"shadow",   label:"Shadow",    cost:3500,  color:"#1a1a1a", eyeColor:"#dd3333", accent:"#0a0a0a", plateColor:"#151515", frillColor:"#222" },
-  { id:"robo",     label:"Robo",      cost:5000,  color:"#5599aa", eyeColor:"#ffdd00", accent:"#336688", plateColor:"#446688", frillColor:"#6699bb" },
-  { id:"gold",     label:"Gold",      cost:8000,  color:"#d4a820", eyeColor:"#2a2a2a", accent:"#b89010", plateColor:"#c09810", frillColor:"#e8c030" },
-  { id:"lava",     label:"Lava",      cost:10000, color:"#aa2200", eyeColor:"#ffaa00", accent:"#661100", plateColor:"#882200", frillColor:"#cc3300" },
-  { id:"ice",      label:"Ice",       cost:12000, color:"#88ccee", eyeColor:"#003388", accent:"#66aacc", plateColor:"#77bbdd", frillColor:"#aaddff" },
-  { id:"void",     label:"Void",      cost:20000, color:"#110022", eyeColor:"#aa33ff", accent:"#0a0015", plateColor:"#1a0033", frillColor:"#220044" },
-  { id:"crystal",  label:"Crystal",   cost:25000, color:"#cc77ee", eyeColor:"#ffffff", accent:"#994dbb", plateColor:"#bb66dd", frillColor:"#dd99ff" },
-  { id:"rust",     label:"Rust",      cost:6000,  color:"#8a3a18", eyeColor:"#ffcc55", accent:"#5a2a10", plateColor:"#6a3015", frillColor:"#aa4422" },
-  { id:"obsidian", label:"Obsidian",  cost:35000, color:"#1a1a2a", eyeColor:"#44ddff", accent:"#0a0a18", plateColor:"#15152a", frillColor:"#2a2a3a" },
-];
-
-// ─── UPGRADES ─────────────────────────────────────────────────────────────────
-const UPGRADES = [
-  { id:"jump",       label:"Stronger Legs",    desc:"+1.8 jump power per level", baseCost:30,  maxLevel:6, icon:"ↁ",  cat:"movement" },
-  { id:"dblJump",    label:"Double Jump",       desc:"Jump again mid-air",        baseCost:150, maxLevel:1, icon:"⇁",  cat:"movement" },
-  { id:"dash",       label:"Forward Dash",      desc:"Right arrow to dash fwd",   baseCost:200, maxLevel:1, icon:"▶▶", cat:"movement" },
-  { id:"backdash",   label:"Back Dash",         desc:"Left arrow to dash back",   baseCost:200, maxLevel:1, icon:"◀◀", cat:"movement" },
-  { id:"fastdrop",   label:"Fast Drop",         desc:"Down arrow drops fast",     baseCost:100, maxLevel:1, icon:"↓�", cat:"movement" },
-  { id:"duck",       label:"Duck",              desc:"Down arrow to crouch",      baseCost:80,  maxLevel:1, icon:"⬁",  cat:"movement" },
-  { id:"dashCd",     label:"Dash Cooldown",     desc:"Reduce dash delay 10f/lv",  baseCost:120, maxLevel:4, icon:"↻",  cat:"movement" },
-  { id:"fossil",     label:"Fossil Sense",      desc:"+20% bones earned/level",   baseCost:50,  maxLevel:10,icon:"◈",  cat:"income" },
-  { id:"combo",      label:"Combo Hunger",      desc:"+0.12 combo mult/level",    baseCost:80,  maxLevel:6, icon:"Á",  cat:"income" },
-  { id:"magnet",     label:"Bone Magnet",       desc:"Attract nearby bones",      baseCost:120, maxLevel:3, icon:"◈",  cat:"income" },
-  { id:"nearMiss",   label:"Near Miss",         desc:"+3 bones on near misses",   baseCost:100, maxLevel:4, icon:"!",  cat:"income" },
-  { id:"nightBonus", label:"Night Sight",       desc:"+25% bones at night/lv",    baseCost:160, maxLevel:4, icon:"☾",  cat:"income" },
-  { id:"transBonus", label:"Cycle Reward",      desc:"+25% day/night bonus/lv",   baseCost:180, maxLevel:4, icon:"◈",  cat:"income" },
-  { id:"speedBonus", label:"Speed Bonus",       desc:"+0.5 bones/sec per speed",  baseCost:200, maxLevel:5, icon:"»",  cat:"income" },
-  { id:"shield",     label:"Bone Armor",        desc:"6% auto-revive chance/lv",  baseCost:70,  maxLevel:5, icon:"◈",  cat:"survival" },
-  { id:"speed",      label:"Safe Start",        desc:"Start each run 15% slower", baseCost:50,  maxLevel:4, icon:"◀",  cat:"survival" },
-  { id:"extraLife",  label:"Extra Life",        desc:"Start with +1 life",        baseCost:350, maxLevel:3, icon:"♥",  cat:"survival" },
-  { id:"invFrames",  label:"I-Frames",          desc:"+8 invincible frames/hit",  baseCost:250, maxLevel:4, icon:"☁",  cat:"survival" },
-  { id:"miner",      label:"Bone Miner",        desc:"+0.3 bones/sec passive",    baseCost:200, maxLevel:6, icon:"⛁",  cat:"idle" },
-  { id:"camp",       label:"Bone Camp",         desc:"+0.8 bones/sec idle",       baseCost:400, maxLevel:4, icon:"⌁",  cat:"idle" },
-  { id:"research",   label:"Research Lab",      desc:"+1.5 bones/sec passive",    baseCost:800, maxLevel:3, icon:"⚁",  cat:"idle" },
-  { id:"pwShieldDur",   label:"Shield Durability", desc:"+1 hit per shield",          baseCost:250, maxLevel:4, icon:"◈", cat:"powerups" },
-  { id:"pwSpeedMult",   label:"Speed Power",        desc:"+0.25x speed boost power",   baseCost:200, maxLevel:3, icon:"▶+", cat:"powerups" },
-  { id:"pwGiantDur",    label:"Giant Duration",     desc:"+50 frames giant time",      baseCost:220, maxLevel:3, icon:"▲+", cat:"powerups" },
-  { id:"pwMagnetRng",   label:"Magnet Range",       desc:"+60px magnet powerup range", baseCost:180, maxLevel:3, icon:"◈", cat:"powerups" },
-  { id:"pwFrenzyDur",   label:"Frenzy Duration",    desc:"+50 frames frenzy time",     baseCost:240, maxLevel:3, icon:"☁", cat:"powerups" },
-  { id:"pwRareDrop",    label:"Powerup Luck",       desc:"+6% powerup spawn rate/lv",  baseCost:160, maxLevel:5, icon:"✦",  cat:"powerups" },
-  { id:"pwHeartChance", label:"Life Drop",           desc:"+4% heart spawn chance/lv",  baseCost:300, maxLevel:5, icon:"♥+", cat:"powerups" },
-  { id:"pwGhostDur",    label:"Ghost Duration",     desc:"+50 frames ghost time",      baseCost:220, maxLevel:3, icon:"◈", cat:"powerups" },
-  { id:"pwTinyDur",     label:"Tiny Duration",      desc:"+50 frames tiny time",       baseCost:180, maxLevel:3, icon:"▽+", cat:"powerups" },
-  { id:"pwMeteorCount", label:"Meteor Blast",       desc:"+2 extra meteor clears",     baseCost:350, maxLevel:3, icon:"☁", cat:"powerups" },
-  { id:"pwDoublerDur",  label:"Doubler Duration",   desc:"+50 frames doubler time",    baseCost:200, maxLevel:3, icon:"Á", cat:"powerups" },
-  { id:"pwSlowDur",     label:"Slow Duration",      desc:"+50 frames slow time",       baseCost:180, maxLevel:3, icon:"⏱+", cat:"powerups" },
-  { id:"pwWindfallDur", label:"Windfall Duration",  desc:"+50 frames windfall time",   baseCost:200, maxLevel:3, icon:"◈", cat:"powerups" },
-];
-
-const UPGRADE_CATS = ["movement","income","survival","idle","powerups"];
-
-// ─── POWERUP DEFINITIONS ──────────────────────────────────────────────────────
-const POWERUP_DEFS = [
-  { id:"shield_pw",    color:"#4488dd", label:"SHIELD",   duration:0,   desc:"Absorbs hits",          unlockCost:80  },
-  { id:"giant_pw",     color:"#cc4400", label:"GIANT",    duration:200, desc:"Crushes obstacles",      unlockCost:120 },
-  { id:"magnet_pw",    color:"#9944cc", label:"MAGNET",   duration:360, desc:"Attracts all bones",     unlockCost:100 },
-  { id:"slowmo_pw",    color:"#22bbaa", label:"SLOW",     duration:280, desc:"Slows time",             unlockCost:90  },
-  { id:"frenzy_pw",    color:"#dd2266", label:"FRENZY",   duration:220, desc:"3x bones earned",        unlockCost:150 },
-  { id:"coinmania_pw", color:"#ddaa00", label:"WINDFALL", duration:260, desc:"Bones rain down",        unlockCost:130 },
-  { id:"ghost_pw",     color:"#8888cc", label:"GHOST",    duration:180, desc:"Pass through all",       unlockCost:140 },
-  { id:"tiny_pw",      color:"#44ccaa", label:"TINY",     duration:320, desc:"Tiny hitbox",            unlockCost:80  },
-  { id:"meteor_pw",    color:"#ee6600", label:"METEOR",   duration:1,   desc:"Destroys screen",        unlockCost:200 },
-  { id:"doubler_pw",   color:"#ffdd22", label:"DOUBLER",  duration:300, desc:"2x all bone gains",      unlockCost:160 },
-  { id:"heart_pw",     color:"#dd2244", label:"HEART",    duration:0,   desc:"Gain +1 life (max 4)",    unlockCost:180 },
-];
-
-
-
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
-function getUpgradeCost(up, level) { return Math.floor(up.baseCost * Math.pow(1.8, level)); }
 function lerp(a, b, t) { return a + (b - a) * t; }
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 function hexToRgb(hex) {
@@ -2205,7 +1989,10 @@ export default function DinoIncremental() {
   const [unlockedPowerups, setUnlockedPowerups] = useLocalStorage("dino_unlockedPowerups", []);
   const [lbData,           setLbData]           = useState([]);
   const [lbLoading,        setLbLoading]        = useState(false);
-  const [lastRunRank,      setLastRunRank]       = useState(null);
+  const [lastRunRank,      setLastRunRank]       = useState(null);
+
+
+
 
   const getStats = useCallback((levels) => {
     const ul = levels || {};
@@ -2232,17 +2019,17 @@ export default function DinoIncremental() {
       passiveFossils: (ul.miner||0)*0.3+(ul.camp||0)*0.8+(ul.research||0)*1.5,
       shieldHits:     1+(ul.pwShieldDur||0),
       speedMult:      2.0+(ul.pwSpeedMult||0)*0.25,
-      giantDurBonus:    (ul.pwGiantDur||0)*50,
-      magnetRngBonus:   (ul.pwMagnetRng||0)*60,
-      frenzyDurBonus:   (ul.pwFrenzyDur||0)*50,
-      rareDrop:         (ul.pwRareDrop||0)*0.06,
-      heartChance:      (ul.pwHeartChance||0)*0.04,
-      ghostDurBonus:    (ul.pwGhostDur||0)*50,
-      tinyDurBonus:     (ul.pwTinyDur||0)*50,
+      giantDurBonus:    (ul.pwGiantDur||0)*60,
+      magnetRngBonus:   (ul.pwMagnetRng||0)*80,
+      frenzyDurBonus:   (ul.pwFrenzyDur||0)*60,
+      rareDrop:         (ul.pwRareDrop||0)*0.05,
+      heartChance:      (ul.pwHeartChance||0)*0.03,
+      ghostDurBonus:    (ul.pwGhostDur||0)*60,
+      tinyDurBonus:     (ul.pwTinyDur||0)*60,
       meteorCountBonus: (ul.pwMeteorCount||0)*2,
-      doublerDurBonus:  (ul.pwDoublerDur||0)*50,
-      slowDurBonus:     (ul.pwSlowDur||0)*50,
-      windfallDurBonus: (ul.pwWindfallDur||0)*50,
+      doublerDurBonus:  (ul.pwDoublerDur||0)*60,
+      slowDurBonus:     (ul.pwSlowDur||0)*60,
+      windfallDurBonus: (ul.pwWindfallDur||0)*60,
     };
   }, []);
 
@@ -2350,7 +2137,7 @@ export default function DinoIncremental() {
       distance:0, fossilsEarned:0, frame:0, groundOffset:0,
       lastObstacleFrame:0, lastPickupFrame:0, lastPowerupFrame:0,
       coinManiaTimer:0,
-      stats, lives:1+stats.extraLives, combo:0, comboTimer:0,
+      stats, lives:(equippedDesign==="trex"?2:1)+stats.extraLives, combo:0, comboTimer:0,
       alive:true, nightBlend:0, inNight:false,
       lastCycleNight:false, nightCycleCount:0,
       nearMissTimer:0, shieldHitsLeft:0,
@@ -2359,12 +2146,15 @@ export default function DinoIncremental() {
       skin:currentSkin, design, scenery,
       maxComboThisRun:0, nearMissCount:0, giantCrushes:0, usedDash:false,
       // Per-run passive state
-      raptorSpeedBonus:0,    // raptor: distance milestones -> bone %
-      trexDeathKillsDone:0,  // not needed here
-      pachyReviveUsed:false, // pachy: one free revive
-      paraComboDecayRate:0,  // para: combo decays slower
-      dilophoVenomActive:true,
-      // Tri: first obstacle destroyed
+      raptorSpeedBonus:0,    // raptor: distance milestones -> bone % (cap 10%)
+      pachyReviveUsed:false, // pachy: one free revive (legacy, kept for bullet hit)
+      // Timed passive cooldowns (in frames)
+      pterodacFlyTimer:0, pterodacFlyCooldown:0,   // fly 5s/30s
+      ankyPulseTimer:0,                             // pulse every 40s
+      triHornTimer:0,                               // horn burst every 30s
+      pachyHeadbuttTimer:0, pachyHeadbuttActive:0,  // headbutt 5s/30s
+      dilophoPhaseTimer:0, dilophoPhaseActive:0,    // phase 5s/30s
+      // Tri: first obstacle destroyed (legacy)
       triFirstDestroyed:false,
       // Spino: night bonus tracked in render
       // Entity silhouette state
@@ -2491,12 +2281,88 @@ export default function DinoIncremental() {
         gs.distance+=gs.speed*dt*0.1;
         gs.groundOffset=(gs.groundOffset+gs.speed*dt)%(CANVAS_W*4);
 
-        // ── Raptor passive: speed rush every 200m ────────────────────────────
+        // ── Raptor passive: +0.5% per 500m, cap 10% (20 milestones) ──────────
         if(designId==="raptor"){
-          const milestone=Math.floor(gs.distance/200);
+          const milestone=Math.min(20,Math.floor(gs.distance/500));
           if(milestone>gs.raptorSpeedBonus){
             gs.raptorSpeedBonus=milestone;
-            addFloat(gs,`SPEED RUSH! +5% bones`,80,80,"#00cc66");
+            const pct=(milestone*0.5).toFixed(1);
+            addFloat(gs,`SPEED RUSH! +${pct}% bones`,80,80,"#00cc66");
+          }
+        }
+
+        // ── Timed passives (60fps base) ──────────────────────────────────────
+        const FPS60 = 60; // timers in frames at ~60fps
+        if(designId==="pterodac"){
+          if(gs.pterodacFlyCooldown>0) gs.pterodacFlyCooldown-=dt;
+          if(gs.pterodacFlyTimer>0){
+            gs.pterodacFlyTimer-=dt;
+            // Force airborne during fly mode
+            if(gs.dino.onGround){ gs.dino.vy=JUMP_FORCE*0.7; gs.dino.onGround=false; }
+          } else if(gs.pterodacFlyCooldown<=0){
+            gs.pterodacFlyTimer=5*FPS60/60; // 5s in dt units (~300 frames)
+            gs.pterodacFlyCooldown=30*FPS60/60;
+            addFloat(gs,"FLY MODE!",gs.dino.x-10,gs.dino.y-28,"#44aaff");
+          }
+        }
+        if(designId==="anky"){
+          gs.ankyPulseTimer=(gs.ankyPulseTimer||0)+dt;
+          if(gs.ankyPulseTimer>=40*FPS60/60){
+            gs.ankyPulseTimer=0;
+            const before=gs.obstacles.length;
+            gs.obstacles=gs.obstacles.filter(o=>{
+              const hb=getObstacleHitbox(o);
+              const dx=hb.x+hb.w/2-(gs.dino.x+DINO_W/2);
+              const dy=hb.y+hb.h/2-(gs.dino.y+DINO_H/2);
+              return Math.sqrt(dx*dx+dy*dy)>160;
+            });
+            const cleared=before-gs.obstacles.length;
+            if(cleared>0) addFloat(gs,`PULSE WAVE! x${cleared}`,gs.dino.x-20,gs.dino.y-36,"#ffaa00");
+            else addFloat(gs,"PULSE WAVE!",gs.dino.x-20,gs.dino.y-36,"#ffaa00");
+          }
+        }
+        if(designId==="tri"){
+          gs.triHornTimer=(gs.triHornTimer||0)+dt;
+          if(gs.triHornTimer>=30*FPS60/60){
+            gs.triHornTimer=0;
+            // Destroy all obstacles and bullets on screen
+            const cleared=gs.obstacles.length;
+            gs.obstacles=[];
+            if(cleared>0) addFloat(gs,`HORN BURST! x${cleared}`,gs.dino.x-20,gs.dino.y-36,"#cc8800");
+            else addFloat(gs,"HORN BURST!",gs.dino.x-20,gs.dino.y-36,"#cc8800");
+          }
+        }
+        if(designId==="pachy"){
+          if(gs.pachyHeadbuttActive>0){
+            gs.pachyHeadbuttActive-=dt;
+            // Destroy obstacles/bullets in front (within 120px ahead)
+            gs.obstacles=gs.obstacles.filter(o=>{
+              const hb=getObstacleHitbox(o);
+              if(hb.x>gs.dino.x-10&&hb.x<gs.dino.x+120){
+                if(o.bullets) o.bullets=[];
+                return false;
+              }
+              return true;
+            });
+          } else {
+            gs.pachyHeadbuttTimer=(gs.pachyHeadbuttTimer||0)+dt;
+            if(gs.pachyHeadbuttTimer>=30*FPS60/60){
+              gs.pachyHeadbuttTimer=0;
+              gs.pachyHeadbuttActive=5*FPS60/60;
+              addFloat(gs,"HEADBUTT!",gs.dino.x-10,gs.dino.y-28,"#ffcc00");
+            }
+          }
+        }
+        if(designId==="dilopho"){
+          if(gs.dilophoPhaseActive>0){
+            gs.dilophoPhaseActive-=dt;
+          } else {
+            gs.dilophoPhaseTimer=(gs.dilophoPhaseTimer||0)+dt;
+            if(gs.dilophoPhaseTimer>=30*FPS60/60){
+              gs.dilophoPhaseTimer=0;
+              gs.dilophoPhaseActive=5*FPS60/60;
+              addFloat(gs,"PHASE SHIFT!",gs.dino.x-10,gs.dino.y-28,"#66dd22");
+            }
           }
         }
 
@@ -2527,7 +2393,7 @@ export default function DinoIncremental() {
           if(isNightNow) gs.nightCycleCount++;
           const baseB=25+Math.floor(gs.distance/80)*4;
           // Spino passive: +30% night bonus
-          const spinoMult = designId==="spino" && isNightNow ? 1.3 : 1;
+          const spinoMult = designId==="spino" && isNightNow ? 1.30 : 1;
           const bonus=Math.floor(baseB*(1+gs.stats.transBonus)*spinoMult);
           gs.fossilsEarned+=bonus;
           addFloat(gs,`+${bonus} ${isNightNow?"DUSK BONUS":"DAWN BONUS"}`,CANVAS_W/2-50,70,isNightNow?"#aaaaff":"#ffdd44");
@@ -2707,12 +2573,12 @@ export default function DinoIncremental() {
         }
         // Heart: separate low-chance spawn check every ~120 frames
         if(gs.unlockedPowerups.includes("heart_pw")&&gs.frame%120===0){
-          if(Math.random()<0.04+gs.stats.heartChance){
+          if(Math.random()<0.02+gs.stats.heartChance){
             const hdef=POWERUP_DEFS.find(d=>d.id==="heart_pw");
             gs.powerupPickups.push({x:CANVAS_W+10,y:GROUND_Y-32-Math.random()*58,def:hdef,collected:false});
           }
         }
-        const spawnThresh=300-gs.stats.rareDrop*200;
+        const spawnThresh=Math.max(300,900-gs.stats.rareDrop*1200);
         if(gs.frame-gs.lastPowerupFrame>spawnThresh){
           const eligible=POWERUP_DEFS.filter(d=>d.id!=="heart_pw"&&(d.id!=="meteor_pw"||tier>=4)&&gs.unlockedPowerups.includes(d.id));
           gs.lastPowerupFrame=gs.frame;
@@ -2936,7 +2802,7 @@ export default function DinoIncremental() {
 
         const magnetRange=gs.activePowerups.magnet_pw?(180+gs.stats.magnetRngBonus):(gs.stats.magnetLevel>0?55+gs.stats.magnetLevel*28:0);
         // Brachio passive: +120px magnet range
-        const brachioMagnet = designId==="brachio" ? 120 : 0;
+        const brachioMagnet = designId==="brachio" ? 60 : 0;
         const effectiveMagnet = magnetRange + brachioMagnet;
 
         gs.pickups=gs.pickups.filter(p=>{
@@ -2957,12 +2823,7 @@ export default function DinoIncremental() {
         const DW=(DINO_W-14)*sc, DH=effH*0.82*sc;
         const DX=gs.dino.x+DINO_W/2-DW/2, DY=gs.dino.y+DINO_H-effH*sc;
 
-        // Tri passive: destroy first obstacle automatically
-        if(designId==="tri"&&!gs.triFirstDestroyed&&gs.obstacles.length>0){
-          gs.triFirstDestroyed=true;
-          gs.obstacles.splice(0,1);
-          addFloat(gs,"HORN CHARGE!",80,80,"#cc8800");
-        }
+        // Tri: horn burst handled by timed passive above
 
         // ── Bullet collision (separate from obstacle body) ───────────────────
         // Giant mode: silently destroy all projectiles, no fossils awarded
@@ -2973,7 +2834,7 @@ export default function DinoIncremental() {
             }
           }
         }
-        if(!hasGhost&&!hasGiant&&!hasSpdPw&&gs.dino.invTimer<=0){
+        if(!hasGhost&&!hasGiant&&!hasSpdPw&&gs.dino.invTimer<=0&&!(designId==="dilopho"&&gs.dilophoPhaseActive>0)){
           for(const o of gs.obstacles){
             if((o.otype!=="turret"&&o.otype!=="scorpion"&&o.otype!=="yeti"&&o.otype!=="lavaburst"&&o.otype!=="demon"&&o.otype!=="gorilla"&&o.otype!=="statue"&&o.otype!=="golem"&&o.otype!=="crystalGolem"&&o.otype!=="crystalMine")||!o.bullets) continue;
             for(let bi=o.bullets.length-1;bi>=0;bi--){
@@ -2988,9 +2849,6 @@ export default function DinoIncremental() {
                 } else if(gs.lives>1){
                   gs.lives--; gs.dino.invTimer=30+gs.stats.invFramesBonus;
                   addFloat(gs,"-1 LIFE",gs.dino.x,gs.dino.y-24,"#ee3344");
-                } else if(designId==="pachy"&&!gs.pachyReviveUsed){
-                  gs.pachyReviveUsed=true; gs.dino.invTimer=50;
-                  addFloat(gs,"HARD HEAD! REVIVED!",gs.dino.x-20,gs.dino.y-30,"#ffcc00");
                 } else {
                   endGame(gs); return;
                 }
@@ -3002,7 +2860,7 @@ export default function DinoIncremental() {
 
         // Giant / speed crush
         if(hasGiant||hasSpdPw){
-          const giantBonusPerKill = designId==="trex" ? 8 : 4;
+          const giantBonusPerKill = designId==="trex" ? 5 : 4;
           gs.obstacles=gs.obstacles.filter(o=>{
             const hb=getObstacleHitbox(o);
             if(rectsOverlap(DX,DY,DW,DH,hb.x,hb.y,hb.w,hb.h)){
@@ -3018,19 +2876,14 @@ export default function DinoIncremental() {
             const o=gs.obstacles[i];
             const hb=getObstacleHitbox(o);
 
-            // Dilopho passive: 15% venom dissolve
-            if(designId==="dilopho"&&Math.random()<0.15&&rectsOverlap(DX,DY,DW+30,DH,hb.x,hb.y,hb.w,hb.h)){
-              gs.obstacles.splice(i,1);
-              addFloat(gs,"VENOM!",hb.x,hb.y-10,"#66dd22");
-              continue;
-            }
+            // Dilopho passive: phase through everything when active
+            if(designId==="dilopho"&&gs.dilophoPhaseActive>0) continue;
 
             // Anky passive: near miss destroys obstacle
             if(designId==="anky"&&!rectsOverlap(DX,DY,DW,DH,hb.x,hb.y,hb.w,hb.h)&&
                rectsOverlap(DX,DY,DW,DH,hb.x-12,hb.y-8,hb.w+24,hb.h+16)){
               gs.obstacles.splice(i,1);
               addFloat(gs,"CLUB SWEEP!",hb.x,hb.y-10,"#ffaa00");
-              if(gs.stats.nearMissBonus>0){gs.fossilsEarned+=gs.stats.nearMissBonus;}
               gs.nearMissCount++;
               continue;
             }
@@ -3060,15 +2913,7 @@ export default function DinoIncremental() {
                 gs.dino.invTimer=30+gs.stats.invFramesBonus;
                 addFloat(gs,"-1 LIFE",gs.dino.x,gs.dino.y-24,"#ee3344");
               } else {
-                // Pachy passive: one free revive per run
-                if(designId==="pachy"&&!gs.pachyReviveUsed){
-                  gs.pachyReviveUsed=true;
-                  gs.obstacles.splice(i,1);
-                  gs.dino.invTimer=50;
-                  addFloat(gs,"HARD HEAD! REVIVED!",gs.dino.x-20,gs.dino.y-30,"#ffcc00");
-                } else {
-                  endGame(gs); return;
-                }
+                endGame(gs); return;
               }
               break;
             }
@@ -3079,17 +2924,17 @@ export default function DinoIncremental() {
         const nightM  = 1+(gs.nightBlend*gs.stats.nightBonus);
         const frenzyM = hasFrenzy?3:1;
         const doubM   = hasDoubler?2:1;
-        // Raptor speed rush: +5% per milestone
-        const raptorM = designId==="raptor" ? 1+(gs.raptorSpeedBonus*0.05) : 1;
+        // Raptor speed rush: +3% per milestone
+        const raptorM = designId==="raptor" ? 1+(gs.raptorSpeedBonus*0.005) : 1;
 
         for(const p of gs.pickups){
           if(!p.collected&&rectsOverlap(DX,DY,DW,DH,p.x,p.y,14,14)){
             p.collected=true; gs.combo++; gs.comboTimer=120;
             if(gs.combo>gs.maxComboThisRun) gs.maxComboThisRun=gs.combo;
-            // Para passive: combo decays slower (handled via comboTimer boost)
-            if(designId==="para") gs.comboTimer=180; // 50% longer
-            // Pterodac passive: airborne pickups worth 2x
-            const pteroM = (designId==="pterodac"&&!gs.dino.onGround) ? 2 : 1;
+            // Para passive: combo timer 25% longer, cap combo at 20
+            if(designId==="para"){ gs.comboTimer=150; if(gs.combo>20) gs.combo=20; }
+            // Pterodac passive: airborne pickups worth 1.5x
+            const pteroM = (designId==="pterodac"&&!gs.dino.onGround) ? 1.5 : 1;
             const earned=gs.stats.fossilMult*(1+gs.combo*(0.08+gs.stats.comboBonus))*nightM*frenzyM*doubM*raptorM*pteroM*1.3;
             gs.fossilsEarned+=earned;
           }
@@ -3275,7 +3120,7 @@ export default function DinoIncremental() {
       // Raptor speed rush indicator
       if(designId2==="raptor"&&gs.raptorSpeedBonus>0){
         ctx.fillStyle=HUD.hud;ctx.font="9px 'Courier New'";
-        ctx.fillText(`RUSH x${gs.raptorSpeedBonus} (+${(gs.raptorSpeedBonus*5)}%)`,12,68);
+        ctx.fillText(`RUSH +${(gs.raptorSpeedBonus*0.5).toFixed(1)}% (${gs.raptorSpeedBonus}/20)`,12,68);
       }
 
       animRef.current=requestAnimationFrame(loop);
@@ -3414,150 +3259,18 @@ export default function DinoIncremental() {
     </div>
   );
 
-  if(screen==="shop") {
-    const catUpgrades=UPGRADES.filter(u=>u.cat===shopTab);
-    return (
-      <div style={outer}>
-        <div style={{...wrap(620)}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-            <div>
-              <div style={{fontSize:10,letterSpacing:4,color:MUTED}}>UPGRADE LAB</div>
-              <div style={{fontSize:20,fontWeight:"bold",letterSpacing:2}}>FOSSIL SHOP</div>
-            </div>
-            <div style={{textAlign:"right",display:"flex",alignItems:"center",gap:6}}>
-              <span style={{fontSize:16}}>◈</span>
-              <div>
-                <div style={{fontSize:16,fontWeight:"bold"}}>{Math.floor(fossils)}</div>
-                {passiveRate>0&&<div style={{fontSize:9,color:MUTED}}>+{passiveRate.toFixed(1)}/sec</div>}
-              </div>
-            </div>
-          </div>
-          <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
-            {UPGRADE_CATS.map(cat=>(
-              <button key={cat} style={btn(shopTab===cat,true)} onClick={()=>setShopTab(cat)}>{cat.toUpperCase()}</button>
-            ))}
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
-            {catUpgrades.filter(up=>shopTab!=="powerups").map(up=>{
-              const level=upgradeLevels[up.id]||0;
-              const maxed=level>=up.maxLevel;
-              const cost=maxed?0:getUpgradeCost(up,level);
-              const canAfford=fossils>=cost;
-              return (
-                <div key={up.id} onClick={()=>!maxed&&buyUpgrade(up)} style={{background:maxed?"#ebe8e2":"#faf8f4",border:`2px solid ${maxed?"#ccc":canAfford?BORDER:"#ccc"}`,padding:"11px",cursor:maxed?"default":canAfford?"pointer":"not-allowed",opacity:maxed?0.65:1,boxSizing:"border-box"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:5,alignItems:"flex-start"}}>
-                    <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                      <span style={{fontSize:14,color:DARK}}>{up.icon}</span>
-                      <span style={{fontSize:11,fontWeight:"bold"}}>{up.label}</span>
-                    </div>
-                    <span style={{fontSize:9,color:MUTED}}>{level}/{up.maxLevel}</span>
-                  </div>
-                  <div style={{fontSize:10,color:MUTED,marginBottom:7,lineHeight:1.6}}>{up.desc}</div>
-                  <div style={{height:2,background:"#e0ddd8",marginBottom:7,overflow:"hidden"}}>
-                    <div style={{height:"100%",background:DARK,width:`${Math.min(100,(level/up.maxLevel)*100)}%`}}/>
-                  </div>
-                  <div style={{fontSize:11,fontWeight:"bold",color:maxed?"#bbb":canAfford?DARK:"#bbb"}}>
-                    {maxed?"MAX":`◈ ${cost}`}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          {shopTab==="powerups"&&(()=>{
-            const pwUpgradeMap={
-              shield_pw:    ["pwShieldDur"],
-              speed_pw:     ["pwSpeedMult"],
-              giant_pw:     ["pwGiantDur"],
-              magnet_pw:    ["pwMagnetRng"],
-              frenzy_pw:    ["pwFrenzyDur"],
-              coinmania_pw: ["pwRareDrop","pwWindfallDur"],
-              ghost_pw:     ["pwGhostDur"],
-              tiny_pw:      ["pwTinyDur"],
-              meteor_pw:    ["pwMeteorCount"],
-              doubler_pw:   ["pwRareDrop","pwDoublerDur"],
-              heart_pw:     ["pwHeartChance"],
-              slowmo_pw:    ["pwSlowDur"],
-            };
-            return (
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
-                {POWERUP_DEFS.map(def=>{
-                  const owned=unlockedPowerups.includes(def.id);
-                  const canAffordUnlock=fossils>=def.unlockCost;
-                  const relatedUps=(pwUpgradeMap[def.id]||[]).map(uid=>UPGRADES.find(u=>u.id===uid)).filter(Boolean);
-                  return (
-                    <div key={def.id} style={{background:owned?"#faf8f4":"#f5f2ec",border:`2px solid ${owned?BORDER:canAffordUnlock?"#aaa":"#ccc"}`,padding:"11px",boxSizing:"border-box",minHeight:160}}>
-                      {/* Header: icon + name */}
-                      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:6}}>
-                        <canvas width={22} height={22} style={{display:"block",flexShrink:0,background:"transparent"}}
-                          ref={el=>{ if(!el) return; const c=el.getContext("2d"); c.clearRect(0,0,22,22); drawPowerupIcon(c,def.id,0,0,def.color); }}/>
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontSize:11,fontWeight:"bold",letterSpacing:1}}>{def.label}</div>
-                          <div style={{fontSize:9,color:MUTED,lineHeight:1.4}}>{def.desc}</div>
-                        </div>
-                      </div>
-                      {/* Unlock button  Eonly shown when not yet unlocked */}
-                      {!owned&&(
-                        <div onClick={()=>unlockPowerup(def)}
-                          style={{fontSize:10,fontWeight:"bold",padding:"4px 8px",marginBottom:relatedUps.length?8:0,
-                            background:canAffordUnlock?DARK:"#ccc",
-                            color:"#f0ede6",cursor:canAffordUnlock?"pointer":"not-allowed",
-                            textAlign:"center",letterSpacing:1}}>
-                          {`◈ ${def.unlockCost} UNLOCK`}
-                        </div>
-                      )}
-                      {/* Inline upgrades  Eonly shown once unlocked */}
-                      {owned&&relatedUps.map(up=>{
-                        const level=upgradeLevels[up.id]||0;
-                        const maxed=level>=up.maxLevel;
-                        const cost=maxed?0:getUpgradeCost(up,level);
-                        const canAfford=fossils>=cost;
-                        return (
-                          <div key={up.id} onClick={()=>!maxed&&buyUpgrade(up)}
-                            style={{borderTop:"1px solid #ddd",paddingTop:6,cursor:maxed?"default":canAfford?"pointer":"not-allowed",opacity:maxed?0.6:1}}>
-                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
-                              <span style={{fontSize:10,fontWeight:"bold"}}>{up.label}</span>
-                              <span style={{fontSize:9,color:MUTED}}>{level}/{up.maxLevel}</span>
-                            </div>
-                            <div style={{fontSize:9,color:MUTED,marginBottom:4,lineHeight:1.4}}>{up.desc}</div>
-                            <div style={{height:2,background:"#e0ddd8",marginBottom:4,overflow:"hidden"}}>
-                              <div style={{height:"100%",background:def.color,width:`${Math.min(100,(level/up.maxLevel)*100)}%`}}/>
-                            </div>
-                            <div style={{fontSize:10,fontWeight:"bold",color:maxed?"#bbb":canAfford?DARK:"#bbb"}}>
-                              {maxed?"MAX":`◈ ${cost}`}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })()}
-          <div style={{padding:"12px",border:"1px solid #ddd",background:"#f5f2ec",marginBottom:12,fontSize:10,color:MUTED}}>
-            <div style={{letterSpacing:3,marginBottom:8,fontSize:9}}>CURRENT STATS</div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:5}}>
-              {[["Jump",`+${stats.jumpBoost.toFixed(1)}`],["Bone x",`${stats.fossilMult.toFixed(2)}`],["Shield",`${(stats.shieldChance*100).toFixed(0)}%`],["Passive",`${stats.passiveFossils.toFixed(1)}/s`],["Combo+",`${stats.comboBonus.toFixed(2)}`],["Lives",`${1+stats.extraLives}`]].map(([l,v])=>(
-                <div key={l}><span style={{color:"#aaa"}}>{l}: </span><b style={{color:DARK}}>{v}</b></div>
-              ))}
-            </div>
-            <div style={{marginTop:8,display:"flex",flexWrap:"wrap",gap:4}}>
-              {[stats.hasDoubleJump&&"DBL JUMP",stats.hasDash&&"DASH FWD",stats.hasBackDash&&"DASH BCK",stats.hasFastDrop&&"FAST DRP",stats.hasDuck&&"DUCK",stats.hasMagnet&&"MAGNET"].filter(Boolean).map(s=>(
-                <span key={s} style={{background:DARK,color:BG,fontSize:9,padding:"2px 7px",letterSpacing:1}}>{s}</span>
-              ))}
-            </div>
-          </div>
-          <div style={{display:"flex",gap:8}}>
-            <button style={{...btn(true),flex:1}} onClick={startGame}>[ RUN ]</button>
-            <button style={{...btn(false),flex:1}} onClick={()=>setScreen("skins")}>[ COLLECTION ]</button>
-            <button style={{...btn(false),flex:1}} onClick={()=>setScreen("menu")}>[ MENU ]</button>
-          </div>
-        </div>
-        {notification&&<div style={notifBox}>{notification}</div>}
-        {achivNotif&&<div style={achivNotifBox}>{achivNotif}</div>}
-      </div>
-    );
-  }
+  if(screen==="shop") return (
+    <ShopScreen
+      fossils={fossils} passiveRate={passiveRate}
+      shopTab={shopTab} setShopTab={setShopTab}
+      upgradeLevels={upgradeLevels}
+      unlockedPowerups={unlockedPowerups}
+      buyUpgrade={buyUpgrade} unlockPowerup={unlockPowerup}
+      stats={stats}
+      startGame={startGame} setScreen={setScreen}
+      notification={notification} achivNotif={achivNotif}
+    />
+  );
 
   if(screen==="skins") {
     return (

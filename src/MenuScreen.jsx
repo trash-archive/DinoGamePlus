@@ -6,7 +6,7 @@ export default function MenuScreen({
 }) {
   const outer = { minHeight:"100vh", background:BG, fontFamily:F, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", userSelect:"none", boxSizing:"border-box", width:"100%", overflowX:"hidden" };
   const card  = { background:"#faf8f4", border:`2px solid ${BORDER}`, padding:"28px", boxSizing:"border-box", width:"100%" };
-  const btn   = (primary=false) => ({ background:primary?DARK:BG, color:primary?BG:DARK, border:`2px solid ${BORDER}`, padding:primary?"13px 0":"10px 20px", fontSize:primary?14:12, fontFamily:F, cursor:"pointer", letterSpacing:primary?4:2, fontWeight:"bold", boxSizing:"border-box", transition:"opacity 0.1s" });
+  const btn   = (primary=false) => ({ background:primary?DARK:BG, color:primary?BG:DARK, border:`2px solid ${BORDER}`, padding:primary?"13px 0":"10px 2px", fontSize:primary?14:12, fontFamily:F, cursor:"pointer", letterSpacing:primary?4:0, fontWeight:"bold", boxSizing:"border-box", transition:"opacity 0.1s" });
   const notifBox     = { position:"fixed", bottom:24, left:"50%", transform:"translateX(-50%)", background:DARK, color:BG, padding:"9px 22px", fontSize:11, letterSpacing:2, zIndex:999, whiteSpace:"nowrap", border:"1px solid #555" };
   const achivNotifBox= { position:"fixed", top:24,    left:"50%", transform:"translateX(-50%)", background:"#1a1a2a", color:"#ffdd44", padding:"10px 24px", fontSize:11, letterSpacing:2, zIndex:999, whiteSpace:"nowrap", border:"1px solid #ffdd44" };
 
@@ -31,7 +31,7 @@ export default function MenuScreen({
               )}
             </div>
             <p style={{ fontSize:11, color:MUTED, marginBottom:22, lineHeight:2, letterSpacing:1 }}>
-              Run. Collect bones. Upgrade. Evolve.<br/>Outlast the digital extinction.
+              Run. Collect fossils. Upgrade. Survive.<br/>Outlast the digital extinction.
             </p>
           </div>
 
@@ -39,12 +39,12 @@ export default function MenuScreen({
             <button style={{ ...btn(true), width:"100%" }} onClick={startGame}>[ RUN ]</button>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
-            <button style={{ ...btn(false), width:"100%" }} onClick={() => setScreen("shop")}>[ UPGRADES ]</button>
-            <button style={{ ...btn(false), width:"100%" }} onClick={() => setScreen("skins")}>[ COLLECTION ]</button>
+            <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => setScreen("shop")}>[ UPGRADES ]</button>
+            <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => setScreen("skins")}>[ COLLECTION ]</button>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-            <button style={{ ...btn(false), width:"100%", padding:"10px 2px", letterSpacing:0 }} onClick={() => setScreen("achievements")}>[ ACHIEVEMENTS ]</button>
-            <button style={{ ...btn(false), width:"100%", padding:"10px 2px", letterSpacing:0 }} onClick={() => setScreen("leaderboard")}>[ LEADERBOARDS ]</button>
+            <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => setScreen("achievements")}>[ ACHIEVEMENTS ]</button>
+            <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => setScreen("leaderboard")}>[ LEADERBOARDS ]</button>
           </div>
 
           {totalRuns > 0 && (

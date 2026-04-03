@@ -1,0 +1,36 @@
+404:   } else if(id === "anky") {
+711:   } else if(id === "dilopho") {
+2013:       nearMissBonus:  (ul.nearMiss||0)*3,
+2149:       raptorSpeedBonus:0,    // raptor: distance milestones -> bone %
+2151:       pachyReviveUsed:false, // pachy: one free revive
+2153:       dilophoVenomActive:true,
+2155:       triFirstDestroyed:false,
+2282:         if(designId==="raptor"){
+2284:           if(milestone>gs.raptorSpeedBonus){
+2285:             gs.raptorSpeedBonus=milestone;
+2317:           const spinoMult = designId==="spino" && isNightNow ? 1.3 : 1;
+2318:           const bonus=Math.floor(baseB*(1+gs.stats.transBonus)*spinoMult);
+2726:         const brachioMagnet = designId==="brachio" ? 120 : 0;
+2727:         const effectiveMagnet = magnetRange + brachioMagnet;
+2748:         if(designId==="tri"&&!gs.triFirstDestroyed&&gs.obstacles.length>0){
+2749:           gs.triFirstDestroyed=true;
+2778:                 } else if(designId==="pachy"&&!gs.pachyReviveUsed){
+2779:                   gs.pachyReviveUsed=true; gs.dino.invTimer=50;
+2792:           const giantBonusPerKill = designId==="trex" ? 8 : 4;
+2796:               gs.fossilsEarned+=giantBonusPerKill; gs.giantCrushes++;
+2798:               addFloat(gs,`+${giantBonusPerKill}`,hb.x+hb.w/2,hb.y-10,"#cc4400");
+2809:             if(designId==="dilopho"&&Math.random()<0.15&&rectsOverlap(DX,DY,DW+30,DH,hb.x,hb.y,hb.w,hb.h)){
+2816:             if(designId==="anky"&&!rectsOverlap(DX,DY,DW,DH,hb.x,hb.y,hb.w,hb.h)&&
+2820:               if(gs.stats.nearMissBonus>0){gs.fossilsEarned+=gs.stats.nearMissBonus;}
+2829:               if(gs.stats.nearMissBonus>0){
+2830:                 gs.fossilsEarned+=gs.stats.nearMissBonus;
+2831:                 addFloat(gs,`NR MISS +${gs.stats.nearMissBonus}`,gs.dino.x-8,gs.dino.y-22,"#ffaa00");
+2851:                 if(designId==="pachy"&&!gs.pachyReviveUsed){
+2852:                   gs.pachyReviveUsed=true;
+2870:         const raptorM = designId==="raptor" ? 1+(gs.raptorSpeedBonus*0.05) : 1;
+2877:             if(designId==="para") gs.comboTimer=180; // 50% longer
+2879:             const pteroM = (designId==="pterodac"&&!gs.dino.onGround) ? 2 : 1;
+2880:             const earned=gs.stats.fossilMult*(1+gs.combo*(0.08+gs.stats.comboBonus))*nightM*frenzyM*doubM*raptorM*pteroM*1.3;
+2909:         gs.fossilsEarned+=gs.speed*0.0015*gs.stats.fossilMult*nightM*frenzyM*doubM*raptorM*dt;
+3063:       if(designId2==="raptor"&&gs.raptorSpeedBonus>0){
+3065:         ctx.fillText(`RUSH x${gs.raptorSpeedBonus} (+${(gs.raptorSpeedBonus*5)}%)`,12,68);
