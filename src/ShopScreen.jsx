@@ -1,4 +1,5 @@
 import { drawPowerupIcon } from "./rendering/drawPowerups";
+import { drawUpgradeIcon } from "./rendering/drawUpgradeIcons";
 import { UPGRADES, UPGRADE_CATS, POWERUP_DEFS, getUpgradeCost } from "./data/gameData";
 
 const F      = "'Courier New', monospace";
@@ -76,13 +77,18 @@ export default function ShopScreen({
               const maxed     = level >= up.maxLevel;
               const cost      = maxed ? 0 : getUpgradeCost(up, level);
               const canAfford = fossils >= cost;
+              const iconCol   = up.color || DARK;
               return (
                 <div key={up.id}
                   onClick={() => !maxed && buyUpgrade(up)}
                   style={{ background:maxed?"#ebe8e2":"#faf8f4", border:`2px solid ${maxed?"#ccc":canAfford?BORDER:"#ccc"}`, padding:"11px", cursor:maxed?"default":canAfford?"pointer":"not-allowed", opacity:maxed?0.65:1, boxSizing:"border-box" }}>
                   <div style={{ display:"flex", justifyContent:"space-between", marginBottom:5, alignItems:"flex-start" }}>
                     <div style={{ display:"flex", gap:6, alignItems:"center" }}>
-                      <span style={{ fontSize:14, color:DARK }}>{up.icon}</span>
+                      {up.color
+                        ? <canvas width={22} height={22} style={{ display:"block", flexShrink:0, background:"transparent" }}
+                            ref={el => { if(!el) return; const c=el.getContext("2d"); c.clearRect(0,0,22,22); drawUpgradeIcon(c, up.id, 0, 0, iconCol); }}/>
+                        : <span style={{ fontSize:14, color:DARK }}>{up.icon}</span>
+                      }
                       <span style={{ fontSize:11, fontWeight:"bold" }}>{up.label}</span>
                     </div>
                     <span style={{ fontSize:9, color:MUTED }}>{level}/{up.maxLevel}</span>
