@@ -1,0 +1,10 @@
+// ─── GAME CONSTANTS ───────────────────────────────────────────────────────────
+export const GRAVITY    = 0.55;
+export const JUMP_FORCE = -13.5;
+export const GROUND_Y   = 210;
+export const DINO_W     = 40;
+export const DINO_H     = 48;
+export const CANVAS_W   = 720;
+export const CANVAS_H   = 270;
+export const DAY_CYCLE  = 2000;
+export const DUCK_H     = 26;
