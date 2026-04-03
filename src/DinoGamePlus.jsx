@@ -25,7 +25,8 @@ import { spawnVolcanoObstacle } from "./maps/volcano/volcanoObstacles";
 import { spawnJungleObstacle } from "./maps/jungle/jungleObstacles";
 import { spawnRuinsObstacle } from "./maps/ruins/ruinsObstacles";
 import { spawnCaveObstacle } from "./maps/cave/caveObstacles";
-import { SCENERIES, SKINS, DINO_DESIGNS, DINO_PASSIVES, PASSIVE_ICONS } from "./data/collectionData.jsx";
+import { SCENERIES, SKINS, DINO_DESIGNS, DINO_PASSIVES, PASSIVE_ICONS, REGULAR_SCENERY_IDS } from "./data/collectionData.jsx";
+import BossFightScreen from "./BossFightScreen";
 
 
 
@@ -69,6 +70,7 @@ export default function DinoIncremental() {
   const [lbData,           setLbData]           = useState([]);
   const [lbLoading,        setLbLoading]        = useState(false);
   const [lastRunRank,      setLastRunRank]       = useState(null);
+  const [bossKey,          setBossKey]           = useState(0);
 
 
   const getStats = useCallback((levels) => {
@@ -1289,6 +1291,16 @@ export default function DinoIncremental() {
 
   const stats=getStats(upgradeLevels);
 
+  // ─── ABYSS UNLOCK ────────────────────────────────────────────────────────
+  const abyssUnlocked = REGULAR_SCENERY_IDS.every(id => ownedSceneries.includes(id));
+
+  const startBossFight = useCallback(() => {
+    setScreen("bossfight");
+  }, []);
+
+  // Bite skill derived from upgrades
+  const hasBiteSkill = (upgradeLevels.bite || 0) >= 1;
+
   // ─── STYLES ──────────────────────────────────────────────────────────────
   const F      = "'Courier New', monospace";
   const BG     = "#f0ede6";
@@ -1357,6 +1369,8 @@ export default function DinoIncremental() {
       stats={stats}
       startGame={startGame} setScreen={setScreen}
       notification={notification} achivNotif={achivNotif}
+      abyssUnlocked={abyssUnlocked}
+      startBossFight={startBossFight}
     />
   );
 
@@ -1386,6 +1400,27 @@ export default function DinoIncremental() {
       lbLoading={lbLoading} setLbLoading={setLbLoading}
       onBack={()=>setScreen("menu")}
       showNotif={showNotif}
+    />
+  );
+
+  if(screen==="bossfight") return (
+    <BossFightScreen
+      key={bossKey}
+      skin={currentSkin}
+      design={currentDesign}
+      stats={{ ...stats, hasBite: hasBiteSkill }}
+      lives={(equippedDesign==="trex"?2:1)+stats.extraLives}
+      fossils={fossils}
+      onWin={()=>{
+        setFossils(f => f + 5000);
+        setTotalFossils(f => f + 5000);
+        showNotif("+5000 FOSSILS! The Horror Entity is defeated!");
+        setScreen("menu");
+      }}
+      onDeath={()=>setBossKey(k => k + 1)}
+      onMenu={()=>setScreen("menu")}
+      notification={notification}
+      achivNotif={achivNotif}
     />
   );
 

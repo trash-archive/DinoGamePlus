@@ -8,7 +8,8 @@ import { SCENERY_ARCTIC } from "../maps/arctic/arctic";
 import { SCENERY_VOLCANO } from "../maps/volcano/volcano";
 import { SCENERY_JUNGLE } from "../maps/jungle/jungle";
 import { SCENERY_RUINS } from "../maps/ruins/ruins";
-import { SCENERY_CAVE } from "../maps/cave/cave";
+import { SCENERY_CAVE }  from "../maps/cave/cave";
+import { SCENERY_ABYSS } from "../maps/abyss/abyss";
 
 export const SCENERIES = [
   SCENERY_WASTELAND,
@@ -19,6 +20,12 @@ export const SCENERIES = [
   SCENERY_JUNGLE,
   SCENERY_RUINS,
   SCENERY_CAVE,
+  SCENERY_ABYSS,
+];
+
+// The 8 regular maps that must all be owned to unlock The Abyss
+export const REGULAR_SCENERY_IDS = [
+  "classic","plains","desert","arctic","volcano","jungle","ruins","cave",
 ];
 
 export const SKINS = [

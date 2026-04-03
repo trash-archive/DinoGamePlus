@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { SKINS, DINO_DESIGNS, DINO_PASSIVES, PASSIVE_ICONS, SCENERIES } from "./data/collectionData.jsx";
+import { SKINS, DINO_DESIGNS, DINO_PASSIVES, PASSIVE_ICONS, SCENERIES, REGULAR_SCENERY_IDS } from "./data/collectionData.jsx";
 import { drawDino } from "./rendering/drawDino";
 
 export default function SkinsScreen({
@@ -115,8 +115,20 @@ export default function SkinsScreen({
         {skinTab==="scenery" && (
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
             {SCENERIES.map(s => {
-              const owned = ownedSceneries.includes(s.id);
+              const owned  = ownedSceneries.includes(s.id);
               const active = activeScenery === s.id;
+              const allRegularOwned = REGULAR_SCENERY_IDS.every(id => ownedSceneries.includes(id));
+              const isLocked = s.isFinalMap && !allRegularOwned;
+              if(isLocked) return (
+                <div key={s.id} style={{ background:"#0a0010", border:"2px solid #330022", padding:"14px", boxSizing:"border-box", opacity:0.7 }}>
+                  <div style={{ width:"100%", height:36, background:"#000", marginBottom:8, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                    <span style={{ color:"#440022", fontSize:18 }}>???</span>
+                  </div>
+                  <div style={{ fontSize:12, fontWeight:"bold", letterSpacing:1, color:"#440022" }}>???</div>
+                  <div style={{ fontSize:10, color:"#440022", margin:"4px 0 8px", lineHeight:1.5 }}>Unlock all other maps to reveal.</div>
+                  <div style={{ fontSize:11, fontWeight:"bold", color:"#440022" }}>[ LOCKED ]</div>
+                </div>
+              );
               return (
                 <div key={s.id} onClick={() => buyScenery(s)} style={{ background:active?"#ece8e0":"#faf8f4", border:`2px solid ${active?BORDER:"#ddd"}`, padding:"14px", cursor:"pointer", boxSizing:"border-box" }}>
                   <div style={{ width:"100%", height:36, background:s.dayBg, marginBottom:8, position:"relative", overflow:"hidden" }}>

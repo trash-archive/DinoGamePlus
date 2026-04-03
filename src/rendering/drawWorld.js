@@ -106,7 +106,241 @@ export function drawBonePickup(ctx, x, y, col) {
   ctx.closePath(); ctx.fill();
 }
 
-// ─── ENTITY SILHOUETTE ────────────────────────────────────────────────────────
+// ─── BOSS RENDERER ───────────────────────────────────────────────────────────
+export function drawBoss(ctx, cx, cy, frame, phase, hpFrac, blindWindow, hitFlash) {
+  ctx.save();
+
+  const breathe  = Math.sin(frame * 0.022) * (phase === 2 ? 8 : 5);
+  const twave    = (i, s) => Math.sin(frame * (0.04 + phase * 0.012) + i * 1.1 + s) * (8 + phase * 3);
+  const flash    = hitFlash > 0;
+
+  // ── Color palette ──
+  // Body: deep purple-black with visible contrast against the void bg
+  const bodyBase  = flash ? "#ff3300" : "#2a0a44";   // deep purple
+  const bodyMid   = flash ? "#ff5500" : "#3d1460";   // mid purple highlight
+  const bodyEdge  = flash ? "#ff7700" : "#5a1e88";   // bright purple edge
+  const limbBase  = flash ? "#cc2200" : "#1e0833";   // darker limb
+  const limbEdge  = flash ? "#ff4400" : "#4a1270";   // limb highlight
+  const spineCol  = flash ? "#ff6600" : "#8833cc";   // vivid purple spines
+  const spineGlow = flash ? "#ffaa00" : "#cc66ff";   // spine tip glow
+  const eyeCol    = phase === 2 ? "#ff2200" : phase === 1 ? "#ff6600" : "#ff4488";
+  const eyeGlow   = phase === 2 ? "#ff8800" : phase === 1 ? "#ffaa44" : "#ff88cc";
+  const eyePulse  = Math.floor(frame * 0.07) % 3 === 0;
+
+  // ── Outer glow aura (drawn first, behind everything) ──
+  const auraAlpha = 0.12 + Math.sin(frame * 0.04) * 0.06;
+  ctx.globalAlpha = auraAlpha;
+  ctx.fillStyle = flash ? "#ff4400" : "#6600cc";
+  ctx.fillRect(cx - 80, cy - 90 + breathe, 160, 160);
+  ctx.globalAlpha = 1;
+
+  // ── Core body ──
+  // Outer shell
+  ctx.fillStyle = bodyBase;
+  ctx.fillRect(cx-38, cy-30+breathe, 76, 60);
+  ctx.fillRect(cx-52, cy-16+breathe, 104, 38);
+  ctx.fillRect(cx-28, cy-48+breathe, 56, 22);
+  ctx.fillRect(cx-20, cy-60+breathe, 40, 16);
+  // Mid highlight layer
+  ctx.fillStyle = bodyMid;
+  ctx.fillRect(cx-30, cy-26+breathe, 60, 48);
+  ctx.fillRect(cx-44, cy-12+breathe, 88, 28);
+  ctx.fillRect(cx-22, cy-44+breathe, 44, 16);
+  // Edge highlight (brightest)
+  ctx.fillStyle = bodyEdge;
+  ctx.fillRect(cx-20, cy-22+breathe, 40, 36);
+  ctx.fillRect(cx-32, cy-8+breathe,  64, 18);
+  ctx.fillRect(cx-14, cy-40+breathe, 28, 10);
+
+  // ── Side masses ──
+  const sideW = 20 + phase * 8;
+  ctx.fillStyle = bodyBase;
+  ctx.fillRect(cx+34,       cy-24+breathe, sideW,     32);
+  ctx.fillRect(cx-34-sideW, cy-24+breathe, sideW,     32);
+  ctx.fillStyle = bodyMid;
+  ctx.fillRect(cx+36,       cy-20+breathe, sideW - 6, 22);
+  ctx.fillRect(cx-32-sideW, cy-20+breathe, sideW - 6, 22);
+  // Outer knuckle bumps
+  ctx.fillStyle = bodyEdge;
+  ctx.fillRect(cx+46,       cy-14+breathe, 10, 12);
+  ctx.fillRect(cx-56,       cy-14+breathe, 10, 12);
+  if(phase >= 1) {
+    ctx.fillStyle = limbBase;
+    ctx.fillRect(cx+54+sideW-20, cy-10+breathe, 14, 20);
+    ctx.fillRect(cx-54-sideW+6,  cy-10+breathe, 14, 20);
+    ctx.fillStyle = limbEdge;
+    ctx.fillRect(cx+56+sideW-20, cy-8+breathe,  10, 14);
+    ctx.fillRect(cx-52-sideW+6,  cy-8+breathe,  10, 14);
+  }
+
+  // ── Tentacles (bottom) ──
+  const tentacles = [
+    {ox:-40,len:5,dir:1},{ox:-26,len:6,dir:-1},{ox:-12,len:7,dir:1},
+    {ox:2,  len:6,dir:-1},{ox:16,len:5,dir:1},{ox:30,len:7,dir:-1},
+    {ox:-54,len:4,dir:1},{ox:44,len:4,dir:-1},
+  ];
+  tentacles.forEach((t, i) => {
+    let tx = cx + t.ox, ty = cy + 30 + breathe;
+    for(let s = 0; s < t.len; s++) {
+      const w   = Math.max(3, 9 - s);
+      const wav = twave(i, s * 0.5) * t.dir;
+      // Alternate base/edge for visible segmentation
+      ctx.fillStyle = s % 2 === 0 ? limbBase : bodyBase;
+      ctx.fillRect(tx + wav - w/2, ty + s * 10, w, 11);
+      // Highlight stripe on each segment
+      ctx.fillStyle = s % 2 === 0 ? limbEdge : bodyMid;
+      ctx.fillRect(tx + wav - w/2 + 1, ty + s * 10 + 1, Math.max(1, w - 3), 3);
+    }
+  });
+
+  // ── Arms (top) ──
+  const arms = [{ox:-30,dir:-1},{ox:30,dir:1},{ox:-12,dir:-1},{ox:12,dir:1}];
+  arms.forEach((a, i) => {
+    let ax = cx + a.ox, ay = cy - 46 + breathe;
+    for(let s = 0; s < 4 + phase; s++) {
+      const w   = Math.max(3, 8 - s);
+      const wav = twave(i + 8, s * 0.6) * a.dir;
+      ctx.fillStyle = s % 2 === 0 ? limbBase : bodyBase;
+      ctx.fillRect(ax + wav - w/2, ay - s * 11, w, 12);
+      ctx.fillStyle = s % 2 === 0 ? limbEdge : bodyMid;
+      ctx.fillRect(ax + wav - w/2 + 1, ay - s * 11 + 1, Math.max(1, w - 3), 3);
+    }
+  });
+
+  // ── Spines (crown) ──
+  const spineCount = 7 + phase * 3;
+  for(let i = 0; i < spineCount; i++) {
+    const sx = cx - 34 + i * (68 / (spineCount - 1));
+    const sh = 12 + (i % 3) * 7 + Math.sin(frame * 0.035 + i) * 5;
+    // Spine base
+    ctx.fillStyle = spineCol;
+    ctx.fillRect(sx - 3, cy - 60 - sh + breathe, 6, sh);
+    // Spine highlight
+    ctx.fillStyle = spineGlow;
+    ctx.fillRect(sx - 1, cy - 60 - sh + breathe, 2, Math.floor(sh * 0.4));
+    // Spine tip glow dot
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(sx - 1, cy - 60 - sh + breathe, 2, 2);
+  }
+
+  // ── Texture details on body ──
+  ctx.fillStyle = bodyEdge;
+  // Horizontal ribbing
+  for(let r = 0; r < 3; r++) {
+    const ry = cy - 18 + r * 12 + breathe;
+    ctx.fillRect(cx - 28, ry, 56, 2);
+  }
+  // Vertical crack lines
+  ctx.fillStyle = limbBase;
+  ctx.fillRect(cx - 6, cy - 24 + breathe, 3, 40);
+  ctx.fillRect(cx + 4, cy - 20 + breathe, 3, 36);
+
+  // ── Eyes ──
+  // Eye glow halo
+  ctx.globalAlpha = 0.4;
+  ctx.fillStyle = eyeGlow;
+  ctx.fillRect(cx-22, cy-38+breathe, 14, 10);
+  ctx.fillRect(cx+8,  cy-34+breathe, 14, 10);
+  ctx.fillRect(cx-8,  cy-46+breathe, 12, 8);
+  ctx.globalAlpha = 1;
+  // Eye whites
+  ctx.fillStyle = "#ffeecc";
+  ctx.fillRect(cx-20, cy-36+breathe, 10, 7);
+  ctx.fillRect(cx+10, cy-32+breathe, 10, 7);
+  ctx.fillRect(cx-6,  cy-44+breathe, 8,  6);
+  // Eye pupils
+  ctx.fillStyle = eyePulse ? eyeCol : eyeGlow;
+  ctx.fillRect(cx-18, cy-35+breathe, 6, 5);
+  ctx.fillRect(cx+12, cy-31+breathe, 6, 5);
+  ctx.fillRect(cx-4,  cy-43+breathe, 5, 4);
+  // Phase 1+ extra eyes
+  if(phase >= 1) {
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = eyeGlow;
+    ctx.fillRect(cx+22, cy-24+breathe, 10, 8);
+    ctx.fillRect(cx-34, cy-20+breathe, 10, 8);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = "#ffeecc";
+    ctx.fillRect(cx+24, cy-23+breathe, 7, 6);
+    ctx.fillRect(cx-32, cy-19+breathe, 7, 6);
+    ctx.fillStyle = eyePulse ? eyeCol : eyeGlow;
+    ctx.fillRect(cx+25, cy-22+breathe, 5, 4);
+    ctx.fillRect(cx-31, cy-18+breathe, 5, 4);
+  }
+  if(phase >= 2) {
+    ctx.fillStyle = eyePulse ? eyeCol : eyeGlow;
+    ctx.fillRect(cx-10, cy-22+breathe, 5, 4);
+    ctx.fillRect(cx+6,  cy-26+breathe, 5, 4);
+  }
+
+  // ── Mouth ──
+  const mouthOpen = Math.sin(frame * 0.03) > 0.2;
+  // Mouth cavity
+  ctx.fillStyle = "#0a0010";
+  ctx.fillRect(cx-22, cy-6+breathe, 44, mouthOpen ? 10 : 4);
+  if(mouthOpen) {
+    // Inner mouth glow
+    ctx.fillStyle = "#660022";
+    ctx.fillRect(cx-18, cy-5+breathe, 36, 8);
+    ctx.fillStyle = "#cc0044";
+    ctx.fillRect(cx-12, cy-4+breathe, 24, 5);
+    // Teeth
+    ctx.fillStyle = "#ffddcc";
+    for(let t = 0; t < 5; t++) {
+      ctx.fillRect(cx - 18 + t * 9, cy - 6 + breathe, 5, 5);
+      ctx.fillRect(cx - 16 + t * 9, cy + 3  + breathe, 5, 4);
+    }
+  }
+
+  // ── Blind spot glow (weak point) ──
+  if(blindWindow) {
+    const glowPulse = 0.5 + Math.sin(frame * 0.25) * 0.5;
+    // Wide aura
+    ctx.globalAlpha = 0.22 + glowPulse * 0.18;
+    ctx.fillStyle = "#ffdd00";
+    ctx.fillRect(cx-60, cy-70+breathe, 120, 140);
+    ctx.globalAlpha = 1;
+    // Bright core weak point
+    ctx.fillStyle = `rgba(255,230,50,${0.75 + glowPulse * 0.25})`;
+    ctx.fillRect(cx-10, cy-14+breathe, 20, 20);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(cx-5,  cy-9+breathe,  10, 10);
+    ctx.fillStyle = "#ffff88";
+    ctx.fillRect(cx-2,  cy-6+breathe,  4,  4);
+    // Pulsing ring
+    ctx.globalAlpha = glowPulse * 0.6;
+    ctx.strokeStyle = "#ffdd00";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(cx-18, cy-22+breathe, 36, 36);
+    ctx.globalAlpha = 1;
+  }
+
+  // ── HP bar ──
+  const barW = 220, barX = cx - barW/2, barY = cy - 100;
+  // Bar background
+  ctx.fillStyle = "#1a0030";
+  ctx.fillRect(barX - 3, barY - 3, barW + 6, 16);
+  ctx.fillStyle = "#0a0018";
+  ctx.fillRect(barX, barY, barW, 10);
+  // Bar fill
+  const barCol = phase === 2 ? "#ff2200" : phase === 1 ? "#ff6600" : "#cc44ff";
+  const barFill = Math.floor(barW * hpFrac);
+  ctx.fillStyle = barCol;
+  ctx.fillRect(barX, barY, barFill, 10);
+  // Bar shine
+  ctx.fillStyle = "rgba(255,255,255,0.25)";
+  ctx.fillRect(barX, barY, barFill, 3);
+  // Label
+  ctx.fillStyle = "#ffccff";
+  ctx.font = "bold 9px 'Courier New'";
+  ctx.textAlign = "center";
+  ctx.fillText("THE HORROR ENTITY", cx, barY - 5);
+  ctx.textAlign = "left";
+
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
 export function drawEntitySilhouette(ctx, x, y, frame, alpha, scenery) {
   if(alpha <= 0) return;
   ctx.save();

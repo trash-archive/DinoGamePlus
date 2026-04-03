@@ -8,4 +8,5 @@ export const MOVEMENT_UPGRADES = [
   { id:"fastdrop", label:"Fast Drop",      desc:"S / ↓ drops fast",             baseCost:100, maxLevel:1, cat:"movement", color:"#2a2a2a" },
   { id:"duck",     label:"Duck Slide",     desc:"S / ↓ to crouch under beams",  baseCost:80,  maxLevel:1, cat:"movement", color:"#448844" },
   { id:"dashCd",   label:"Dash Cooldown",  desc:"Reduce dash delay 10f/level",  baseCost:120, maxLevel:4, cat:"movement", color:"#884488" },
+  { id:"bite",     label:"Primal Bite",    desc:"F key to bite — the only way to wound the Horror Entity", baseCost:5000, maxLevel:1, cat:"movement", color:"#cc0000", abyssOnly:true },
 ];

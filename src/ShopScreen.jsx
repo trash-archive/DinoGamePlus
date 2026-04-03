@@ -33,6 +33,8 @@ export default function ShopScreen({
   stats,
   startGame, setScreen,
   notification, achivNotif,
+  abyssUnlocked,
+  startBossFight,
 }) {
   const outer = { minHeight:"100vh", background:BG, fontFamily:F, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"flex-start", userSelect:"none", boxSizing:"border-box", width:"100%", overflowX:"hidden" };
   const wrap  = { width:"100%", maxWidth:620, padding:"20px 16px", boxSizing:"border-box", margin:"0 auto" };
@@ -72,7 +74,7 @@ export default function ShopScreen({
         {/* Regular upgrades (non-powerups) */}
         {shopTab !== "powerups" && (
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:14 }}>
-            {catUpgrades.map(up => {
+            {catUpgrades.filter(up => !up.abyssOnly || abyssUnlocked).map(up => {
               const level     = upgradeLevels[up.id] || 0;
               const maxed     = level >= up.maxLevel;
               const cost      = maxed ? 0 : getUpgradeCost(up, level);
@@ -210,6 +212,9 @@ export default function ShopScreen({
         {/* Footer buttons */}
         <div style={{ display:"flex", gap:8 }}>
           <button style={{ ...btn(true),  flex:1 }} onClick={startGame}>[ RUN ]</button>
+          {abyssUnlocked && (
+            <button style={{ ...btn(false), flex:1, borderColor:"#cc0000", color:"#cc0000" }} onClick={startBossFight}>[ THE ABYSS ]</button>
+          )}
           <button style={{ ...btn(false), flex:1 }} onClick={() => setScreen("skins")}>[ COLLECTION ]</button>
           <button style={{ ...btn(false), flex:1 }} onClick={() => setScreen("menu")}>[ MENU ]</button>
         </div>

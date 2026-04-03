@@ -23,6 +23,7 @@ const SCENERY_HUD = {
   jungle:  { hud:["#1a5a10","#88ff44"], fossil:["#2a8a10","#66dd22"], heart:["#228822","#44ff44"], bonePick:["#3a9a20","#88ee44"] },
   ruins:   { hud:["#5a4a28","#ddcc88"], fossil:["#8a6a30","#ccaa55"], heart:["#884422","#cc7744"], bonePick:["#9a7a40","#ccaa55"] },
   cave:    { hud:["#8844ff","#cc88ff"], fossil:["#aa44ff","#dd99ff"], heart:["#8822cc","#cc44ff"], bonePick:["#9933ee","#cc77ff"] },
+  abyss:   { hud:["#cc88ff","#ee99ff"], fossil:["#aa44ff","#cc88ff"], heart:["#ff2244","#ff6688"], bonePick:["#9933ee","#cc77ff"] },
 };
 
 export function getHudColors(scenery, nightBlend) {
