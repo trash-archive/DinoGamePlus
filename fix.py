@@ -1,279 +1,254 @@
-import re
+"""
+fix.py — patches DinoGamePlus.jsx:
+  1. Fix timed passives firing every ~0.5s instead of every 30/40s
+     (timers were in dt-units; convert to seconds by dividing threshold by 60)
+  2. Add canvas visual effects when each passive activates
+"""
 
-# ─── collectionData.jsx: update DINO_PASSIVES descriptions ───────────────────
-with open("src/data/collectionData.jsx", "r", encoding="utf-8") as f:
-    col = f.read()
+import re, sys, pathlib
 
-old_passives = """export const DINO_PASSIVES = {
-  raptor:    { label:\"Speed Rush\",      desc:\"Every 400m grants +3% bone income this run. Builds slowly over distance.\" },
-  trex:      { label:\"Apex Predator\",   desc:\"Obstacles destroyed while giant give +5 bones instead of 4.\" },
-  stego:     { label:\"Plate Armor\",     desc:\"Shield proc chance increased by 50%. The back plates absorb punishment.\" },
-  pterodac:  { label:\"Thermal Lift\",    desc:\"Airborne bone pickups give 1.5x value. Soar high for greater rewards.\" },
-  anky:      { label:\"Club Sweep\",      desc:\"Near misses destroy the obstacle. No bonus bones — just survival.\" },
-  tri:       { label:\"Horn Charge\",     desc:\"First obstacle each run is automatically destroyed. Charge through!\" },
-  brachio:   { label:\"Long Reach\",      desc:\"Bone magnet range +60px. The long neck scoops up nearby bones.\" },
-  spino:     { label:\"Sail Power\",      desc:\"+15% bones earned during night only. The sail thrives in moonlight.\" },
-  pachy:     { label:\"Headbutt\",        desc:\"Dying grants 1 free auto-revive per run (once). Short invincibility.\" },
-  para:      { label:\"Resonance\",       desc:\"Combo timer lasts 25% longer. The crest sustains your momentum.\" },
-  dilopho:   { label:\"Venom Spit\",      desc:\"8% chance each obstacle is dissolved before contact. Toxic aura!\" },
-};"""
+FILE = pathlib.Path(__file__).parent / "src" / "DinoGamePlus.jsx"
+src  = FILE.read_text(encoding="utf-8")
 
-new_passives = """export const DINO_PASSIVES = {
-  raptor:    { label:\"Speed Rush\",      desc:\"Every 500m grants +0.5% bone income (max 10%). Builds over distance.\" },
-  trex:      { label:\"Apex Predator\",   desc:\"Starts every run with 2 hearts. Raw power from the start.\" },
-  stego:     { label:\"Plate Armor\",     desc:\"Shield proc chance increased by 50%. The back plates absorb punishment.\" },
-  pterodac:  { label:\"Thermal Lift\",    desc:\"Activates fly mode for 5s every 30s — airborne pickups worth 1.5x.\" },
-  anky:      { label:\"Pulse Wave\",      desc:\"Every 40s emits a shockwave that destroys all surrounding obstacles.\" },
-  tri:       { label:\"Horn Burst\",      desc:\"Every 30s fires horns in all directions, destroying obstacles & projectiles.\" },
-  brachio:   { label:\"Long Reach\",      desc:\"Permanent +60px bone collection range. The long neck scoops up nearby bones.\" },
-  spino:     { label:\"Sail Power\",      desc:\"+30% bones earned during night only. The sail thrives in moonlight.\" },
-  pachy:     { label:\"Headbutt\",        desc:\"Every 30s headbutts forward for 5s, destroying front obstacles & projectiles.\" },
-  para:      { label:\"Resonance\",       desc:\"Combo timer lasts 25% longer, capped at 20 combo. The crest sustains momentum.\" },
-  dilopho:   { label:\"Phase Shift\",     desc:\"Every 30s phases through everything for 5s. Untouchable!\" },
-};"""
+# ─── PATCH 1: Fix timer thresholds ───────────────────────────────────────────
+# The pattern  `30*FPS60/60`  evaluates to 30 (frames), not 30 seconds.
+# We want 30 real seconds worth of dt accumulation.
+# At ~60fps, dt≈1 per frame, so 30s = 1800 dt-units → threshold = 30*FPS60
+# Replace every  `N*FPS60/60`  with  `N*FPS60`  (drop the /60)
 
-col = col.replace(old_passives, new_passives)
-with open("src/data/collectionData.jsx", "w", encoding="utf-8") as f:
-    f.write(col)
-print("collectionData.jsx updated")
+src = re.sub(r'(\d+)\*FPS60/60', lambda m: f'{m.group(1)}*FPS60', src)
 
-# ─── DinoGamePlus.jsx patches ────────────────────────────────────────────────
-with open("src/DinoGamePlus.jsx", "r", encoding="utf-8") as f:
-    src = f.read()
+# ─── PATCH 2: Add passive visual effects ─────────────────────────────────────
+# We inject a helper `drawPassiveEffect` right before the main component,
+# then call it from each passive activation site.
 
-# 1. startGame: trex starts with 2 hearts, init passive timers
-old_init = """      // Per-run passive state
-      raptorSpeedBonus:0,    // raptor: distance milestones -> bone %
-      trexDeathKillsDone:0,  // not needed here
-      pachyReviveUsed:false, // pachy: one free revive
-      paraComboDecayRate:0,  // para: combo decays slower
-      dilophoVenomActive:true,
-      // Tri: first obstacle destroyed
-      triFirstDestroyed:false,"""
+EFFECT_FN = r"""
+// ─── PASSIVE ACTIVATION EFFECTS ──────────────────────────────────────────────
+function drawPassiveEffect(ctx, type, x, y, frame, progress) {
+  // progress: 0→1 over the effect lifetime
+  const alpha = Math.min(1, (1 - progress) * 2);
+  ctx.save();
+  ctx.globalAlpha = alpha;
 
-new_init = """      // Per-run passive state
-      raptorSpeedBonus:0,    // raptor: distance milestones -> bone % (cap 10%)
-      pachyReviveUsed:false, // pachy: one free revive (legacy, kept for bullet hit)
-      // Timed passive cooldowns (in frames)
-      pterodacFlyTimer:0, pterodacFlyCooldown:0,   // fly 5s/30s
-      ankyPulseTimer:0,                             // pulse every 40s
-      triHornTimer:0,                               // horn burst every 30s
-      pachyHeadbuttTimer:0, pachyHeadbuttActive:0,  // headbutt 5s/30s
-      dilophoPhaseTimer:0, dilophoPhaseActive:0,    // phase 5s/30s
-      // Tri: first obstacle destroyed (legacy)
-      triFirstDestroyed:false,"""
+  if (type === "phaseShift") {
+    // Rippling ghost rings around dino
+    const rings = 3;
+    for (let i = 0; i < rings; i++) {
+      const r = 28 + i * 18 + progress * 40;
+      ctx.strokeStyle = "#66dd22";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x + 20, y + 24, r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    // Dashed outline flicker
+    ctx.strokeStyle = `rgba(102,221,34,${0.6 - progress * 0.6})`;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.strokeRect(x - 4, y - 4, 48, 56);
+    ctx.setLineDash([]);
+  }
 
-src = src.replace(old_init, new_init)
+  else if (type === "thermalLift") {
+    // Upward heat shimmer lines
+    for (let i = 0; i < 5; i++) {
+      const lx = x + 4 + i * 8;
+      const ly = y + 48 - progress * 60;
+      ctx.fillStyle = i % 2 === 0 ? "#44aaff" : "#88ddff";
+      ctx.fillRect(lx, ly, 2, 8 + i * 2);
+      ctx.fillRect(lx - 1, ly - 6, 4, 4);
+    }
+    // Wing glow
+    ctx.fillStyle = "rgba(68,170,255,0.25)";
+    ctx.fillRect(x - 20, y + 8, 80, 20);
+  }
 
-# 2. startGame: trex gets 2 lives
-old_lives = "      stats, lives:1+stats.extraLives, combo:0, comboTimer:0,"
-new_lives = "      stats, lives:(equippedDesign===\"trex\"?2:1)+stats.extraLives, combo:0, comboTimer:0,"
-src = src.replace(old_lives, new_lives)
+  else if (type === "pulseWave") {
+    // Expanding shockwave rings
+    const maxR = 180;
+    for (let i = 0; i < 2; i++) {
+      const r = progress * maxR + i * 30;
+      const a = Math.max(0, 0.7 - r / maxR);
+      ctx.strokeStyle = `rgba(255,170,0,${a})`;
+      ctx.lineWidth = 3 - i;
+      ctx.beginPath();
+      ctx.arc(x + 20, y + 24, r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    // Center flash
+    if (progress < 0.2) {
+      ctx.fillStyle = `rgba(255,200,50,${0.5 - progress * 2.5})`;
+      ctx.fillRect(x - 30, y - 20, 100, 80);
+    }
+  }
 
-# 3. Raptor passive: change 400m->500m, 3%->0.5%, cap at 10%
-old_raptor_passive = """        // ── Raptor passive: speed rush every 200m ────────────────────────────
-        if(designId===\"raptor\"){
-          const milestone=Math.floor(gs.distance/400);
-          if(milestone>gs.raptorSpeedBonus){
-            gs.raptorSpeedBonus=milestone;
-            addFloat(gs,`SPEED RUSH! +3% bones`,80,80,\"#00cc66\");
-          }
-        }"""
+  else if (type === "hornBurst") {
+    // 8-directional spike lines from dino center
+    const cx2 = x + 20, cy2 = y + 24;
+    const len = 40 + progress * 120;
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const ex = cx2 + Math.cos(angle) * len;
+      const ey = cy2 + Math.sin(angle) * len;
+      ctx.strokeStyle = `rgba(204,136,0,${0.8 - progress * 0.8})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(cx2, cy2);
+      ctx.lineTo(ex, ey);
+      ctx.stroke();
+      // Tip pixel
+      ctx.fillStyle = "#ffcc44";
+      ctx.fillRect(ex - 2, ey - 2, 4, 4);
+    }
+  }
 
-new_raptor_passive = """        // ── Raptor passive: +0.5% per 500m, cap 10% (20 milestones) ──────────
-        if(designId===\"raptor\"){
-          const milestone=Math.min(20,Math.floor(gs.distance/500));
-          if(milestone>gs.raptorSpeedBonus){
-            gs.raptorSpeedBonus=milestone;
-            const pct=(milestone*0.5).toFixed(1);
-            addFloat(gs,`SPEED RUSH! +${pct}% bones`,80,80,\"#00cc66\");
-          }
-        }"""
+  else if (type === "headbutt") {
+    // Forward charge trail — horizontal streaks ahead of dino
+    for (let i = 0; i < 4; i++) {
+      const lx = x + 40 + i * 20 + progress * 60;
+      ctx.fillStyle = `rgba(255,204,0,${0.6 - i * 0.12})`;
+      ctx.fillRect(lx, y + 10 + i * 6, 18 - i * 3, 3);
+    }
+    // Head impact flash
+    if (progress < 0.25) {
+      ctx.fillStyle = `rgba(255,220,50,${0.5 - progress * 2})`;
+      ctx.fillRect(x + 10, y, 30, 30);
+    }
+  }
 
-src = src.replace(old_raptor_passive, new_raptor_passive)
+  else if (type === "speedRush") {
+    // Speed lines behind dino
+    for (let i = 0; i < 5; i++) {
+      const lx = x - 20 - i * 14 - progress * 30;
+      const ly = y + 14 + i * 6;
+      ctx.fillStyle = `rgba(0,204,102,${0.5 - i * 0.08})`;
+      ctx.fillRect(lx, ly, 12 + i * 4, 2);
+    }
+  }
 
-# 4. Raptor multiplier: change 0.03 -> 0.005
-old_raptor_mult = "        const raptorM = designId===\"raptor\" ? 1+(gs.raptorSpeedBonus*0.03) : 1;"
-new_raptor_mult = "        const raptorM = designId===\"raptor\" ? 1+(gs.raptorSpeedBonus*0.005) : 1;"
-src = src.replace(old_raptor_mult, new_raptor_mult)
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+"""
 
-# 5. Spino: change 1.15 -> 1.30
-old_spino = "          const spinoMult = designId===\"spino\" && isNightNow ? 1.15 : 1;"
-new_spino = "          const spinoMult = designId===\"spino\" && isNightNow ? 1.30 : 1;"
-src = src.replace(old_spino, new_spino)
+# Insert the effect function just before "// ─── MAIN COMPONENT"
+ANCHOR = "// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────"
+if ANCHOR not in src:
+    print("ERROR: anchor not found — check file hasn't changed"); sys.exit(1)
+src = src.replace(ANCHOR, EFFECT_FN + "\n" + ANCHOR)
 
-# 6. Para: add combo cap at 20
-old_para_combo = """            // Para passive: combo decays slower (handled via comboTimer boost)
-            if(designId===\"para\") gs.comboTimer=150; // 25% longer"""
-new_para_combo = """            // Para passive: combo timer 25% longer, cap combo at 20
-            if(designId===\"para\"){ gs.comboTimer=150; if(gs.combo>20) gs.combo=20; }"""
-src = src.replace(old_para_combo, new_para_combo)
+# ─── PATCH 3: Track active passive effects in gsRef.current ──────────────────
+# Add `passiveEffects: []` to the startGame gsRef initializer
+OLD_EFFECTS = "      floatingTexts:[],"
+NEW_EFFECTS = "      floatingTexts:[],\n      passiveEffects:[],"
+src = src.replace(OLD_EFFECTS, NEW_EFFECTS, 1)
 
-# 7. Replace the timed passive block — insert after the raptor passive block
-# We'll insert the timed passives (pterodac, anky, tri, pachy, dilopho) right after raptor block
-# and before the celestial cycle block
+# ─── PATCH 4: Helper to spawn a passive effect ───────────────────────────────
+# Inject `addPassiveEffect` helper right after `addFloat` definition inside the loop
+OLD_ADD_FLOAT = "    const addFloat=(gs,text,x,y,color=\"#ffdd44\")=>{\n      gs.floatingTexts.push({text,x,y,vy:-1.4,life:65,maxLife:65,color});\n    };"
+NEW_ADD_FLOAT = (
+    OLD_ADD_FLOAT + "\n\n"
+    "    const addPassiveEffect=(gs,type,x,y)=>{\n"
+    "      gs.passiveEffects.push({type,x,y,life:0,maxLife:45});\n"
+    "    };"
+)
+src = src.replace(OLD_ADD_FLOAT, NEW_ADD_FLOAT, 1)
 
-old_celestial = "        // ── Celestial cycle ──────────────────────────────────────────────────"
-new_timed_passives = """        // ── Timed passives (60fps base) ──────────────────────────────────────
-        const FPS60 = 60; // timers in frames at ~60fps
-        if(designId===\"pterodac\"){
-          if(gs.pterodacFlyCooldown>0) gs.pterodacFlyCooldown-=dt;
-          if(gs.pterodacFlyTimer>0){
-            gs.pterodacFlyTimer-=dt;
-            // Force airborne during fly mode
-            if(gs.dino.onGround){ gs.dino.vy=JUMP_FORCE*0.7; gs.dino.onGround=false; }
-          } else if(gs.pterodacFlyCooldown<=0){
-            gs.pterodacFlyTimer=5*FPS60/60; // 5s in dt units (~300 frames)
-            gs.pterodacFlyCooldown=30*FPS60/60;
-            addFloat(gs,\"FLY MODE!\",gs.dino.x-10,gs.dino.y-28,\"#44aaff\");
-          }
-        }
-        if(designId===\"anky\"){
-          gs.ankyPulseTimer=(gs.ankyPulseTimer||0)+dt;
-          if(gs.ankyPulseTimer>=40*FPS60/60){
-            gs.ankyPulseTimer=0;
-            const before=gs.obstacles.length;
-            gs.obstacles=gs.obstacles.filter(o=>{
-              const hb=getObstacleHitbox(o);
-              const dx=hb.x+hb.w/2-(gs.dino.x+DINO_W/2);
-              const dy=hb.y+hb.h/2-(gs.dino.y+DINO_H/2);
-              return Math.sqrt(dx*dx+dy*dy)>160;
-            });
-            const cleared=before-gs.obstacles.length;
-            if(cleared>0) addFloat(gs,`PULSE WAVE! x${cleared}`,gs.dino.x-20,gs.dino.y-36,\"#ffaa00\");
-            else addFloat(gs,\"PULSE WAVE!\",gs.dino.x-20,gs.dino.y-36,\"#ffaa00\");
-          }
-        }
-        if(designId===\"tri\"){
-          gs.triHornTimer=(gs.triHornTimer||0)+dt;
-          if(gs.triHornTimer>=30*FPS60/60){
-            gs.triHornTimer=0;
-            // Destroy all obstacles and bullets on screen
-            const cleared=gs.obstacles.length;
-            gs.obstacles=[];
-            if(cleared>0) addFloat(gs,`HORN BURST! x${cleared}`,gs.dino.x-20,gs.dino.y-36,\"#cc8800\");
-            else addFloat(gs,\"HORN BURST!\",gs.dino.x-20,gs.dino.y-36,\"#cc8800\");
-          }
-        }
-        if(designId===\"pachy\"){
-          if(gs.pachyHeadbuttActive>0){
-            gs.pachyHeadbuttActive-=dt;
-            // Destroy obstacles/bullets in front (within 120px ahead)
-            gs.obstacles=gs.obstacles.filter(o=>{
-              const hb=getObstacleHitbox(o);
-              if(hb.x>gs.dino.x-10&&hb.x<gs.dino.x+120){
-                if(o.bullets) o.bullets=[];
-                return false;
-              }
-              return true;
-            });
-          } else {
-            gs.pachyHeadbuttTimer=(gs.pachyHeadbuttTimer||0)+dt;
-            if(gs.pachyHeadbuttTimer>=30*FPS60/60){
-              gs.pachyHeadbuttTimer=0;
-              gs.pachyHeadbuttActive=5*FPS60/60;
-              addFloat(gs,\"HEADBUTT!\",gs.dino.x-10,gs.dino.y-28,\"#ffcc00\");
-            }
-          }
-        }
-        if(designId===\"dilopho\"){
-          if(gs.dilophoPhaseActive>0){
-            gs.dilophoPhaseActive-=dt;
-          } else {
-            gs.dilophoPhaseTimer=(gs.dilophoPhaseTimer||0)+dt;
-            if(gs.dilophoPhaseTimer>=30*FPS60/60){
-              gs.dilophoPhaseTimer=0;
-              gs.dilophoPhaseActive=5*FPS60/60;
-              addFloat(gs,\"PHASE SHIFT!\",gs.dino.x-10,gs.dino.y-28,\"#66dd22\");
-            }
-          }
-        }
+# ─── PATCH 5: Trigger effects on each passive activation ─────────────────────
 
-        // ── Celestial cycle ──────────────────────────────────────────────────"""
+# 5a. Raptor speed rush milestone
+OLD_RAPTOR = (
+    '            if(milestone>gs.raptorSpeedBonus){\n'
+    '              gs.raptorSpeedBonus=milestone;\n'
+    '              const pct=(milestone*0.5).toFixed(1);\n'
+    '              addFloat(gs,`SPEED RUSH! +${pct}% bones`,80,80,"#00cc66");\n'
+    '            }'
+)
+NEW_RAPTOR = (
+    '            if(milestone>gs.raptorSpeedBonus){\n'
+    '              gs.raptorSpeedBonus=milestone;\n'
+    '              const pct=(milestone*0.5).toFixed(1);\n'
+    '              addFloat(gs,`SPEED RUSH! +${pct}% bones`,80,80,"#00cc66");\n'
+    '              addPassiveEffect(gs,"speedRush",gs.dino.x,gs.dino.y);\n'
+    '            }'
+)
+src = src.replace(OLD_RAPTOR, NEW_RAPTOR, 1)
 
-src = src.replace(old_celestial, new_timed_passives)
+# 5b. Pterodac thermal lift
+OLD_PTERO = (
+    '            gs.pterodacFlyTimer=5*FPS60; // 5s in dt units (~300 frames)\n'
+    '            gs.pterodacFlyCooldown=30*FPS60;\n'
+    '            addFloat(gs,"FLY MODE!",gs.dino.x-10,gs.dino.y-28,"#44aaff");'
+)
+NEW_PTERO = (
+    '            gs.pterodacFlyTimer=5*FPS60; // 5s in dt units (~300 frames)\n'
+    '            gs.pterodacFlyCooldown=30*FPS60;\n'
+    '            addFloat(gs,"FLY MODE!",gs.dino.x-10,gs.dino.y-28,"#44aaff");\n'
+    '            addPassiveEffect(gs,"thermalLift",gs.dino.x,gs.dino.y);'
+)
+src = src.replace(OLD_PTERO, NEW_PTERO, 1)
 
-# 8. Pterodac: airborne pickup bonus — keep existing 1.5x but also active during fly mode
-# The existing pteroM already checks !gs.dino.onGround, fly mode forces airborne so it works naturally
+# 5c. Anky pulse wave
+OLD_ANKY = (
+    '            if(cleared>0) addFloat(gs,`PULSE WAVE! x${cleared}`,gs.dino.x-20,gs.dino.y-36,"#ffaa00");\n'
+    '            else addFloat(gs,"PULSE WAVE!",gs.dino.x-20,gs.dino.y-36,"#ffaa00");'
+)
+NEW_ANKY = (
+    '            if(cleared>0) addFloat(gs,`PULSE WAVE! x${cleared}`,gs.dino.x-20,gs.dino.y-36,"#ffaa00");\n'
+    '            else addFloat(gs,"PULSE WAVE!",gs.dino.x-20,gs.dino.y-36,"#ffaa00");\n'
+    '            addPassiveEffect(gs,"pulseWave",gs.dino.x,gs.dino.y);'
+)
+src = src.replace(OLD_ANKY, NEW_ANKY, 1)
 
-# 9. Dilopho: replace old 8% venom dissolve with phase-through (dilophoPhaseActive)
-old_dilopho_passive = """            // Dilopho passive: 8% venom dissolve
-            if(designId===\"dilopho\"&&Math.random()<0.08&&rectsOverlap(DX,DY,DW+30,DH,hb.x,hb.y,hb.w,hb.h)){
-              gs.obstacles.splice(i,1);
-              addFloat(gs,\"VENOM!\",hb.x,hb.y-10,\"#66dd22\");
-              continue;
-            }"""
+# 5d. Tri horn burst
+OLD_TRI = (
+    '            if(cleared>0) addFloat(gs,`HORN BURST! x${cleared}`,gs.dino.x-20,gs.dino.y-36,"#cc8800");\n'
+    '            else addFloat(gs,"HORN BURST!",gs.dino.x-20,gs.dino.y-36,"#cc8800");'
+)
+NEW_TRI = (
+    '            if(cleared>0) addFloat(gs,`HORN BURST! x${cleared}`,gs.dino.x-20,gs.dino.y-36,"#cc8800");\n'
+    '            else addFloat(gs,"HORN BURST!",gs.dino.x-20,gs.dino.y-36,"#cc8800");\n'
+    '            addPassiveEffect(gs,"hornBurst",gs.dino.x,gs.dino.y);'
+)
+src = src.replace(OLD_TRI, NEW_TRI, 1)
 
-new_dilopho_passive = """            // Dilopho passive: phase through everything when active
-            if(designId===\"dilopho\"&&gs.dilophoPhaseActive>0) continue;"""
+# 5e. Pachy headbutt
+OLD_PACHY = '              addFloat(gs,"HEADBUTT!",gs.dino.x-10,gs.dino.y-28,"#ffcc00");'
+NEW_PACHY = (
+    '              addFloat(gs,"HEADBUTT!",gs.dino.x-10,gs.dino.y-28,"#ffcc00");\n'
+    '              addPassiveEffect(gs,"headbutt",gs.dino.x,gs.dino.y);'
+)
+src = src.replace(OLD_PACHY, NEW_PACHY, 1)
 
-src = src.replace(old_dilopho_passive, new_dilopho_passive)
+# 5f. Dilopho phase shift
+OLD_DILOPHO = '              addFloat(gs,"PHASE SHIFT!",gs.dino.x-10,gs.dino.y-28,"#66dd22");'
+NEW_DILOPHO = (
+    '              addFloat(gs,"PHASE SHIFT!",gs.dino.x-10,gs.dino.y-28,"#66dd22");\n'
+    '              addPassiveEffect(gs,"phaseShift",gs.dino.x,gs.dino.y);'
+)
+src = src.replace(OLD_DILOPHO, NEW_DILOPHO, 1)
 
-# 10. Ghost check: also skip collision when dilopho phase is active
-# The dilopho phase is handled by the continue above, but we also need bullet immunity
-# Add dilopho phase to the ghost/giant bullet immunity check
-old_bullet_immune = "        if(!hasGhost&&!hasGiant&&!hasSpdPw&&gs.dino.invTimer<=0){"
-new_bullet_immune = "        if(!hasGhost&&!hasGiant&&!hasSpdPw&&gs.dino.invTimer<=0&&!(designId===\"dilopho\"&&gs.dilophoPhaseActive>0)){"
-src = src.replace(old_bullet_immune, new_bullet_immune)
+# ─── PATCH 6: Tick and render passive effects ─────────────────────────────────
+# Tick: advance life counter (add after floatingTexts filter)
+OLD_FLOAT_TICK = "        gs.floatingTexts=gs.floatingTexts.filter(t=>{t.y+=t.vy*dt;t.life-=dt;return t.life>0;});"
+NEW_FLOAT_TICK = (
+    OLD_FLOAT_TICK + "\n"
+    "        gs.passiveEffects=gs.passiveEffects.filter(e=>{e.life+=dt;return e.life<e.maxLife;});"
+)
+src = src.replace(OLD_FLOAT_TICK, NEW_FLOAT_TICK, 1)
 
-# 11. Raptor HUD indicator: update % display
-old_raptor_hud = """      // Raptor speed rush indicator
-      if(designId2===\"raptor\"&&gs.raptorSpeedBonus>0){
-        ctx.fillStyle=HUD.hud;ctx.font=\"9px 'Courier New'\";
-        ctx.fillText(`RUSH x${gs.raptorSpeedBonus} (+${(gs.raptorSpeedBonus*3)}%)`,12,68);
-      }"""
+# Render: draw effects just before the dino draw call
+OLD_DINO_DRAW = "      // Draw dino  Epass onGround so legs freeze mid-air\n      drawDino("
+NEW_DINO_DRAW = (
+    "      // Passive effects\n"
+    "      for(const e of gs.passiveEffects){\n"
+    "        drawPassiveEffect(ctx,e.type,e.x,e.y,gs.frame,e.life/e.maxLife);\n"
+    "      }\n\n"
+    "      // Draw dino  Epass onGround so legs freeze mid-air\n"
+    "      drawDino("
+)
+src = src.replace(OLD_DINO_DRAW, NEW_DINO_DRAW, 1)
 
-new_raptor_hud = """      // Raptor speed rush indicator
-      if(designId2===\"raptor\"&&gs.raptorSpeedBonus>0){
-        ctx.fillStyle=HUD.hud;ctx.font=\"9px 'Courier New'\";
-        ctx.fillText(`RUSH +${(gs.raptorSpeedBonus*0.5).toFixed(1)}% (${gs.raptorSpeedBonus}/20)`,12,68);
-      }"""
-
-src = src.replace(old_raptor_hud, new_raptor_hud)
-
-# 12. Pachy: old headbutt revive on obstacle collision — keep for bullet hits but remove from obstacle collision
-# The old pachy revive on obstacle collision block:
-old_pachy_obstacle = """                // Pachy passive: one free revive per run
-                if(designId===\"pachy\"&&!gs.pachyReviveUsed){
-                  gs.pachyReviveUsed=true;
-                  gs.obstacles.splice(i,1);
-                  gs.dino.invTimer=30;
-                  addFloat(gs,\"HARD HEAD! REVIVED!\",gs.dino.x-20,gs.dino.y-30,\"#ffcc00\");
-                } else {
-                  endGame(gs); return;
-                }"""
-
-new_pachy_obstacle = """                endGame(gs); return;"""
-
-src = src.replace(old_pachy_obstacle, new_pachy_obstacle)
-
-# 13. Pachy: old headbutt revive on bullet hit — remove too
-old_pachy_bullet = """                } else if(designId===\"pachy\"&&!gs.pachyReviveUsed){
-                  gs.pachyReviveUsed=true; gs.dino.invTimer=30;
-                  addFloat(gs,\"HARD HEAD! REVIVED!\",gs.dino.x-20,gs.dino.y-30,\"#ffcc00\");
-                } else {
-                  endGame(gs); return;
-                }"""
-
-new_pachy_bullet = """                } else {
-                  endGame(gs); return;
-                }"""
-
-src = src.replace(old_pachy_bullet, new_pachy_bullet)
-
-# 14. Tri: remove old "first obstacle destroyed" logic (replaced by timed horn burst)
-old_tri_first = """        // Tri passive: destroy first obstacle automatically
-        if(designId===\"tri\"&&!gs.triFirstDestroyed&&gs.obstacles.length>0){
-          gs.triFirstDestroyed=true;
-          gs.obstacles.splice(0,1);
-          addFloat(gs,\"HORN CHARGE!\",80,80,\"#cc8800\");
-        }"""
-
-new_tri_first = """        // Tri: horn burst handled by timed passive above"""
-
-src = src.replace(old_tri_first, new_tri_first)
-
-with open("src/DinoGamePlus.jsx", "w", encoding="utf-8") as f:
-    f.write(src)
-print("DinoGamePlus.jsx updated")
-print("All passive changes applied!")
+# ─── WRITE ────────────────────────────────────────────────────────────────────
+FILE.write_text(src, encoding="utf-8")
+print("OK Patched successfully:", FILE)

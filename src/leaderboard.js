@@ -46,8 +46,10 @@ export async function isNameTaken(name) {
 export async function fetchLeaderboard() {
   const { data, error } = await supabase
     .from("leaderboard")
-    .select("id, player_id, name, best_dist, best_fossils")
+    .select("id, player_id, name, best_dist, best_fossils, updated_at")
     .order("best_dist", { ascending: false })
+    .order("best_fossils", { ascending: false })
+    .order("updated_at", { ascending: true })
     .limit(50);
   if (error) { console.error("Leaderboard fetch error:", error.message); return []; }
   return data || [];

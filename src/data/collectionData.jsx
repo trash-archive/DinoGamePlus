@@ -1,33 +1,9 @@
 // ─── COLLECTION DATA ─────────────────────────────────────────────────────────
 // Sceneries, skins, dino designs, passives, and passive icons
 
-// ─── SCENERIES ────────────────────────────────────────────────────────────────
-export const SCENERIES = [
-  { id:"classic",  label:"Wasteland",     cost:0,    desc:"The digital wasteland  Ewhere it all began",  dayBg:"#f5f5f0", nightBg:"#111118", groundColor:"#222222", groundTop:"#444444", cloudColor:"#dddddd", obstacleSet:"plants",  accentColor:"#444444" },
-  { id:"plains",   label:"Grasslands",    cost:3000,  desc:"The classic prehistoric plains",               dayBg:"#e8f4d4", nightBg:"#0d1a0a", groundColor:"#5a3e1b", groundTop:"#6b8c3e", cloudColor:"#c8ddb0", obstacleSet:"plants",  accentColor:"#6b8c3e" },
-  { id:"desert",   label:"Desert",        cost:6000,  desc:"Scorching sands and ancient dunes",            dayBg:"#f5dfa0", nightBg:"#1a0d00", groundColor:"#c4883a", groundTop:"#e0a850", cloudColor:"#f0d080", obstacleSet:"desert",  accentColor:"#e07020" },
-  { id:"arctic",   label:"Arctic Tundra", cost:10000, desc:"Frozen wastes from the ice age",              dayBg:"#d8eeff", nightBg:"#050a14", groundColor:"#8ab0cc", groundTop:"#ddeeff", cloudColor:"#eef6ff", obstacleSet:"arctic",  accentColor:"#88ccee" },
-  { id:"volcano",  label:"Volcanic Rift", cost:18000, desc:"Lava flows and volcanic fury",                dayBg:"#2a0800", nightBg:"#0a0200", groundColor:"#3a1a08", groundTop:"#8a2a00", cloudColor:"#6a2a10", obstacleSet:"volcano", accentColor:"#ff4400" },
-  { id:"jungle",   label:"Dense Jungle",  cost:25000, desc:"Ancient overgrown rainforest",                dayBg:"#0a2a10", nightBg:"#020a04", groundColor:"#1a3a10", groundTop:"#2a5a18", cloudColor:"#1a3a20", obstacleSet:"jungle",  accentColor:"#44aa22" },
-  { id:"ruins",    label:"Ancient Ruins", cost:40000, desc:"Crumbling stone temples of the ancients",     dayBg:"#d4c8a0", nightBg:"#0a0808", groundColor:"#8a7a5a", groundTop:"#a89878", cloudColor:"#c4b888", obstacleSet:"ruins",   accentColor:"#a08050" },
-  { id:"cave",     label:"Crystal Cave",  cost:75000, desc:"Glowing crystals in the deep earth",          dayBg:"#080418", nightBg:"#020108", groundColor:"#2a1a4a", groundTop:"#3a2a6a", cloudColor:"#3a2a6a", obstacleSet:"cave",    accentColor:"#8844ff" },
-];
+export { SCENERIES } from "./sceneryData.js";
 
-// ─── SKINS ────────────────────────────────────────────────────────────────────
-export const SKINS = [
-  { id:"classic",  label:"Classic",   cost:0,   color:"#2a2a2a", eyeColor:"#f0f0f0", accent:"#3a3a3a", plateColor:"#333",    frillColor:"#444" },
-  { id:"bone",     label:"Bone",      cost:1500,  color:"#d4c9a8", eyeColor:"#3a6a2a", accent:"#c0b48e", plateColor:"#c8bd9c", frillColor:"#b8a880" },
-  { id:"neon",     label:"Neon",      cost:2500,  color:"#00cc66", eyeColor:"#ffffff", accent:"#00aa44", plateColor:"#00aa55", frillColor:"#00ff88" },
-  { id:"shadow",   label:"Shadow",    cost:3500,  color:"#1a1a1a", eyeColor:"#dd3333", accent:"#0a0a0a", plateColor:"#151515", frillColor:"#222" },
-  { id:"robo",     label:"Robo",      cost:5000,  color:"#5599aa", eyeColor:"#ffdd00", accent:"#336688", plateColor:"#446688", frillColor:"#6699bb" },
-  { id:"gold",     label:"Gold",      cost:8000,  color:"#d4a820", eyeColor:"#2a2a2a", accent:"#b89010", plateColor:"#c09810", frillColor:"#e8c030" },
-  { id:"lava",     label:"Lava",      cost:10000, color:"#aa2200", eyeColor:"#ffaa00", accent:"#661100", plateColor:"#882200", frillColor:"#cc3300" },
-  { id:"ice",      label:"Ice",       cost:12000, color:"#88ccee", eyeColor:"#003388", accent:"#66aacc", plateColor:"#77bbdd", frillColor:"#aaddff" },
-  { id:"void",     label:"Void",      cost:20000, color:"#110022", eyeColor:"#aa33ff", accent:"#0a0015", plateColor:"#1a0033", frillColor:"#220044" },
-  { id:"crystal",  label:"Crystal",   cost:25000, color:"#cc77ee", eyeColor:"#ffffff", accent:"#994dbb", plateColor:"#bb66dd", frillColor:"#dd99ff" },
-  { id:"rust",     label:"Rust",      cost:6000,  color:"#8a3a18", eyeColor:"#ffcc55", accent:"#5a2a10", plateColor:"#6a3015", frillColor:"#aa4422" },
-  { id:"obsidian", label:"Obsidian",  cost:35000, color:"#1a1a2a", eyeColor:"#44ddff", accent:"#0a0a18", plateColor:"#15152a", frillColor:"#2a2a3a" },
-];
+export { SKINS } from "./paletteData.js";
 
 // ─── DINO DESIGNS ─────────────────────────────────────────────────────────────
 export const DINO_DESIGNS = [
@@ -42,6 +18,7 @@ export const DINO_DESIGNS = [
   { id:"pachy",    label:"Pachycephalosaurus", cost:15000, desc:"Dome-headed headbutter" },
   { id:"para",     label:"Parasaurolophus", cost:20000, desc:"Crested hadrosaur, crest resonates" },
   { id:"dilopho",  label:"Dilophosaurus", cost:30000, desc:"Frilled venomous sprinter" },
+  { id:"hasim",    label:"Hasim",          cost:0,     desc:"Just happy to be here.", unlockDist:55000 },
 ];
 
 // ─── DINO PASSIVE SKILLS ──────────────────────────────────────────────────────
@@ -57,6 +34,7 @@ export const DINO_PASSIVES = {
   pachy:     { label:"Headbutt",        desc:"Every 30s headbutts forward for 5s, destroying front obstacles & projectiles." },
   para:      { label:"Resonance",       desc:"Combo timer lasts 25% longer, capped at 20 combo. The crest sustains momentum." },
   dilopho:   { label:"Phase Shift",     desc:"Every 30s phases through everything for 5s. Untouchable!" },
+  hasim:     { label:"Nothing",          desc:"Does absolutely nothing. He's just happy to be here." },
 };
 
 // ─── PASSIVE ICONS ────────────────────────────────────────────────────────────
@@ -178,5 +156,14 @@ export const PASSIVE_ICONS = {
       <rect x="3" y="8" width="1" height="2" fill="currentColor"/>
       <rect x="6" y="8" width="1" height="2" fill="currentColor"/>
       <rect x="4" y="4" width="2" height="2" fill="currentColor"/>
+    </svg>,
+  hasim:
+    <svg width="12" height="12" viewBox="0 0 10 10" style={S}>
+      {/* Shrug — two arms raised, dot in center */}
+      <rect x="4" y="4" width="2" height="2" fill="currentColor"/>
+      <rect x="0" y="2" width="3" height="2" fill="currentColor"/>
+      <rect x="7" y="2" width="3" height="2" fill="currentColor"/>
+      <rect x="2" y="0" width="2" height="3" fill="currentColor"/>
+      <rect x="6" y="0" width="2" height="3" fill="currentColor"/>
     </svg>,
 };

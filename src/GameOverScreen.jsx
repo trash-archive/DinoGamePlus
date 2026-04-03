@@ -82,7 +82,7 @@ export default function GameOverScreen({ lastRun, bestDist, lastRunRank, getSave
             }}>
               #{lastRunRank}
             </span>
-            {" "}ON THE BOARD
+            {" "}ON THE LEADERBOARD
             <div style={{ fontSize: 8, color: "#888", marginTop: 3, letterSpacing: 1 }}>as {getSavedName()}</div>
           </div>
         )}

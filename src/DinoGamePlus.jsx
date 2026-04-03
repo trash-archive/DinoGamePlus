@@ -23,6 +23,18 @@ import LeaderboardScreen from "./LeaderboardScreen";
 import ShopScreen from "./ShopScreen";
 import { UPGRADES, UPGRADE_CATS, POWERUP_DEFS, getUpgradeCost } from "./data/gameData";
 import { SCENERIES, SKINS, DINO_DESIGNS, DINO_PASSIVES, PASSIVE_ICONS } from "./data/collectionData.jsx";
+import { drawRaptor } from "./dinos/raptor";
+import { drawTrex } from "./dinos/trex";
+import { drawStego } from "./dinos/stego";
+import { drawPterodac } from "./dinos/pterodac";
+import { drawAnky } from "./dinos/anky";
+import { drawTri } from "./dinos/tri";
+import { drawBrachio } from "./dinos/brachio";
+import { drawSpino } from "./dinos/spino";
+import { drawPachy } from "./dinos/pachy";
+import { drawPara } from "./dinos/para";
+import { drawDilopho } from "./dinos/dilopho";
+import { drawHasim } from "./dinos/hasim";
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 const GRAVITY    = 0.55;
@@ -165,9 +177,8 @@ function drawDino(ctx, x, y, frame, dead, skin, design, isGiant, isDucking, isTi
   // Death tumble: rotate around center
   if(dead && deathAnim) {
     const cx2 = x + DINO_W/2, cy2 = y + DINO_H/2;
-    const angle = Math.min(deathAnim.angle || 0, Math.PI * 1.1);
     ctx.translate(cx2, cy2);
-    ctx.rotate(angle);
+    ctx.rotate(deathAnim.angle || 0);
     ctx.translate(-cx2, -cy2);
   }
 
@@ -183,585 +194,41 @@ function drawDino(ctx, x, y, frame, dead, skin, design, isGiant, isDucking, isTi
 
   // ── RAPTOR ────────────────────────────────────────────────────────────────
   if(id === "raptor") {
-    if(isDucking) {
-      // Duck: low crouched profile
-      ctx.fillStyle = dead ? "#888" : c;
-      ctx.fillRect(x+2, y+DINO_H-DUCK_H, 34, DUCK_H-6);
-      ctx.fillRect(x+16, y+DINO_H-DUCK_H-10, 22, 14);
-      // Tail flush
-      ctx.fillRect(x-8, y+DINO_H-DUCK_H+2, 12, 5);
-      // Neck connects cleanly  ENO stripe here
-      // Eye
-      ctx.fillStyle = dead ? "#555" : ec;
-      ctx.fillRect(x+30, y+DINO_H-DUCK_H-8, 6, 6);
-      ctx.fillStyle = "#000";
-      ctx.fillRect(x+32, y+DINO_H-DUCK_H-6, 3, 3);
-      // Feet tucked
-      ctx.fillStyle = dead ? "#888" : c;
-      ctx.fillRect(x+8,  y+DINO_H-6, 7, 6);
-      ctx.fillRect(x+22, y+DINO_H-6, 7, 6);
-    } else {
-      // Body  Eone unified shape, no stripe
-      ctx.fillStyle = dead ? "#888" : c;
-      ctx.fillRect(x+6, y+14, 28, 22);   // torso
-      // Neck+head as one block  ENO neck stripe
-      ctx.fillRect(x+20, y+2, 20, 16);   // head+neck block
-      // Belly accent  Eonly on belly, not the neck
-      ctx.fillStyle = dead ? "#666" : ac;
-      ctx.fillRect(x+8, y+26, 24, 6);    // belly stripe only on lower torso
-      // Tail
-      ctx.fillStyle = dead ? "#888" : c;
-      ctx.fillRect(x-4,  y+22, 12, 5);
-      ctx.fillRect(x-10, y+26, 8,  4);
-      ctx.fillRect(x-14, y+28, 6,  3);
-      // Arms (tiny raptor arms)
-      ctx.fillRect(x+12, y+18, 8, 5);
-      ctx.fillRect(x+12, y+23, 6, 3);
-      // Eye
-      ctx.fillStyle = dead ? "#555" : ec;
-      ctx.fillRect(x+32, y+3, 6, 6);
-      ctx.fillStyle = "#000";
-      ctx.fillRect(x+34, y+5, 3, 3);
-      // Nostril
-      ctx.fillStyle = dead ? "#666" : ac;
-      ctx.fillRect(x+38, y+5, 2, 2);
-      // Death X eyes
-      if(dead) {
-        ctx.fillStyle = "#777";
-        ctx.fillRect(x+30, y+5, 8, 2);
-        ctx.fillRect(x+33, y+3, 2, 6);
-      }
-      // Legs
-      ctx.fillStyle = dead ? "#888" : c;
-      if(!dead) {
-        if(f === 0) {
-          // Left leg back, right leg forward
-          ctx.fillRect(x+9,  y+36, 7, 10); // back leg straight
-          ctx.fillRect(x+9,  y+46, 10, 3); // back foot
-          ctx.fillRect(x+22, y+36, 7, 5);  // front leg up
-          ctx.fillRect(x+22, y+41, 10, 4); // front shin angled
-          ctx.fillRect(x+28, y+45, 8,  3); // front foot
-        } else {
-          ctx.fillRect(x+9,  y+36, 7, 5);  // back leg up
-          ctx.fillRect(x+9,  y+41, 10, 4); // back shin
-          ctx.fillRect(x+15, y+45, 8,  3); // back foot
-          ctx.fillRect(x+22, y+36, 7, 10); // front leg straight
-          ctx.fillRect(x+22, y+46, 10, 3); // front foot
-        }
-      } else {
-        ctx.fillRect(x+9,  y+36, 7, 12);
-        ctx.fillRect(x+22, y+36, 7, 12);
-      }
-    }
+    drawRaptor(ctx, x, y, dead, c, ec, ac, isDucking, f);
 
-  // ── T-REX ─────────────────────────────────────────────────────────────────
   } else if(id === "trex") {
-    if(isDucking) {
-      ctx.fillStyle = dead ? "#888" : c;
-      ctx.fillRect(x+2, y+DINO_H-DUCK_H, 36, DUCK_H-4);
-      ctx.fillRect(x+16, y+DINO_H-DUCK_H-14, 22, 18);
-      // Tiny arms even when ducking
-      ctx.fillRect(x+14, y+DINO_H-DUCK_H+2, 8, 5);
-      ctx.fillStyle = dead ? "#555" : ec;
-      ctx.fillRect(x+30, y+DINO_H-DUCK_H-10, 7, 7);
-      ctx.fillStyle = "#000"; ctx.fillRect(x+32, y+DINO_H-DUCK_H-8, 4, 4);
-      ctx.fillStyle = dead ? "#888" : c;
-      ctx.fillRect(x+8,  y+DINO_H-5, 9, 5);
-      ctx.fillRect(x+24, y+DINO_H-5, 9, 5);
-    } else {
-      // Stocky body  Eunified, no neck stripe
-      ctx.fillStyle = dead ? "#888" : c;
-      ctx.fillRect(x+2,  y+10, 34, 28);  // big torso
-      ctx.fillRect(x+16, y+0,  22, 14);  // head block
-      // Tail
-      ctx.fillRect(x-4,  y+20, 8,  6);
-      ctx.fillRect(x-10, y+24, 8,  5);
-      ctx.fillRect(x-14, y+27, 6,  4);
-      // Tiny T-Rex arms (iconic!)
-      ctx.fillStyle = dead ? "#777" : ac;
-      ctx.fillRect(x+10, y+16, 10, 6);
-      ctx.fillRect(x+10, y+22, 7,  3);
-      ctx.fillRect(x+17, y+24, 5,  3);
-      // Belly
-      ctx.fillStyle = dead ? "#888" : c;
-      // Eye
-      ctx.fillStyle = dead ? "#555" : ec;
-      ctx.fillRect(x+32, y+2, 7, 7);
-      ctx.fillStyle = "#000"; ctx.fillRect(x+34, y+4, 4, 4);
-      if(dead) { ctx.fillStyle="#777"; ctx.fillRect(x+30,y+4,8,2); ctx.fillRect(x+33,y+2,2,6); }
-      // Legs
-      ctx.fillStyle = dead ? "#888" : c;
-      if(!dead) {
-        if(f === 0) {
-          ctx.fillRect(x+6,  y+38, 9, 10); ctx.fillRect(x+6,  y+48, 13, 4);
-          ctx.fillRect(x+22, y+38, 9, 5);  ctx.fillRect(x+22, y+43, 12, 5); ctx.fillRect(x+30, y+48, 8, 4);
-        } else {
-          ctx.fillRect(x+6,  y+38, 9, 5);  ctx.fillRect(x+6,  y+43, 12, 5); ctx.fillRect(x+14, y+48, 8, 4);
-          ctx.fillRect(x+22, y+38, 9, 10); ctx.fillRect(x+22, y+48, 13, 4);
-        }
-      } else {
-        ctx.fillRect(x+6, y+38, 9, 12); ctx.fillRect(x+22, y+38, 9, 12);
-      }
-    }
+    drawTrex(ctx, x, y, dead, c, ec, ac, isDucking, f);
 
-  // ── STEGOSAURUS ───────────────────────────────────────────────────────────
   } else if(id === "stego") {
-    if(isDucking) {
-      ctx.fillStyle = dead ? "#888" : c;
-      ctx.fillRect(x+4, y+DINO_H-DUCK_H, 34, DUCK_H-4);
-      ctx.fillRect(x+16, y+DINO_H-DUCK_H-12, 20, 16);
-      ctx.fillStyle = dead ? "#666" : pc;
-      for(let i=0;i<3;i++) ctx.fillRect(x+10+i*9, y+DINO_H-DUCK_H-5-i*2, 5, 7+i*2);
-      ctx.fillStyle = dead ? "#555" : ec;
-      ctx.fillRect(x+28, y+DINO_H-DUCK_H-8, 6, 6);
-      ctx.fillStyle = "#000"; ctx.fillRect(x+30, y+DINO_H-DUCK_H-6, 3, 3);
-    } else {
-      ctx.fillStyle = dead ? "#888" : c;
-      ctx.fillRect(x+4, y+14, 30, 24);  // torso
-      ctx.fillRect(x+18, y+4, 18, 14); // head/neck unified
-      // Back plates  Ealternating heights
-      ctx.fillStyle = dead ? "#666" : pc;
-      const plateHeights = [10, 14, 16, 14, 10, 7];
-      for(let i=0;i<6;i++) {
-        const ph = plateHeights[i];
-        ctx.fillRect(x+6+i*5, y+10-ph, 4, ph);
-      }
-      ctx.fillStyle = dead ? "#888" : c;
-      // Club tail
-      ctx.fillRect(x-4,  y+22, 10, 5);
-      ctx.fillRect(x-10, y+24, 8,  5);
-      ctx.fillStyle = dead ? "#666" : pc;
-      ctx.fillRect(x-14, y+22, 8,  9); // club
-      ctx.fillStyle = dead ? "#888" : c;
-      // Short arms
-      ctx.fillRect(x+10, y+20, 7, 5);
-      ctx.fillRect(x+10, y+25, 5, 3);
-      // Eye
-      ctx.fillStyle = dead ? "#555" : ec;
-      ctx.fillRect(x+28, y+6, 6, 6);
-      ctx.fillStyle = "#000"; ctx.fillRect(x+30, y+8, 3, 3);
-      if(dead) { ctx.fillStyle="#777"; ctx.fillRect(x+26,y+8,8,2); ctx.fillRect(x+29,y+6,2,6); }
-      // Legs  Estego has 4 stout legs drawn as 2 pairs visible
-      ctx.fillStyle = dead ? "#888" : c;
-      if(!dead) {
-        if(f === 0) {
-          ctx.fillRect(x+8,  y+38, 8, 10); ctx.fillRect(x+8,  y+48, 10, 3);
-          ctx.fillRect(x+22, y+38, 8, 6);  ctx.fillRect(x+22, y+44, 10, 4); ctx.fillRect(x+28, y+48, 6, 3);
-        } else {
-          ctx.fillRect(x+8,  y+38, 8, 6);  ctx.fillRect(x+8,  y+44, 10, 4); ctx.fillRect(x+14, y+48, 6, 3);
-          ctx.fillRect(x+22, y+38, 8, 10); ctx.fillRect(x+22, y+48, 10, 3);
-        }
-      } else {
-        ctx.fillRect(x+8, y+38, 8, 10); ctx.fillRect(x+22, y+38, 8, 10);
-      }
-    }
+    drawStego(ctx, x, y, dead, c, ec, pc, isDucking, f);
 
-  // ── PTERODACTYL ───────────────────────────────────────────────────────────
   } else if(id === "pterodac") {
-    // Pterodactyl always "flies"  Eno ground legs, wings always animate
-    ctx.fillStyle = dead ? "#888" : c;
-    // Body
-    ctx.fillRect(x+10, y+16, 24, 16);
-    // Neck + head  Eno stripe
-    ctx.fillRect(x+20, y+6,  18, 13);
-    // Long beak/crest
-    ctx.fillRect(x+30, y+2,  14, 4);
-    // Back crest
-    ctx.fillStyle = dead ? "#666" : fc;
-    ctx.fillRect(x+10, y+10, 3, 8);
-    ctx.fillRect(x+13, y+7,  3, 11);
-    ctx.fillRect(x+16, y+5,  3, 13);
-    // Wings  Eflap based on frame (always animates regardless of ground)
-    ctx.fillStyle = dead ? "#777" : ac;
-    if(wf === 0) {
-      // Wings up
-      ctx.fillRect(x-10, y+4,  22, 8);
-      ctx.fillRect(x-16, y+2,  8,  6);
-      ctx.fillRect(x+32, y+4,  20, 8);
-      ctx.fillRect(x+50, y+2,  8,  6);
-    } else {
-      // Wings mid
-      ctx.fillRect(x-6,  y+14, 18, 6);
-      ctx.fillRect(x-10, y+18, 6,  5);
-      ctx.fillRect(x+30, y+14, 18, 6);
-      ctx.fillRect(x+46, y+18, 6,  5);
-    }
-    // Membrane texture
-    ctx.fillStyle = dead ? "#777" : c;
-    ctx.fillRect(x+0,  y+20, 12, 3);
-    ctx.fillRect(x+32, y+20, 12, 3);
-    // Eye
-    ctx.fillStyle = dead ? "#555" : ec;
-    ctx.fillRect(x+32, y+8, 5, 5);
-    ctx.fillStyle = "#000"; ctx.fillRect(x+33, y+9, 3, 3);
-    if(dead) { ctx.fillStyle="#777"; ctx.fillRect(x+30,y+9,7,2); ctx.fillRect(x+33,y+7,2,5); }
-    // Feet/talons dangling
-    ctx.fillStyle = dead ? "#888" : c;
-    ctx.fillRect(x+14, y+32, 5, 8); ctx.fillRect(x+10, y+40, 8, 3);
-    ctx.fillRect(x+24, y+32, 5, 8); ctx.fillRect(x+22, y+40, 8, 3);
+    drawPterodac(ctx, x, y, dead, c, ec, ac, fc, wf);
 
-  // ── ANKYLOSAURUS ──────────────────────────────────────────────────────────
   } else if(id === "anky") {
-    if(isDucking) {
-      ctx.fillStyle = dead ? "#888" : c;
-      ctx.fillRect(x+0, y+DINO_H-DUCK_H, 40, DUCK_H);
-      ctx.fillRect(x+16, y+DINO_H-DUCK_H-10, 20, 14);
-      ctx.fillStyle = dead ? "#666" : pc;
-      for(let i=0;i<5;i++) ctx.fillRect(x+2+i*7, y+DINO_H-DUCK_H-4, 6, 6);
-      ctx.fillStyle = dead ? "#555" : ec;
-      ctx.fillRect(x+28, y+DINO_H-DUCK_H-6, 6, 6);
-      ctx.fillStyle = "#000"; ctx.fillRect(x+30, y+DINO_H-DUCK_H-4, 3, 3);
-    } else {
-      ctx.fillStyle = dead ? "#888" : c;
-      ctx.fillRect(x+0,  y+12, 40, 26);  // wide body
-      ctx.fillRect(x+16, y+4,  20, 12);  // head unified
-      // Armor scutes on back
-      ctx.fillStyle = dead ? "#666" : pc;
-      for(let i=0;i<6;i++) ctx.fillRect(x+2+i*6, y+8, 5, 6);
-      // Armor rows on sides
-      ctx.fillStyle = dead ? "#777" : ac;
-      ctx.fillRect(x+2,  y+18, 36, 3);
-      ctx.fillRect(x+2,  y+26, 36, 3);
-      ctx.fillStyle = dead ? "#888" : c;
-      // Club tail  Ebig
-      ctx.fillRect(x-6,  y+20, 10, 6);
-      ctx.fillRect(x-12, y+18, 8,  10);
-      ctx.fillStyle = dead ? "#666" : pc;
-      ctx.fillRect(x-18, y+17, 10, 12); // club head
-      ctx.fillStyle = dead ? "#888" : c;
-      // Eye
-      ctx.fillStyle = dead ? "#555" : ec;
-      ctx.fillRect(x+28, y+6, 6, 6);
-      ctx.fillStyle = "#000"; ctx.fillRect(x+30, y+8, 3, 3);
-      if(dead) { ctx.fillStyle="#777"; ctx.fillRect(x+26,y+8,8,2); ctx.fillRect(x+29,y+6,2,6); }
-      // Legs  E4 stout legs
-      ctx.fillStyle = dead ? "#888" : c;
-      if(!dead) {
-        if(f === 0) {
-          ctx.fillRect(x+4,  y+38, 9, 10); ctx.fillRect(x+4,  y+48, 12, 4);
-          ctx.fillRect(x+22, y+38, 9, 6);  ctx.fillRect(x+22, y+44, 12, 4); ctx.fillRect(x+30, y+48, 8, 4);
-        } else {
-          ctx.fillRect(x+4,  y+38, 9, 6);  ctx.fillRect(x+4,  y+44, 12, 4); ctx.fillRect(x+12, y+48, 8, 4);
-          ctx.fillRect(x+22, y+38, 9, 10); ctx.fillRect(x+22, y+48, 12, 4);
-        }
-      } else {
-        ctx.fillRect(x+4, y+38, 9, 12); ctx.fillRect(x+22, y+38, 9, 12);
-      }
-    }
+    drawAnky(ctx, x, y, dead, c, ec, ac, pc, isDucking, f);
 
-  // ── TRICERATOPS ───────────────────────────────────────────────────────────
   } else if(id === "tri") {
-    if(isDucking) {
-      ctx.fillStyle = dead ? "#888" : c;
-      ctx.fillRect(x+4, y+DINO_H-DUCK_H, 34, DUCK_H-2);
-      ctx.fillRect(x+16, y+DINO_H-DUCK_H-14, 24, 18);
-      ctx.fillStyle = dead ? "#777" : pc;
-      ctx.fillRect(x+30, y+DINO_H-DUCK_H-10, 5, 12);
-      ctx.fillRect(x+36, y+DINO_H-DUCK_H-8,  4, 10);
-      ctx.fillRect(x+24, y+DINO_H-DUCK_H-8,  4, 10);
-      ctx.fillStyle = dead ? "#555" : ec;
-      ctx.fillRect(x+28, y+DINO_H-DUCK_H-8, 6, 6);
-      ctx.fillStyle = "#000"; ctx.fillRect(x+30, y+DINO_H-DUCK_H-6, 3, 3);
-    } else {
-      ctx.fillStyle = dead ? "#888" : c;
-      ctx.fillRect(x+4,  y+12, 30, 26);  // body
-      ctx.fillRect(x+16, y+2,  24, 16);  // head
-      // Neck frill  Edramatic
-      ctx.fillStyle = dead ? "#666" : fc;
-      ctx.fillRect(x+14, y-6,  22, 10);
-      ctx.fillRect(x+16, y-10, 18, 6);
-      ctx.fillStyle = dead ? "#777" : pc;
-      // Three horns
-      ctx.fillRect(x+33, y-2, 5, 14);   // main horn
-      ctx.fillRect(x+38, y+4, 4, 10);   // right horn
-      ctx.fillRect(x+27, y+4, 4, 10);   // left horn
-      ctx.fillStyle = dead ? "#888" : c;
-      // Tail
-      ctx.fillRect(x-4,  y+22, 10, 5);
-      ctx.fillRect(x-10, y+25, 8,  4);
-      // Eye
-      ctx.fillStyle = dead ? "#555" : ec;
-      ctx.fillRect(x+28, y+4, 6, 6);
-      ctx.fillStyle = "#000"; ctx.fillRect(x+30, y+6, 3, 3);
-      if(dead) { ctx.fillStyle="#777"; ctx.fillRect(x+26,y+6,8,2); ctx.fillRect(x+29,y+4,2,6); }
-      // Legs
-      ctx.fillStyle = dead ? "#888" : c;
-      if(!dead) {
-        if(f === 0) {
-          ctx.fillRect(x+8,  y+38, 8, 10); ctx.fillRect(x+8,  y+48, 11, 4);
-          ctx.fillRect(x+22, y+38, 8, 5);  ctx.fillRect(x+22, y+43, 11, 5); ctx.fillRect(x+29, y+48, 8, 4);
-        } else {
-          ctx.fillRect(x+8,  y+38, 8, 5);  ctx.fillRect(x+8,  y+43, 11, 5); ctx.fillRect(x+15, y+48, 8, 4);
-          ctx.fillRect(x+22, y+38, 8, 10); ctx.fillRect(x+22, y+48, 11, 4);
-        }
-      } else {
-        ctx.fillRect(x+8, y+38, 8, 12); ctx.fillRect(x+22, y+38, 8, 12);
-      }
-    }
+    drawTri(ctx, x, y, dead, c, ec, ac, pc, fc, isDucking, f);
 
-  // ── BRACHIOSAURUS ─────────────────────────────────────────────────────────
   } else if(id === "brachio") {
-    if(isDucking) {
-      // Brachio crouches, long neck bends down
-      ctx.fillStyle = dead ? "#888" : c;
-      ctx.fillRect(x+2,  y+DINO_H-DUCK_H, 36, DUCK_H);
-      ctx.fillRect(x+20, y+DINO_H-DUCK_H-10, 12, 16);
-      // Neck angled down
-      ctx.fillRect(x+10, y+DINO_H-DUCK_H-14, 12, 8);
-      ctx.fillStyle = dead ? "#555" : ec;
-      ctx.fillRect(x+26, y+DINO_H-DUCK_H-8, 5, 5);
-      ctx.fillStyle = "#000"; ctx.fillRect(x+28, y+DINO_H-DUCK_H-6, 3, 3);
-    } else {
-      ctx.fillStyle = dead ? "#888" : c;
-      ctx.fillRect(x+0,  y+18, 40, 20);  // wide low body
-      // Long neck going up (brachio's defining feature)
-      ctx.fillRect(x+24, y+2,  10, 20);  // neck segment 1
-      ctx.fillRect(x+22, y-6,  12, 12);  // head
-      // Small head bump
-      ctx.fillStyle = dead ? "#666" : ac;
-      ctx.fillRect(x+22, y+6,  10, 6);   // neck shading
-      ctx.fillStyle = dead ? "#888" : c;
-      // Tail  Elong sweeping
-      ctx.fillRect(x-6,  y+24, 10, 5);
-      ctx.fillRect(x-12, y+27, 8,  4);
-      ctx.fillRect(x-18, y+29, 8,  3);
-      ctx.fillRect(x-22, y+31, 6,  2);
-      // Tiny arms
-      ctx.fillRect(x+8,  y+22, 8, 5);
-      ctx.fillRect(x+8,  y+27, 6, 3);
-      // Eye high up
-      ctx.fillStyle = dead ? "#555" : ec;
-      ctx.fillRect(x+28, y-4, 5, 5);
-      ctx.fillStyle = "#000"; ctx.fillRect(x+29, y-3, 3, 3);
-      if(dead) { ctx.fillStyle="#777"; ctx.fillRect(x+26,y-2,7,2); ctx.fillRect(x+29,y-4,2,5); }
-      // 4 column legs
-      ctx.fillStyle = dead ? "#888" : c;
-      if(!dead) {
-        if(f === 0) {
-          ctx.fillRect(x+4,  y+38, 9, 10); ctx.fillRect(x+4,  y+48, 12, 3);
-          ctx.fillRect(x+14, y+38, 9, 6);  ctx.fillRect(x+14, y+44, 12, 4); ctx.fillRect(x+22, y+48, 8, 3);
-          ctx.fillRect(x+24, y+38, 8, 9);  ctx.fillRect(x+24, y+47, 11, 4);
-          ctx.fillRect(x+32, y+38, 7, 5);
-        } else {
-          ctx.fillRect(x+4,  y+38, 9, 5);  ctx.fillRect(x+4,  y+43, 12, 5); ctx.fillRect(x+12, y+48, 8, 3);
-          ctx.fillRect(x+14, y+38, 9, 10); ctx.fillRect(x+14, y+48, 12, 3);
-          ctx.fillRect(x+24, y+38, 8, 5);
-          ctx.fillRect(x+32, y+38, 7, 9);  ctx.fillRect(x+32, y+47, 10, 4);
-        }
-      } else {
-        ctx.fillRect(x+4,y+38,9,12); ctx.fillRect(x+16,y+38,9,12); ctx.fillRect(x+28,y+38,8,12);
-      }
-    }
+    drawBrachio(ctx, x, y, dead, c, ec, ac, isDucking, f);
 
-  // ── SPINOSAURUS ───────────────────────────────────────────────────────────
   } else if(id === "spino") {
-    if(isDucking) {
-      ctx.fillStyle = dead ? "#888" : c;
-      ctx.fillRect(x+2, y+DINO_H-DUCK_H, 36, DUCK_H-4);
-      ctx.fillRect(x+18, y+DINO_H-DUCK_H-12, 20, 16);
-      // Sail flattened
-      ctx.fillStyle = dead ? "#666" : fc;
-      for(let i=0;i<4;i++) ctx.fillRect(x+8+i*7, y+DINO_H-DUCK_H-3, 4, 5);
-      ctx.fillStyle = dead ? "#555" : ec;
-      ctx.fillRect(x+30, y+DINO_H-DUCK_H-9, 6, 6);
-      ctx.fillStyle = "#000"; ctx.fillRect(x+32, y+DINO_H-DUCK_H-7, 3, 3);
-    } else {
-      ctx.fillStyle = dead ? "#888" : c;
-      ctx.fillRect(x+4,  y+12, 30, 24);  // body
-      ctx.fillRect(x+20, y+2,  18, 14);  // head (croc-like snout)
-      // Extended croc snout
-      ctx.fillRect(x+32, y+6, 10, 5);   // snout extension
-      // Neural sail  Edramatic fin on back
-      ctx.fillStyle = dead ? "#666" : fc;
-      const sailH = [8, 14, 18, 22, 18, 14, 8];
-      for(let i=0;i<7;i++) ctx.fillRect(x+4+i*5, y+8-sailH[i], 4, sailH[i]);
-      ctx.fillStyle = dead ? "#888" : c;
-      // Tail
-      ctx.fillRect(x-4,  y+22, 10, 6);
-      ctx.fillRect(x-10, y+25, 8,  5);
-      ctx.fillRect(x-16, y+28, 6,  4);
-      // Arms (spino had longer arms than trex)
-      ctx.fillRect(x+10, y+16, 10, 6);
-      ctx.fillRect(x+10, y+22, 8,  4);
-      ctx.fillRect(x+12, y+26, 6,  3);
-      // Eye
-      ctx.fillStyle = dead ? "#555" : ec;
-      ctx.fillRect(x+30, y+4, 6, 6);
-      ctx.fillStyle = "#000"; ctx.fillRect(x+32, y+6, 3, 3);
-      if(dead) { ctx.fillStyle="#777"; ctx.fillRect(x+28,y+6,8,2); ctx.fillRect(x+31,y+4,2,6); }
-      // Legs
-      ctx.fillStyle = dead ? "#888" : c;
-      if(!dead) {
-        if(f === 0) {
-          ctx.fillRect(x+8,  y+36, 8, 12); ctx.fillRect(x+8,  y+48, 11, 4);
-          ctx.fillRect(x+22, y+36, 8, 6);  ctx.fillRect(x+22, y+42, 11, 6); ctx.fillRect(x+29, y+48, 8, 4);
-        } else {
-          ctx.fillRect(x+8,  y+36, 8, 6);  ctx.fillRect(x+8,  y+42, 11, 6); ctx.fillRect(x+15, y+48, 8, 4);
-          ctx.fillRect(x+22, y+36, 8, 12); ctx.fillRect(x+22, y+48, 11, 4);
-        }
-      } else {
-        ctx.fillRect(x+8, y+36, 8, 14); ctx.fillRect(x+22, y+36, 8, 14);
-      }
-    }
+    drawSpino(ctx, x, y, dead, c, ec, ac, fc, isDucking, f);
 
-  // ── PACHYCEPHALOSAURUS ────────────────────────────────────────────────────
   } else if(id === "pachy") {
-    if(isDucking) {
-      ctx.fillStyle = dead ? "#888" : c;
-      ctx.fillRect(x+4, y+DINO_H-DUCK_H, 32, DUCK_H-4);
-      ctx.fillRect(x+18, y+DINO_H-DUCK_H-12, 18, 16);
-      // Dome still visible
-      ctx.fillStyle = dead ? "#666" : pc;
-      ctx.fillRect(x+18, y+DINO_H-DUCK_H-18, 18, 8);
-      ctx.fillStyle = dead ? "#555" : ec;
-      ctx.fillRect(x+28, y+DINO_H-DUCK_H-9, 6, 6);
-      ctx.fillStyle = "#000"; ctx.fillRect(x+30, y+DINO_H-DUCK_H-7, 3, 3);
-    } else {
-      ctx.fillStyle = dead ? "#888" : c;
-      ctx.fillRect(x+8,  y+14, 26, 22); // compact body
-      ctx.fillRect(x+18, y+6,  18, 12); // neck
-      // DOME HEAD  Edefining feature
-      ctx.fillStyle = dead ? "#666" : pc;
-      ctx.fillRect(x+18, y-4,  18, 12); // dome
-      ctx.fillRect(x+20, y-8,  14, 6);  // dome top
-      ctx.fillStyle = dead ? "#888" : c;
-      ctx.fillRect(x+18, y+6,  18, 8);  // lower head
-      // Small arms
-      ctx.fillRect(x+12, y+18, 8, 5);
-      ctx.fillRect(x+12, y+23, 6, 3);
-      // Tail
-      ctx.fillRect(x+2,  y+24, 10, 5);
-      ctx.fillRect(x-4,  y+26, 8,  4);
-      ctx.fillRect(x-8,  y+28, 6,  3);
-      // Eye
-      ctx.fillStyle = dead ? "#555" : ec;
-      ctx.fillRect(x+30, y+8, 5, 5);
-      ctx.fillStyle = "#000"; ctx.fillRect(x+31, y+9, 3, 3);
-      if(dead) { ctx.fillStyle="#777"; ctx.fillRect(x+28,y+9,7,2); ctx.fillRect(x+31,y+7,2,5); }
-      // Legs  Ebipedal agile
-      ctx.fillStyle = dead ? "#888" : c;
-      if(!dead) {
-        if(f === 0) {
-          ctx.fillRect(x+10, y+36, 7, 12); ctx.fillRect(x+10, y+48, 10, 4);
-          ctx.fillRect(x+22, y+36, 7, 6);  ctx.fillRect(x+22, y+42, 10, 6); ctx.fillRect(x+28, y+48, 8, 4);
-        } else {
-          ctx.fillRect(x+10, y+36, 7, 6);  ctx.fillRect(x+10, y+42, 10, 6); ctx.fillRect(x+16, y+48, 8, 4);
-          ctx.fillRect(x+22, y+36, 7, 12); ctx.fillRect(x+22, y+48, 10, 4);
-        }
-      } else {
-        ctx.fillRect(x+10, y+36, 7, 14); ctx.fillRect(x+22, y+36, 7, 14);
-      }
-    }
+    drawPachy(ctx, x, y, dead, c, ec, ac, pc, isDucking, f);
 
-  // ── PARASAUROLOPHUS ───────────────────────────────────────────────────────
   } else if(id === "para") {
-    if(isDucking) {
-      ctx.fillStyle = dead ? "#888" : c;
-      ctx.fillRect(x+4, y+DINO_H-DUCK_H, 32, DUCK_H-4);
-      ctx.fillRect(x+18, y+DINO_H-DUCK_H-12, 18, 16);
-      ctx.fillStyle = dead ? "#666" : fc;
-      // Crest goes back when ducking
-      ctx.fillRect(x+10, y+DINO_H-DUCK_H-20, 20, 6);
-      ctx.fillRect(x+6,  y+DINO_H-DUCK_H-16, 12, 5);
-      ctx.fillStyle = dead ? "#555" : ec;
-      ctx.fillRect(x+28, y+DINO_H-DUCK_H-8, 6, 6);
-      ctx.fillStyle = "#000"; ctx.fillRect(x+30, y+DINO_H-DUCK_H-6, 3, 3);
-    } else {
-      ctx.fillStyle = dead ? "#888" : c;
-      ctx.fillRect(x+6,  y+14, 28, 22); // body
-      ctx.fillRect(x+18, y+4,  18, 14); // head
-      // Long tubular crest sweeping backward  Eiconic
-      ctx.fillStyle = dead ? "#666" : fc;
-      ctx.fillRect(x+18, y-4,  8,  10); // crest base
-      ctx.fillRect(x+10, y-8,  10, 6);  // crest mid
-      ctx.fillRect(x+0,  y-10, 12, 5);  // crest tip
-      ctx.fillRect(x-6,  y-8,  8,  4);  // crest end
-      ctx.fillStyle = dead ? "#888" : c;
-      // Bill (flat duck bill)
-      ctx.fillRect(x+34, y+8, 8,  5);
-      ctx.fillRect(x+34, y+6, 6,  3);
-      // Tail
-      ctx.fillRect(x+0,  y+24, 10, 5);
-      ctx.fillRect(x-6,  y+26, 8,  4);
-      ctx.fillRect(x-10, y+28, 6,  3);
-      // Arms
-      ctx.fillRect(x+12, y+18, 8, 5);
-      ctx.fillRect(x+12, y+23, 6, 3);
-      // Eye
-      ctx.fillStyle = dead ? "#555" : ec;
-      ctx.fillRect(x+30, y+6, 6, 6);
-      ctx.fillStyle = "#000"; ctx.fillRect(x+32, y+8, 3, 3);
-      if(dead) { ctx.fillStyle="#777"; ctx.fillRect(x+28,y+8,8,2); ctx.fillRect(x+31,y+6,2,6); }
-      // Legs
-      ctx.fillStyle = dead ? "#888" : c;
-      if(!dead) {
-        if(f === 0) {
-          ctx.fillRect(x+8,  y+36, 8, 12); ctx.fillRect(x+8,  y+48, 11, 4);
-          ctx.fillRect(x+22, y+36, 8, 6);  ctx.fillRect(x+22, y+42, 11, 6); ctx.fillRect(x+29, y+48, 8, 4);
-        } else {
-          ctx.fillRect(x+8,  y+36, 8, 6);  ctx.fillRect(x+8,  y+42, 11, 6); ctx.fillRect(x+15, y+48, 8, 4);
-          ctx.fillRect(x+22, y+36, 8, 12); ctx.fillRect(x+22, y+48, 11, 4);
-        }
-      } else {
-        ctx.fillRect(x+8, y+36, 8, 14); ctx.fillRect(x+22, y+36, 8, 14);
-      }
-    }
+    drawPara(ctx, x, y, dead, c, ec, ac, fc, isDucking, f);
 
-  // ── DILOPHOSAURUS ─────────────────────────────────────────────────────────
   } else if(id === "dilopho") {
-    if(isDucking) {
-      ctx.fillStyle = dead ? "#888" : c;
-      ctx.fillRect(x+2, y+DINO_H-DUCK_H, 34, DUCK_H-6);
-      ctx.fillRect(x+18, y+DINO_H-DUCK_H-10, 20, 14);
-      // Frill fanned
-      ctx.fillStyle = dead ? "#666" : fc;
-      ctx.fillRect(x+28, y+DINO_H-DUCK_H-16, 12, 8);
-      ctx.fillStyle = dead ? "#555" : ec;
-      ctx.fillRect(x+28, y+DINO_H-DUCK_H-7, 6, 6);
-      ctx.fillStyle = "#000"; ctx.fillRect(x+30, y+DINO_H-DUCK_H-5, 3, 3);
-    } else {
-      ctx.fillStyle = dead ? "#888" : c;
-      ctx.fillRect(x+6,  y+14, 26, 22); // slender body
-      ctx.fillRect(x+20, y+2,  18, 14); // head
-      // Double head crest (2 parallel crests)
-      ctx.fillStyle = dead ? "#666" : fc;
-      ctx.fillRect(x+22, y-6, 4, 10);   // crest 1
-      ctx.fillRect(x+28, y-6, 4, 10);   // crest 2
-      ctx.fillRect(x+20, y-8, 16, 4);   // crest base
-      // Neck frill (fan-shaped)
-      ctx.fillStyle = dead ? "#666" : fc;
-      ctx.fillRect(x+34, y+4, 10, 6);   // frill right
-      ctx.fillRect(x+36, y+2, 6,  10);  // frill fan
-      ctx.fillStyle = dead ? "#888" : c;
-      // Slender tail
-      ctx.fillRect(x-2,  y+22, 10, 4);
-      ctx.fillRect(x-8,  y+24, 8,  3);
-      ctx.fillRect(x-14, y+26, 7,  3);
-      ctx.fillRect(x-18, y+28, 6,  2);
-      // Arms  Emedium length
-      ctx.fillRect(x+12, y+17, 9, 5);
-      ctx.fillRect(x+12, y+22, 7, 3);
-      // Eye
-      ctx.fillStyle = dead ? "#555" : ec;
-      ctx.fillRect(x+30, y+4, 6, 6);
-      ctx.fillStyle = "#000"; ctx.fillRect(x+32, y+6, 3, 3);
-      if(dead) { ctx.fillStyle="#777"; ctx.fillRect(x+28,y+6,8,2); ctx.fillRect(x+31,y+4,2,6); }
-      // Legs  Every agile sprinter
-      ctx.fillStyle = dead ? "#888" : c;
-      if(!dead) {
-        if(f === 0) {
-          ctx.fillRect(x+8,  y+36, 7, 12); ctx.fillRect(x+8,  y+48, 10, 4);
-          ctx.fillRect(x+20, y+36, 7, 5);  ctx.fillRect(x+20, y+41, 10, 7); ctx.fillRect(x+26, y+48, 8, 4);
-        } else {
-          ctx.fillRect(x+8,  y+36, 7, 5);  ctx.fillRect(x+8,  y+41, 10, 7); ctx.fillRect(x+14, y+48, 8, 4);
-          ctx.fillRect(x+20, y+36, 7, 12); ctx.fillRect(x+20, y+48, 10, 4);
-        }
-      } else {
-        ctx.fillRect(x+8, y+36, 7, 14); ctx.fillRect(x+20, y+36, 7, 14);
-      }
-    }
-  }
+    drawDilopho(ctx, x, y, dead, c, ec, ac, fc, isDucking, f);
 
+  } else if(id === "hasim") {
+    drawHasim(ctx, x, y, dead, c, ec, ac, pc, fc, isDucking, f);
+  }
   ctx.restore();
 }
 
@@ -1951,6 +1418,114 @@ function rectsOverlap(ax,ay,aw,ah,bx,by,bw,bh){
   return ax<bx+bw && ax+aw>bx && ay<by+bh && ay+ah>by;
 }
 
+
+// ─── PASSIVE ACTIVATION EFFECTS ──────────────────────────────────────────────
+function drawPassiveEffect(ctx, type, x, y, frame, progress) {
+  // progress: 0→1 over the effect lifetime
+  const alpha = Math.min(1, (1 - progress) * 2);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  if (type === "phaseShift") {
+    // Rippling ghost rings around dino
+    const rings = 3;
+    for (let i = 0; i < rings; i++) {
+      const r = 28 + i * 18 + progress * 40;
+      ctx.strokeStyle = "#66dd22";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x + 20, y + 24, r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    // Dashed outline flicker
+    ctx.strokeStyle = `rgba(102,221,34,${0.6 - progress * 0.6})`;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.strokeRect(x - 4, y - 4, 48, 56);
+    ctx.setLineDash([]);
+  }
+
+  else if (type === "thermalLift") {
+    // Upward heat shimmer lines
+    for (let i = 0; i < 5; i++) {
+      const lx = x + 4 + i * 8;
+      const ly = y + 48 - progress * 60;
+      ctx.fillStyle = i % 2 === 0 ? "#44aaff" : "#88ddff";
+      ctx.fillRect(lx, ly, 2, 8 + i * 2);
+      ctx.fillRect(lx - 1, ly - 6, 4, 4);
+    }
+    // Wing glow
+    ctx.fillStyle = "rgba(68,170,255,0.25)";
+    ctx.fillRect(x - 20, y + 8, 80, 20);
+  }
+
+  else if (type === "pulseWave") {
+    // Expanding shockwave rings
+    const maxR = 180;
+    for (let i = 0; i < 2; i++) {
+      const r = progress * maxR + i * 30;
+      const a = Math.max(0, 0.7 - r / maxR);
+      ctx.strokeStyle = `rgba(255,170,0,${a})`;
+      ctx.lineWidth = 3 - i;
+      ctx.beginPath();
+      ctx.arc(x + 20, y + 24, r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    // Center flash
+    if (progress < 0.2) {
+      ctx.fillStyle = `rgba(255,200,50,${0.5 - progress * 2.5})`;
+      ctx.fillRect(x - 30, y - 20, 100, 80);
+    }
+  }
+
+  else if (type === "hornBurst") {
+    // 8-directional spike lines from dino center
+    const cx2 = x + 20, cy2 = y + 24;
+    const len = 40 + progress * 120;
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const ex = cx2 + Math.cos(angle) * len;
+      const ey = cy2 + Math.sin(angle) * len;
+      ctx.strokeStyle = `rgba(204,136,0,${0.8 - progress * 0.8})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(cx2, cy2);
+      ctx.lineTo(ex, ey);
+      ctx.stroke();
+      // Tip pixel
+      ctx.fillStyle = "#ffcc44";
+      ctx.fillRect(ex - 2, ey - 2, 4, 4);
+    }
+  }
+
+  else if (type === "headbutt") {
+    // Forward charge trail — horizontal streaks ahead of dino
+    for (let i = 0; i < 4; i++) {
+      const lx = x + 40 + i * 20 + progress * 60;
+      ctx.fillStyle = `rgba(255,204,0,${0.6 - i * 0.12})`;
+      ctx.fillRect(lx, y + 10 + i * 6, 18 - i * 3, 3);
+    }
+    // Head impact flash
+    if (progress < 0.25) {
+      ctx.fillStyle = `rgba(255,220,50,${0.5 - progress * 2})`;
+      ctx.fillRect(x + 10, y, 30, 30);
+    }
+  }
+
+  else if (type === "speedRush") {
+    // Speed lines behind dino
+    for (let i = 0; i < 5; i++) {
+      const lx = x - 20 - i * 14 - progress * 30;
+      const ly = y + 14 + i * 6;
+      ctx.fillStyle = `rgba(0,204,102,${0.5 - i * 0.08})`;
+      ctx.fillRect(lx, ly, 12 + i * 4, 2);
+    }
+  }
+
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 export default function DinoIncremental() {
   const canvasRef   = useRef(null);
@@ -1980,6 +1555,8 @@ export default function DinoIncremental() {
     totalRuns:0, bestDist:0, totalBones:0, totalUpgrades:0,
     ownedSkins:1, ownedSceneries:1, maxCombo:0, nightCycles:0,
     totalNearMiss:0, giantCrushes:0, bestDistNoDash:0, passiveEarned:0, allMovementMax:false,
+    totalPlayTime:0, powerupUses:{}, totalPowerupUses:0, hasimKills:0,
+    dinoDistances:{}, bestDistNoHit:0, menuIdleUnlock:false,
   });
   const [unlockedAch,    setUnlockedAch]    = useLocalStorage("dino_unlockedAch", []);
   const [pendingAch,     setPendingAch]     = useState([]);
@@ -2066,7 +1643,7 @@ export default function DinoIncremental() {
   useEffect(()=>{
     if(pendingAch.length>0){
       const a=pendingAch[0];
-      setAchivNotif(`🏆 ${a.label} (+${a.reward} bones)`);
+      setAchivNotif(`🏆 ${a.label} (+${a.rewardLabel || `${a.reward} fossils`})`);
       const t=setTimeout(()=>{ setAchivNotif(null); setPendingAch(prev=>prev.slice(1)); },3000);
       return ()=>clearTimeout(t);
     }
@@ -2114,6 +1691,34 @@ export default function DinoIncremental() {
     return ()=>cancelAnimationFrame(menuAnimRef.current);
   },[screen,equippedSkin,equippedDesign]);
 
+  // Menu idle timer — tracks uninterrupted idle time on menu
+  const menuIdleRef = useRef(0);
+  const menuIdleActiveRef = useRef(false);
+  useEffect(()=>{
+    if(screen!=="menu"||achievStats.menuIdleUnlock){
+      menuIdleActiveRef.current=false;
+      return;
+    }
+    menuIdleActiveRef.current=true;
+    const interval = setInterval(()=>{
+      if(!menuIdleActiveRef.current) return;
+      menuIdleRef.current+=1;
+      if(menuIdleRef.current>=2400){
+        setAchievStats(prev=>({...prev,menuIdleUnlock:true}));
+      }
+    },1000);
+    const reset=()=>{ menuIdleRef.current=0; };
+    window.addEventListener("keydown",reset);
+    window.addEventListener("mousemove",reset);
+    window.addEventListener("click",reset);
+    return ()=>{
+      clearInterval(interval);
+      window.removeEventListener("keydown",reset);
+      window.removeEventListener("mousemove",reset);
+      window.removeEventListener("click",reset);
+    };
+  },[screen,achievStats.menuIdleUnlock]);
+
   const startGame = useCallback(()=>{
     const stats   = getStats(upgradeLevels);
     const scenery = SCENERIES.find(s=>s.id===activeScenery)||SCENERIES[0];
@@ -2127,6 +1732,7 @@ export default function DinoIncremental() {
       powerupPickups:[],
       unlockedPowerups:[...unlockedPowerups],
       floatingTexts:[],
+      passiveEffects:[],
       activePowerups:{},
       clouds: scenery.id==="cave"
         ? Array.from({length:10},(_,i)=>({x:i*80+10, y:0, h:20+Math.random()*40, speed:0.15+Math.random()*0.2}))
@@ -2144,16 +1750,17 @@ export default function DinoIncremental() {
       sunX:CANVAS_W+20, sunY:30, moonX:CANVAS_W+200, moonY:28,
       sunAlpha:1, moonAlpha:0,
       skin:currentSkin, design, scenery,
-      maxComboThisRun:0, nearMissCount:0, giantCrushes:0, usedDash:false,
+      maxComboThisRun:0, nearMissCount:0, giantCrushes:0, usedDash:false, hitTaken:false,
+      runStartTime: Date.now(),
       // Per-run passive state
       raptorSpeedBonus:0,    // raptor: distance milestones -> bone % (cap 10%)
       pachyReviveUsed:false, // pachy: one free revive (legacy, kept for bullet hit)
       // Timed passive cooldowns (in frames)
-      pterodacFlyTimer:0, pterodacFlyCooldown:0,   // fly 5s/30s
-      ankyPulseTimer:0,                             // pulse every 40s
-      triHornTimer:0,                               // horn burst every 30s
-      pachyHeadbuttTimer:0, pachyHeadbuttActive:0,  // headbutt 5s/30s
-      dilophoPhaseTimer:0, dilophoPhaseActive:0,    // phase 5s/30s
+      pterodacFlyTimer:0, pterodacFlyCooldown:30*60,   // fly 5s/30s — first lift after 30s
+      ankyPulseTimer:0,                                 // pulse every 40s
+      triHornTimer:0,                                   // horn burst every 30s
+      pachyHeadbuttTimer:0, pachyHeadbuttActive:0,      // headbutt 5s/30s
+      dilophoPhaseTimer:0, dilophoPhaseActive:0,        // phase 5s/30s
       // Tri: first obstacle destroyed (legacy)
       triFirstDestroyed:false,
       // Spino: night bonus tracked in render
@@ -2199,7 +1806,7 @@ export default function DinoIncremental() {
   },[screen]);
 
   useEffect(()=>{
-    if(screen!=="game"){ if(animRef.current) cancelAnimationFrame(animRef.current); return; }
+    if(screen!=="game"&&screen!=="gameover"){ if(animRef.current) cancelAnimationFrame(animRef.current); return; }
     const canvas=canvasRef.current;
     if(!canvas) return;
     const ctx=canvas.getContext("2d");
@@ -2208,9 +1815,13 @@ export default function DinoIncremental() {
       gs.floatingTexts.push({text,x,y,vy:-1.4,life:65,maxLife:65,color});
     };
 
+    const addPassiveEffect=(gs,type,x,y)=>{
+      gs.passiveEffects.push({type,x,y,life:0,maxLife:45});
+    };
+
     const triggerDeath=(gs)=>{
       gs.dino.dead=true;
-      gs.deathAnim={ angle:0, angVel:0.12, vy:-5, timeLeft:80 };
+      gs.deathAnim={ angle:0, angVel:0.18, vy:-7, vx:3.5 };
     };
 
     const endGame=(gs)=>{
@@ -2223,27 +1834,50 @@ export default function DinoIncremental() {
       setTotalRuns(r=>r+1);
       setBestDist(b=>Math.max(b,dist));
       setLastRun({fossils:earned,dist});
-      setAchievStats(prev=>({
-        ...prev,
-        totalRuns:prev.totalRuns+1,
-        bestDist:Math.max(prev.bestDist,dist),
-        totalBones:prev.totalBones+earned,
-        nightCycles:prev.nightCycles+gs.nightCycleCount,
-        maxCombo:Math.max(prev.maxCombo,gs.maxComboThisRun),
-        totalNearMiss:prev.totalNearMiss+gs.nearMissCount,
-        giantCrushes:prev.giantCrushes+gs.giantCrushes,
-        bestDistNoDash:gs.usedDash?prev.bestDistNoDash:Math.max(prev.bestDistNoDash,dist),
-      }));
+      setAchievStats(prev=>{
+        const newPowerupUses = {...(prev.powerupUses||{})};
+        for(const [pid,cnt] of Object.entries(gs.powerupUseLog||{})){
+          newPowerupUses[pid]=(newPowerupUses[pid]||0)+cnt;
+        }
+        const newDinoDist = {...(prev.dinoDistances||{})};
+        const did = gs.design?.id;
+        if(did) newDinoDist[did]=Math.max(newDinoDist[did]||0,dist);
+        const playedSecs = Math.floor((Date.now()-gs.runStartTime)/1000);
+        return {
+          ...prev,
+          totalRuns:prev.totalRuns+1,
+          bestDist:Math.max(prev.bestDist,dist),
+          totalBones:prev.totalBones+earned,
+          nightCycles:prev.nightCycles+gs.nightCycleCount,
+          maxCombo:Math.max(prev.maxCombo,gs.maxComboThisRun),
+          totalNearMiss:prev.totalNearMiss+gs.nearMissCount,
+          giantCrushes:prev.giantCrushes+gs.giantCrushes,
+          bestDistNoDash:gs.usedDash?prev.bestDistNoDash:Math.max(prev.bestDistNoDash,dist),
+          bestDistNoHit:gs.hitTaken?prev.bestDistNoHit:Math.max(prev.bestDistNoHit||0,dist),
+          totalPlayTime:(prev.totalPlayTime||0)+playedSecs,
+          powerupUses:newPowerupUses,
+          totalPowerupUses:(prev.totalPowerupUses||0)+(gs.totalPowerupUsesThisRun||0),
+          hasimKills:did==="hasim"?(prev.hasimKills||0)+1:prev.hasimKills||0,
+          dinoDistances:newDinoDist,
+        };
+      });
       // Auto-submit run and check if it makes top 50
       const playerName = getSavedName();
       submitScore(playerName, dist, earned).then(async()=>{
         const board = await fetchLeaderboard();
         const myId = getPlayerId();
         // Find rank of this specific run (same dist)
-        const rank = board.findIndex(r => r.player_id === myId && r.best_dist === dist);
-        setLastRunRank(rank >= 0 ? rank + 1 : null);
+        const myEntry = board.find(r => r.player_id === myId && r.best_dist === dist && r.best_fossils === earned);
+        const rank = myEntry
+          ? board.filter(r =>
+              r.best_dist > myEntry.best_dist ||
+              (r.best_dist === myEntry.best_dist && r.best_fossils > myEntry.best_fossils) ||
+              (r.best_dist === myEntry.best_dist && r.best_fossils === myEntry.best_fossils && r.updated_at < myEntry.updated_at)
+            ).length + 1
+          : null;
+        setLastRunRank(rank);
       });
-      setTimeout(()=>setScreen("gameover"),1100);
+      setTimeout(()=>setScreen("gameover"),1800);
     };
 
     const loop=(ts)=>{
@@ -2267,12 +1901,12 @@ export default function DinoIncremental() {
       // ── Death animation ─────────────────────────────────────────────────────
       if(gs.deathAnim && !gs.alive) {
         const da = gs.deathAnim;
-        da.angle    += da.angVel * dt;
-        da.vy       += GRAVITY * dt;
-        gs.dino.y   += da.vy * dt;
-        da.timeLeft -= dt;
-        // Render frame then continue loop
-        // (full render below, we don't skip it)
+        da.angle  += da.angVel * dt;
+        da.vy     += GRAVITY * 1.2 * dt;
+        gs.dino.y += da.vy * dt;
+        gs.dino.x += da.vx * dt;
+        // Stop loop once dino is fully off screen
+        if(gs.dino.y > CANVAS_H + 60) { animRef.current = null; return; }
       }
 
       if(gs.alive){
@@ -2288,6 +1922,7 @@ export default function DinoIncremental() {
             gs.raptorSpeedBonus=milestone;
             const pct=(milestone*0.5).toFixed(1);
             addFloat(gs,`SPEED RUSH! +${pct}% bones`,80,80,"#00cc66");
+            addPassiveEffect(gs,"speedRush",gs.dino.x,gs.dino.y);
           }
         }
 
@@ -2300,14 +1935,15 @@ export default function DinoIncremental() {
             // Force airborne during fly mode
             if(gs.dino.onGround){ gs.dino.vy=JUMP_FORCE*0.7; gs.dino.onGround=false; }
           } else if(gs.pterodacFlyCooldown<=0){
-            gs.pterodacFlyTimer=5*FPS60/60; // 5s in dt units (~300 frames)
-            gs.pterodacFlyCooldown=30*FPS60/60;
+            gs.pterodacFlyTimer=5*FPS60; // 5s in dt units (~300 frames)
+            gs.pterodacFlyCooldown=30*FPS60;
             addFloat(gs,"FLY MODE!",gs.dino.x-10,gs.dino.y-28,"#44aaff");
+            addPassiveEffect(gs,"thermalLift",gs.dino.x,gs.dino.y);
           }
         }
         if(designId==="anky"){
           gs.ankyPulseTimer=(gs.ankyPulseTimer||0)+dt;
-          if(gs.ankyPulseTimer>=40*FPS60/60){
+          if(gs.ankyPulseTimer>=40*FPS60){
             gs.ankyPulseTimer=0;
             const before=gs.obstacles.length;
             gs.obstacles=gs.obstacles.filter(o=>{
@@ -2319,17 +1955,19 @@ export default function DinoIncremental() {
             const cleared=before-gs.obstacles.length;
             if(cleared>0) addFloat(gs,`PULSE WAVE! x${cleared}`,gs.dino.x-20,gs.dino.y-36,"#ffaa00");
             else addFloat(gs,"PULSE WAVE!",gs.dino.x-20,gs.dino.y-36,"#ffaa00");
+            addPassiveEffect(gs,"pulseWave",gs.dino.x,gs.dino.y);
           }
         }
         if(designId==="tri"){
           gs.triHornTimer=(gs.triHornTimer||0)+dt;
-          if(gs.triHornTimer>=30*FPS60/60){
+          if(gs.triHornTimer>=30*FPS60){
             gs.triHornTimer=0;
             // Destroy all obstacles and bullets on screen
             const cleared=gs.obstacles.length;
             gs.obstacles=[];
             if(cleared>0) addFloat(gs,`HORN BURST! x${cleared}`,gs.dino.x-20,gs.dino.y-36,"#cc8800");
             else addFloat(gs,"HORN BURST!",gs.dino.x-20,gs.dino.y-36,"#cc8800");
+            addPassiveEffect(gs,"hornBurst",gs.dino.x,gs.dino.y);
           }
         }
         if(designId==="pachy"){
@@ -2346,10 +1984,11 @@ export default function DinoIncremental() {
             });
           } else {
             gs.pachyHeadbuttTimer=(gs.pachyHeadbuttTimer||0)+dt;
-            if(gs.pachyHeadbuttTimer>=30*FPS60/60){
+            if(gs.pachyHeadbuttTimer>=30*FPS60){
               gs.pachyHeadbuttTimer=0;
-              gs.pachyHeadbuttActive=5*FPS60/60;
+              gs.pachyHeadbuttActive=5*FPS60;
               addFloat(gs,"HEADBUTT!",gs.dino.x-10,gs.dino.y-28,"#ffcc00");
+              addPassiveEffect(gs,"headbutt",gs.dino.x,gs.dino.y);
             }
           }
         }
@@ -2358,10 +1997,11 @@ export default function DinoIncremental() {
             gs.dilophoPhaseActive-=dt;
           } else {
             gs.dilophoPhaseTimer=(gs.dilophoPhaseTimer||0)+dt;
-            if(gs.dilophoPhaseTimer>=30*FPS60/60){
+            if(gs.dilophoPhaseTimer>=30*FPS60){
               gs.dilophoPhaseTimer=0;
-              gs.dilophoPhaseActive=5*FPS60/60;
+              gs.dilophoPhaseActive=5*FPS60;
               addFloat(gs,"PHASE SHIFT!",gs.dino.x-10,gs.dino.y-28,"#66dd22");
+              addPassiveEffect(gs,"phaseShift",gs.dino.x,gs.dino.y);
             }
           }
         }
@@ -2843,14 +2483,14 @@ export default function DinoIncremental() {
                 o.bullets.splice(bi,1);
                 if(gs.activePowerups.shield_pw){
                   gs.shieldHitsLeft--; if(gs.shieldHitsLeft<=0) delete gs.activePowerups.shield_pw;
-                  gs.dino.invTimer=20+gs.stats.invFramesBonus;
+                  gs.dino.invTimer=20+gs.stats.invFramesBonus; gs.hitTaken=true;
                 } else if(gs.stats.shieldChance>Math.random()){
-                  gs.dino.invTimer=20+gs.stats.invFramesBonus;
+                  gs.dino.invTimer=20+gs.stats.invFramesBonus; gs.hitTaken=true;
                 } else if(gs.lives>1){
-                  gs.lives--; gs.dino.invTimer=30+gs.stats.invFramesBonus;
+                  gs.lives--; gs.dino.invTimer=30+gs.stats.invFramesBonus; gs.hitTaken=true;
                   addFloat(gs,"-1 LIFE",gs.dino.x,gs.dino.y-24,"#ee3344");
                 } else {
-                  endGame(gs); return;
+                  gs.hitTaken=true; endGame(gs); return;
                 }
                 break;
               }
@@ -2902,18 +2542,16 @@ export default function DinoIncremental() {
             if(gs.dino.invTimer<=0&&rectsOverlap(DX,DY,DW,DH,hb.x,hb.y,hb.w,hb.h)){
               if(gs.activePowerups.shield_pw){
                 gs.shieldHitsLeft--; if(gs.shieldHitsLeft<=0) delete gs.activePowerups.shield_pw;
-                gs.obstacles.splice(i,1); gs.dino.invTimer=20+gs.stats.invFramesBonus;
+                gs.obstacles.splice(i,1); gs.dino.invTimer=20+gs.stats.invFramesBonus; gs.hitTaken=true;
               } else if(gs.stats.shieldChance>Math.random()){
-                // Stego passive: doubled shield chance already handled (shield level multiplied at stats time, but here we have separate)
-                // For stego, the shieldChance is already correct from upgrades
-                gs.obstacles.splice(i,1); gs.dino.invTimer=20+gs.stats.invFramesBonus;
+                gs.obstacles.splice(i,1); gs.dino.invTimer=20+gs.stats.invFramesBonus; gs.hitTaken=true;
               } else if(gs.lives>1){
                 gs.lives--;
                 gs.obstacles.splice(i,1);
-                gs.dino.invTimer=30+gs.stats.invFramesBonus;
+                gs.dino.invTimer=30+gs.stats.invFramesBonus; gs.hitTaken=true;
                 addFloat(gs,"-1 LIFE",gs.dino.x,gs.dino.y-24,"#ee3344");
               } else {
-                endGame(gs); return;
+                gs.hitTaken=true; endGame(gs); return;
               }
               break;
             }
@@ -2961,11 +2599,16 @@ export default function DinoIncremental() {
               gs.activePowerups[def.id]={timer:def.duration+dBonus,duration:def.duration+dBonus};
             }
             if(def.id!=="heart_pw") addFloat(gs,def.label+"!",CANVAS_W/2-28,96,def.color);
+            // Track powerup use
+            gs.powerupUseLog = gs.powerupUseLog || {};
+            gs.powerupUseLog[def.id] = (gs.powerupUseLog[def.id]||0)+1;
+            gs.totalPowerupUsesThisRun = (gs.totalPowerupUsesThisRun||0)+1;
           }
         }
 
         gs.fossilsEarned+=gs.speed*0.0015*gs.stats.fossilMult*nightM*frenzyM*doubM*raptorM*dt;
         gs.floatingTexts=gs.floatingTexts.filter(t=>{t.y+=t.vy*dt;t.life-=dt;return t.life>0;});
+        gs.passiveEffects=gs.passiveEffects.filter(e=>{e.life+=dt;return e.life<e.maxLife;});
 
         // ── Entity silhouette update ─────────────────────────────────────────
         const ent = gs.entity;
@@ -3033,6 +2676,7 @@ export default function DinoIncremental() {
         ctx.arc(gs.dino.x+DINO_W/2,gs.dino.y+DINO_H/2,DINO_W,0,Math.PI*2);ctx.stroke();
       }
       if(hasSpdPwR){const sc2=gs.skin?.color||"#2a2a2a";for(let i=1;i<=4;i++){ctx.fillStyle=sc2;ctx.globalAlpha=0.1;ctx.fillRect(gs.dino.x-i*14,gs.dino.y+4,DINO_W,DINO_H-8);}ctx.globalAlpha=1;}
+      for(const e of gs.passiveEffects) drawPassiveEffect(ctx,e.type,e.x,e.y,gs.frame,e.life/e.maxLife);
       if(hasSlowPwR){ctx.fillStyle="rgba(34,187,170,0.06)";ctx.fillRect(0,0,CANVAS_W,CANVAS_H);}
       if(hasGiantR){ctx.fillStyle="rgba(200,68,0,0.07)";ctx.fillRect(0,0,CANVAS_W,CANVAS_H);}
       if(hasGhostR){ctx.fillStyle="rgba(136,136,200,0.07)";ctx.fillRect(0,0,CANVAS_W,CANVAS_H);}
@@ -3163,13 +2807,19 @@ export default function DinoIncremental() {
 
   const buyDesign = useCallback((d)=>{
     if(ownedDesigns.includes(d.id)){setEquippedDesign(d.id);showNotif(`${d.label} equipped!`);return;}
-    setFossils(cur=>{
-      if(cur<d.cost){showNotif("Not enough bones!");return cur;}
+    if(d.unlockDist&&bestDist<d.unlockDist){showNotif(`Reach ${d.unlockDist}m to unlock!`);return;}
+    if(d.cost>0){
+      setFossils(cur=>{
+        if(cur<d.cost){showNotif("Not enough bones!");return cur;}
+        setOwnedDesigns(p=>[...p,d.id]); setEquippedDesign(d.id);
+        showNotif(`${d.label} unlocked!`);
+        return cur-d.cost;
+      });
+    } else {
       setOwnedDesigns(p=>[...p,d.id]); setEquippedDesign(d.id);
       showNotif(`${d.label} unlocked!`);
-      return cur-d.cost;
-    });
-  },[ownedDesigns,showNotif]);
+    }
+  },[ownedDesigns,bestDist,showNotif]);
 
   const buyScenery = useCallback((s)=>{
     if(ownedSceneries.includes(s.id)){setActiveScenery(s.id);showNotif(`${s.label} activated!`);return;}
@@ -3225,6 +2875,7 @@ export default function DinoIncremental() {
       startGame={startGame} setScreen={setScreen}
       totalRuns={totalRuns} bestDist={bestDist} fossils={fossils} passiveRate={passiveRate}
       notification={notification} achivNotif={achivNotif}
+      ownedSkins={ownedSkins} ownedDesigns={ownedDesigns} ownedSceneries={ownedSceneries}
       F={F} BG={BG} DARK={DARK} BORDER={BORDER} MUTED={MUTED}
     />
   );
@@ -3303,7 +2954,7 @@ export default function DinoIncremental() {
                   <div key={d.id} onClick={()=>{
                     if(active&&passive){setPassivePreviewId(showingPassive?null:d.id);return;}
                     buyDesign(d);
-                  }} style={{background:active?"#ece8e0":"#faf8f4",border:`2px solid ${active?BORDER:"#ddd"}`,padding:"12px 10px",textAlign:"center",cursor:"pointer",position:"relative",overflow:"hidden"}}>
+                  }} style={{background:active?"#ece8e0":"#faf8f4",border:`2px solid ${active?BORDER:"#ddd"}`,padding:"12px 10px",textAlign:"center",cursor:"pointer",position:"relative",overflow:"hidden",display:"flex",flexDirection:"column"}}>
                     {showingPassive&&(
                       <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.82)",display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center",padding:"10px",zIndex:2}}>
                         <div style={{fontSize:10,color:"#88dd88",fontWeight:"bold",marginBottom:6,letterSpacing:1,display:"flex",alignItems:"center"}}>{PASSIVE_ICONS[d.id]}{passive.label}</div>
@@ -3314,15 +2965,16 @@ export default function DinoIncremental() {
                     <canvas width={60} height={58} style={{display:"block",margin:"0 auto 6px"}}
                       ref={el=>renderDinoCanvas(el,currentSkin,d)}/>
                     <div style={{fontSize:12,fontWeight:"bold",letterSpacing:1}}>{d.label}</div>
-                    <div style={{fontSize:9,color:MUTED,margin:"3px 0 4px",lineHeight:1.5}}>{d.desc}</div>
+                    <div style={{fontSize:9,color:MUTED,margin:"3px 0 4px",lineHeight:1.5,flex:1}}>{d.desc}</div>
                     {passive&&(
-                      <div style={{fontSize:9,color:"#448844",margin:"3px 0 6px",lineHeight:1.4,textAlign:"left",background:"#e8f0e8",padding:"4px 6px",display:"flex",alignItems:"center",gap:4}}>
+                      <div style={{fontSize:9,color:"#448844",margin:"3px 0 6px",lineHeight:1.4,textAlign:"left",background:"#e8f0e8",padding:"4px 6px",display:"flex",alignItems:"center",gap:4,minHeight:28}}>
                         <span style={{color:"#448844",flexShrink:0}}>{PASSIVE_ICONS[d.id]}</span>
                         <b>{passive.label}</b>{active&&<span style={{color:MUTED,fontSize:8}}> (tap)</span>}
                       </div>
                     )}
-                    <div style={{fontSize:11,fontWeight:"bold",color:active?"#aaa":owned?"#448844":DARK}}>
-                      {active?"ACTIVE":owned?"[ SELECT ]":`◈ ${d.cost}`}
+                    {!passive&&<div style={{minHeight:28}}/>}
+                    <div style={{fontSize:11,fontWeight:"bold",color:active?"#aaa":owned?"#448844":DARK,marginTop:"auto",paddingTop:4}}>
+                      {active?"ACTIVE":owned?"[ SELECT ]":d.unlockDist?(bestDist>=d.unlockDist?"[ CLAIM FREE ]":`[ ${d.unlockDist}m ]`):`◈ ${d.cost}`}
                     </div>
                   </div>
                 );
