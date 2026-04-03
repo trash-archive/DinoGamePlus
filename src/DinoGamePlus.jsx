@@ -39,6 +39,7 @@ export default function DinoIncremental() {
   const lastTimeRef = useRef(null);
   const keysRef     = useRef({});
   const prevKeysRef = useRef({});
+  const touchStartRef = useRef(null);
 
   const [screen,         setScreen]         = useState("menu");
   const [fossils,        setFossils]        = useLocalStorage("dino_fossils", 0);
@@ -306,6 +307,46 @@ export default function DinoIncremental() {
     window.addEventListener("keyup",onUp);
     return ()=>{window.removeEventListener("keydown",onDown);window.removeEventListener("keyup",onUp);};
   },[screen]);
+
+  useEffect(()=>{
+    if(screen!=="game") return;
+    const canvas=canvasRef.current;
+    if(!canvas) return;
+    const onTouchStart=(e)=>{
+      if(e.cancelable) e.preventDefault();
+      touchStartRef.current={x:e.touches[0].clientX,y:e.touches[0].clientY};
+    };
+    const onTouchEnd=(e)=>{
+      if(e.cancelable) e.preventDefault();
+      if(!touchStartRef.current) return;
+      const dx=e.changedTouches[0].clientX-touchStartRef.current.x;
+      const dy=e.changedTouches[0].clientY-touchStartRef.current.y;
+      touchStartRef.current=null;
+      const absDx=Math.abs(dx), absDy=Math.abs(dy);
+      if(absDx<12&&absDy<12){ doJump(); return; }
+      if(absDy>absDx){
+        if(dy<0){ doJump(); }
+        else{
+          keysRef.current["ArrowDown"]=true;
+          setTimeout(()=>{keysRef.current["ArrowDown"]=false;},120);
+        }
+      } else {
+        if(dx>0){
+          keysRef.current["ArrowRight"]=true;
+          setTimeout(()=>{keysRef.current["ArrowRight"]=false;},80);
+        } else {
+          keysRef.current["ArrowLeft"]=true;
+          setTimeout(()=>{keysRef.current["ArrowLeft"]=false;},80);
+        }
+      }
+    };
+    canvas.addEventListener("touchstart",onTouchStart,{passive:false});
+    canvas.addEventListener("touchend",onTouchEnd,{passive:false});
+    return ()=>{
+      canvas.removeEventListener("touchstart",onTouchStart);
+      canvas.removeEventListener("touchend",onTouchEnd);
+    };
+  },[screen,doJump]);
 
   useEffect(()=>{
     if(screen!=="game"&&screen!=="gameover"){ if(animRef.current) cancelAnimationFrame(animRef.current); return; }
