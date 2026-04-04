@@ -1,12 +1,19 @@
+import { useState } from "react";
+
 export default function MenuScreen({
   menuCanvasRef, menuDinoClicks, setMenuDinoClicks, showCredit, setShowCredit,
   startGame, setScreen, totalRuns, bestDist, fossils, passiveRate,
   notification, achivNotif,
   ownedSkins, ownedDesigns, ownedSceneries,
+  playerMenuRank,
+  musicMuted, setMusicMuted,
+  activeScenery,
+  abyssUnlocked, startBossFight,
   F, BG, DARK, BORDER, MUTED,
 }) {
+  const [showSettings, setShowSettings] = useState(false);
   const outer = { minHeight:"100vh", background:BG, fontFamily:F, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", userSelect:"none", boxSizing:"border-box", width:"100%", overflowX:"hidden" };
-  const card  = { background:"#faf8f4", border:`2px solid ${BORDER}`, padding:"28px", boxSizing:"border-box", width:"100%" };
+  const card  = { background:"#faf8f4", border:`2px solid ${BORDER}`, padding:"28px", boxSizing:"border-box", width:"100%", position:"relative" };
   const btn   = (primary=false) => ({ background:primary?DARK:BG, color:primary?BG:DARK, border:`2px solid ${BORDER}`, padding:primary?"13px 0":"10px 2px", fontSize:primary?14:12, fontFamily:F, cursor:"pointer", letterSpacing:primary?4:0, fontWeight:"bold", boxSizing:"border-box", transition:"opacity 0.1s" });
   const notifBox     = { position:"fixed", bottom:24, left:"50%", transform:"translateX(-50%)", background:DARK, color:BG, padding:"9px 22px", fontSize:11, letterSpacing:2, zIndex:999, whiteSpace:"nowrap", border:"1px solid #555" };
   const achivNotifBox= { position:"fixed", top:24,    left:"50%", transform:"translateX(-50%)", background:"#1a1a2a", color:"#ffdd44", padding:"10px 24px", fontSize:11, letterSpacing:2, zIndex:999, whiteSpace:"nowrap", border:"1px solid #ffdd44" };
@@ -16,10 +23,44 @@ export default function MenuScreen({
     (ownedDesigns?.length  >= 12) &&
     (ownedSceneries?.length >= 8);
 
+  const rankLabel = playerMenuRank === 1 ? "1ST" : playerMenuRank === 2 ? "2ND" : playerMenuRank === 3 ? "3RD" : `${playerMenuRank}TH`;
+  const bannerBg = playerMenuRank === 1 ? "#c9a227" : playerMenuRank === 2 ? "#7a8fa6" : playerMenuRank === 3 ? "#a0522d" : DARK;
+  const bannerColor = playerMenuRank <= 3 ? "#fff" : BG;
+
   return (
     <div style={outer}>
+      {showSettings && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.55)", zIndex:200, display:"flex", alignItems:"center", justifyContent:"center" }}
+          onClick={() => setShowSettings(false)}>
+          <div style={{ background:"#faf8f4", border:`2px solid ${BORDER}`, padding:"28px", width:"100%", maxWidth:340, fontFamily:F, boxSizing:"border-box" }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize:13, fontWeight:"bold", letterSpacing:4, marginBottom:20, color:DARK }}>SETTINGS</div>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
+              <span style={{ fontSize:11, letterSpacing:2, color:DARK }}>MUSIC</span>
+              <button
+                onClick={() => setMusicMuted(!musicMuted)}
+                style={{ background:musicMuted?BG:DARK, color:musicMuted?MUTED:BG, border:`2px solid ${BORDER}`, padding:"4px 14px", fontSize:10, fontFamily:F, cursor:"pointer", letterSpacing:2, fontWeight:"bold" }}
+              >{musicMuted ? "OFF" : "ON"}</button>
+            </div>
+            <div style={{ borderTop:`1px solid #ddd`, paddingTop:16, marginTop:4 }}>
+              <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => { setShowSettings(false); setScreen("feedback"); }}>[ FEEDBACK ]</button>
+            </div>
+            <div style={{ marginTop:8 }}>
+              <button style={{ ...btn(true), width:"100%", fontSize:11 }} onClick={() => setShowSettings(false)}>[ CLOSE ]</button>
+            </div>
+          </div>
+        </div>
+      )}
       <div style={{ width:"100%", maxWidth:480, padding:"0 16px", boxSizing:"border-box" }}>
         <div style={card}>
+          {playerMenuRank && (
+            <div style={{ position:"absolute", top:0, left:14, zIndex:10 }}>
+              <div style={{ background:bannerBg, color:bannerColor, fontFamily:F, padding:"5px 8px 0", fontSize:9, letterSpacing:2, textAlign:"center", clipPath:"polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%)", width:"clamp(34px,8vw,44px)", height:"clamp(52px,14vw,68px)" }}>
+                <div style={{ fontSize:"clamp(6px,1.5vw,7px)", letterSpacing:2, opacity:0.8, marginBottom:0 }}>RANK</div>
+                <div style={{ fontSize:"clamp(10px,2.8vw,13px)", fontWeight:"bold", letterSpacing:1 }}>{rankLabel}</div>
+              </div>
+            </div>
+          )}
           <div style={{ textAlign:"center", marginBottom:24 }}>
             <div style={{ fontSize:36, fontWeight:"bold", letterSpacing:4, marginBottom:2 }}>DINO</div>
             <div style={{ fontSize:14, letterSpacing:6, marginBottom:16, color:MUTED }}>REIMAGINED</div>
@@ -50,7 +91,10 @@ export default function MenuScreen({
           </div>
 
           <div style={{ marginBottom:8 }}>
-            <button style={{ ...btn(true), width:"100%" }} onClick={startGame}>[ RUN ]</button>
+            {activeScenery === "abyss" && abyssUnlocked
+              ? <button style={{ ...btn(true), width:"100%", background:"#b52d2d", color:"#ffffff", borderColor:"#b52d2d" }} onClick={startBossFight}>[ BATTLE ]</button>
+              : <button style={{ ...btn(true), width:"100%" }} onClick={startGame}>[ RUN ]</button>
+            }
           </div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
             <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => setScreen("shop")}>[ UPGRADES ]</button>
@@ -59,6 +103,9 @@ export default function MenuScreen({
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
             <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => setScreen("achievements")}>[ ACHIEVEMENTS ]</button>
             <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => setScreen("leaderboard")}>[ LEADERBOARDS ]</button>
+          </div>
+          <div style={{ marginTop:8 }}>
+            <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => setShowSettings(true)}>[ SETTINGS ]</button>
           </div>
 
           {totalRuns > 0 && (

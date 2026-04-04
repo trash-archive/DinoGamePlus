@@ -27,12 +27,13 @@ import { spawnRuinsObstacle } from "./maps/ruins/ruinsObstacles";
 import { spawnCaveObstacle } from "./maps/cave/caveObstacles";
 import { SCENERIES, SKINS, DINO_DESIGNS, DINO_PASSIVES, PASSIVE_ICONS, REGULAR_SCENERY_IDS } from "./data/collectionData.jsx";
 import BossFightScreen from "./BossFightScreen";
+import FeedbackScreen from "./FeedbackScreen";
 
 
 
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
-export default function DinoIncremental() {
+export default function DinoIncremental({ musicMuted, setMusicMuted }) {
   const canvasRef   = useRef(null);
   const gsRef       = useRef(null);
   const animRef     = useRef(null);
@@ -72,6 +73,7 @@ export default function DinoIncremental() {
   const [lbLoading,        setLbLoading]        = useState(false);
   const [lastRunRank,      setLastRunRank]       = useState(null);
   const [bossKey,          setBossKey]           = useState(0);
+  const [playerMenuRank,   setPlayerMenuRank]    = useState(null);
 
 
   const getStats = useCallback((levels) => {
@@ -157,6 +159,23 @@ export default function DinoIncremental() {
     if(screen!=="leaderboard") return;
     setLbLoading(true);
     fetchLeaderboard().then(data=>{ setLbData(data); setLbLoading(false); });
+  },[screen]);
+
+  // Fetch player's best rank for menu banner
+  useEffect(()=>{
+    if(screen!=="menu") return;
+    const myId = getPlayerId();
+    fetchLeaderboard().then(board=>{
+      const myEntries = board.filter(r => r.player_id === myId);
+      if(myEntries.length === 0){ setPlayerMenuRank(null); return; }
+      const best = myEntries.reduce((a,b) => b.best_dist > a.best_dist ? b : a);
+      const rank = board.filter(r =>
+        r.best_dist > best.best_dist ||
+        (r.best_dist === best.best_dist && r.best_fossils > best.best_fossils) ||
+        (r.best_dist === best.best_dist && r.best_fossils === best.best_fossils && r.updated_at < best.updated_at)
+      ).length + 1;
+      setPlayerMenuRank(rank <= 50 ? rank : null);
+    });
   },[screen]);
 
   const showNotif = useCallback((msg)=>{
@@ -1368,6 +1387,10 @@ export default function DinoIncremental() {
       totalRuns={totalRuns} bestDist={bestDist} fossils={fossils} passiveRate={passiveRate}
       notification={notification} achivNotif={achivNotif}
       ownedSkins={ownedSkins} ownedDesigns={ownedDesigns} ownedSceneries={ownedSceneries}
+      playerMenuRank={playerMenuRank}
+      musicMuted={musicMuted} setMusicMuted={setMusicMuted}
+      activeScenery={activeScenery}
+      abyssUnlocked={abyssUnlocked} startBossFight={startBossFight}
       F={F} BG={BG} DARK={DARK} BORDER={BORDER} MUTED={MUTED}
     />
   );
@@ -1414,6 +1437,7 @@ export default function DinoIncremental() {
       notification={notification} achivNotif={achivNotif}
       abyssUnlocked={abyssUnlocked}
       startBossFight={startBossFight}
+      activeScenery={activeScenery}
     />
   );
 
@@ -1424,6 +1448,7 @@ export default function DinoIncremental() {
       equippedSkin={equippedSkin} equippedDesign={equippedDesign} activeScenery={activeScenery}
       buySkin={buySkin} buyDesign={buyDesign} buyScenery={buyScenery}
       startGame={startGame} setScreen={setScreen}
+      abyssUnlocked={abyssUnlocked} startBossFight={startBossFight}
       notification={notification} achivNotif={achivNotif}
     />
   );
@@ -1444,6 +1469,10 @@ export default function DinoIncremental() {
       onBack={()=>setScreen("menu")}
       showNotif={showNotif}
     />
+  );
+
+  if(screen==="feedback") return (
+    <FeedbackScreen onBack={()=>setScreen("menu")} />
   );
 
   if(screen==="bossfight") return (

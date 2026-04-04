@@ -8,6 +8,7 @@ export default function SkinsScreen({
   equippedSkin, equippedDesign, activeScenery,
   buySkin, buyDesign, buyScenery,
   startGame, setScreen,
+  abyssUnlocked, startBossFight,
   notification, achivNotif,
 }) {
   const [skinTab, setSkinTab] = useState("dino");
@@ -148,7 +149,10 @@ export default function SkinsScreen({
         )}
 
         <div style={{ display:"flex", gap:8, marginTop:14 }}>
-          <button style={{ ...btn(true), flex:1 }} onClick={startGame}>[ RUN ]</button>
+          {activeScenery === "abyss" && abyssUnlocked
+            ? <button style={{ ...btn(true), flex:1, background:"#b52d2d", color:"#ffffff", borderColor:"#b52d2d" }} onClick={startBossFight}>[ BATTLE ]</button>
+            : <button style={{ ...btn(true), flex:1 }} onClick={startGame}>[ RUN ]</button>
+          }
           <button style={{ ...btn(false), flex:1 }} onClick={() => setScreen("menu")}>[ MENU ]</button>
         </div>
       </div>

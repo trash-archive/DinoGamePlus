@@ -35,6 +35,7 @@ export default function ShopScreen({
   notification, achivNotif,
   abyssUnlocked,
   startBossFight,
+  activeScenery,
 }) {
   const outer = { minHeight:"100vh", background:BG, fontFamily:F, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"flex-start", userSelect:"none", boxSizing:"border-box", width:"100%", overflowX:"hidden" };
   const wrap  = { width:"100%", maxWidth:620, padding:"20px 16px", boxSizing:"border-box", margin:"0 auto" };
@@ -211,10 +212,10 @@ export default function ShopScreen({
 
         {/* Footer buttons */}
         <div style={{ display:"flex", gap:8 }}>
-          <button style={{ ...btn(true),  flex:1 }} onClick={startGame}>[ RUN ]</button>
-          {abyssUnlocked && (
-            <button style={{ ...btn(false), flex:1, borderColor:"#cc0000", color:"#cc0000" }} onClick={startBossFight}>[ THE ABYSS ]</button>
-          )}
+          {activeScenery === "abyss" && abyssUnlocked
+            ? <button style={{ ...btn(true), flex:1, background:"#b52d2d", color:"#ffffff", borderColor:"#b52d2d" }} onClick={startBossFight}>[ BATTLE ]</button>
+            : <button style={{ ...btn(true), flex:1 }} onClick={startGame}>[ RUN ]</button>
+          }
           <button style={{ ...btn(false), flex:1 }} onClick={() => setScreen("skins")}>[ COLLECTION ]</button>
           <button style={{ ...btn(false), flex:1 }} onClick={() => setScreen("menu")}>[ MENU ]</button>
         </div>

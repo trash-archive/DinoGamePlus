@@ -4,12 +4,12 @@ import useCozyMusic from "./hooks/useCozyMusic";
 const F = "'Courier New', monospace";
 
 function App() {
-  const musicBlocked = useCozyMusic();
+  const { blocked, muted, setMuted } = useCozyMusic();
 
   return (
     <>
-      <DinoIncremental />
-      {musicBlocked && (
+      <DinoIncremental musicMuted={muted} setMusicMuted={setMuted} />
+      {blocked && (
         <div style={{
           position: "fixed", bottom: 16, right: 16,
           background: "#1a1a1a", color: "#f0ede6",
