@@ -1,3 +1,5 @@
+import { playClick } from "./hooks/useSoundEffects";
+
 const F      = "'Courier New', monospace";
 const BG     = "#f0ede6";
 const DARK   = "#1a1a1a";
@@ -89,10 +91,10 @@ export default function GameOverScreen({ lastRun, bestDist, lastRunRank, getSave
 
         {/* Buttons */}
         <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-          <button style={btn(true)} onClick={onRunAgain}>[ RUN AGAIN ]</button>
-          <button style={btn(false)} onClick={onUpgrades}>[ UPGRADES ]</button>
+          <button style={btn(true)} onClick={() => { playClick(); onRunAgain(); }}>[ RUN AGAIN ]</button>
+          <button style={btn(false)} onClick={() => { playClick(); onUpgrades(); }}>[ UPGRADES ]</button>
         </div>
-        <button style={{ ...btn(false), width: "100%", borderColor: "#ccc", color: MUTED, fontSize: 10 }} onClick={onMenu}>
+        <button style={{ ...btn(false), width: "100%", border: "2px solid #ccc", color: MUTED, fontSize: 10 }} onClick={() => { playClick(); onMenu(); }}>
           [ MENU ]
         </button>
 

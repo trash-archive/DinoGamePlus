@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { submitScore, fetchLeaderboard } from "./leaderboard";
 import { getSavedName, getPlayerId } from "./supabase";
 import { useLocalStorage } from "./hooks/useLocalStorage";
+import useCozyMusic from "./hooks/useCozyMusic";
+import useSoundEffects from "./hooks/useSoundEffects";
 import { GRAVITY, JUMP_FORCE, GROUND_Y, DINO_W, DINO_H, CANVAS_W, CANVAS_H, DAY_CYCLE, DUCK_H } from "./constants";
 import { lerp, clamp, drawFossilDiamond } from "./utils/helpers";
 import { getSceneryColors, getHudColors } from "./utils/scenery";
@@ -33,7 +35,7 @@ import FeedbackScreen from "./FeedbackScreen";
 
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
-export default function DinoIncremental({ musicMuted, setMusicMuted }) {
+export default function DinoIncremental() {
   const canvasRef   = useRef(null);
   const gsRef       = useRef(null);
   const animRef     = useRef(null);
@@ -43,6 +45,8 @@ export default function DinoIncremental({ musicMuted, setMusicMuted }) {
   const touchStartRef = useRef(null);
 
   const [screen,         setScreen]         = useState("menu");
+  const { muted: musicMuted, setMuted: setMusicMuted } = useCozyMusic(screen === "game" || screen === "gameover");
+  const { playJump, playPoint, playDie } = useSoundEffects();
   const [fossils,        setFossils]        = useLocalStorage("dino_fossils", 0);
   const [totalFossils,   setTotalFossils]   = useLocalStorage("dino_totalFossils", 0);
   const [bestDist,       setBestDist]       = useLocalStorage("dino_bestDist", 0);
@@ -302,11 +306,13 @@ export default function DinoIncremental({ musicMuted, setMusicMuted }) {
     if(gs.dino.onGround){
       gs.dino.vy=JUMP_FORCE-gs.stats.jumpBoost*0.42;
       gs.dino.onGround=false; gs.dino.doubleJumped=false;
+      playJump();
     } else if(gs.stats.hasDoubleJump&&!gs.dino.doubleJumped){
       gs.dino.vy=JUMP_FORCE-gs.stats.jumpBoost*0.28;
       gs.dino.doubleJumped=true;
+      playJump();
     }
-  },[]);
+  },[playJump]);
 
   useEffect(()=>{
     if(screen!=="gameover") return;
@@ -392,6 +398,7 @@ export default function DinoIncremental({ musicMuted, setMusicMuted }) {
       if(!gs.alive) return;
       gs.alive=false;
       triggerDeath(gs);
+      playDie();
       const earned=Math.floor(gs.fossilsEarned), dist=Math.floor(gs.distance);
       setFossils(f=>f+earned);
       setTotalFossils(f=>f+earned);
@@ -997,6 +1004,7 @@ export default function DinoIncremental({ musicMuted, setMusicMuted }) {
                   gs.dino.invTimer=20+gs.stats.invFramesBonus; gs.hitTaken=true;
                 } else if(gs.lives>1){
                   gs.lives--; gs.dino.invTimer=30+gs.stats.invFramesBonus; gs.hitTaken=true;
+                  playDie();
                   addFloat(gs,"-1 LIFE",gs.dino.x,gs.dino.y-24,"#ee3344");
                 } else {
                   gs.hitTaken=true; endGame(gs); return;
@@ -1058,6 +1066,7 @@ export default function DinoIncremental({ musicMuted, setMusicMuted }) {
                 gs.lives--;
                 gs.obstacles.splice(i,1);
                 gs.dino.invTimer=30+gs.stats.invFramesBonus; gs.hitTaken=true;
+                playDie();
                 addFloat(gs,"-1 LIFE",gs.dino.x,gs.dino.y-24,"#ee3344");
               } else {
                 gs.hitTaken=true; endGame(gs); return;
@@ -1077,6 +1086,7 @@ export default function DinoIncremental({ musicMuted, setMusicMuted }) {
         for(const p of gs.pickups){
           if(!p.collected&&rectsOverlap(DX,DY,DW,DH,p.x,p.y,14,14)){
             p.collected=true; gs.combo++; gs.comboTimer=120;
+            playPoint();
             if(gs.combo>gs.maxComboThisRun) gs.maxComboThisRun=gs.combo;
             // Para passive: combo timer 25% longer, cap combo at 20
             if(designId==="para"){ gs.comboTimer=150; if(gs.combo>20) gs.combo=20; }
@@ -1282,7 +1292,7 @@ export default function DinoIncremental({ musicMuted, setMusicMuted }) {
     lastTimeRef.current=null;
     animRef.current=requestAnimationFrame(loop);
     return ()=>{ if(animRef.current) cancelAnimationFrame(animRef.current); };
-  },[screen,doJump]);
+  },[screen,doJump,playPoint,playDie]);
 
   // ─── BUY FUNCTIONS ───────────────────────────────────────────────────────
   const buyUpgrade = useCallback((up)=>{

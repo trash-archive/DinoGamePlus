@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { SKINS, DINO_DESIGNS, DINO_PASSIVES, PASSIVE_ICONS, SCENERIES, REGULAR_SCENERY_IDS } from "./data/collectionData.jsx";
 import { drawDino } from "./rendering/drawDino";
+import { playClick } from "./hooks/useSoundEffects";
 
 export default function SkinsScreen({
   fossils, bestDist,
@@ -17,6 +18,7 @@ export default function SkinsScreen({
   const currentSkin   = SKINS.find(s => s.id === equippedSkin) || SKINS[0];
   const currentDesign = DINO_DESIGNS.find(d => d.id === equippedDesign) || DINO_DESIGNS[0];
 
+  const isMobile = window.innerWidth < 600;
   const F      = "'Courier New', monospace";
   const BG     = "#f0ede6";
   const DARK   = "#1a1a1a";
@@ -51,12 +53,12 @@ export default function SkinsScreen({
 
         <div style={{ display:"flex", gap:6, marginBottom:14 }}>
           {["dino","palette","scenery"].map(t => (
-            <button key={t} style={btn(skinTab===t, true)} onClick={() => setSkinTab(t)}>{t.toUpperCase()}</button>
+            <button key={t} style={btn(skinTab===t, true)} onClick={() => { playClick(); setSkinTab(t); }}>{t.toUpperCase()}</button>
           ))}
         </div>
 
         {skinTab==="dino" && (
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(3,1fr)", gap:10 }}>
             {DINO_DESIGNS.map(d => {
               const owned = ownedDesigns.includes(d.id);
               const active = equippedDesign === d.id;
@@ -64,8 +66,8 @@ export default function SkinsScreen({
               const showingPassive = passivePreviewId === d.id;
               return (
                 <div key={d.id} onClick={() => {
-                  if(active && passive){ setPassivePreviewId(showingPassive ? null : d.id); return; }
-                  buyDesign(d);
+                  if(active && passive){ playClick(); setPassivePreviewId(showingPassive ? null : d.id); return; }
+                  playClick(); buyDesign(d);
                 }} style={{ background:active?"#ece8e0":"#faf8f4", border:`2px solid ${active?BORDER:"#ddd"}`, padding:"12px 10px", textAlign:"center", cursor:"pointer", position:"relative", overflow:"hidden", display:"flex", flexDirection:"column" }}>
                   {showingPassive && (
                     <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.82)", display:"flex", flexDirection:"column", justifyContent:"center", alignItems:"center", padding:"10px", zIndex:2 }}>
@@ -95,12 +97,12 @@ export default function SkinsScreen({
         )}
 
         {skinTab==="palette" && (
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(3,1fr)", gap:10 }}>
             {SKINS.map(sk => {
               const owned = ownedSkins.includes(sk.id);
               const active = equippedSkin === sk.id;
               return (
-                <div key={sk.id} onClick={() => buySkin(sk)} style={{ background:active?"#ece8e0":"#faf8f4", border:`2px solid ${active?BORDER:"#ddd"}`, padding:"14px 10px", textAlign:"center", cursor:"pointer" }}>
+                <div key={sk.id} onClick={() => { playClick(); buySkin(sk); }} style={{ background:active?"#ece8e0":"#faf8f4", border:`2px solid ${active?BORDER:"#ddd"}`, padding:"14px 10px", textAlign:"center", cursor:"pointer" }}>
                   <canvas width={60} height={58} style={{ display:"block", margin:"0 auto 8px" }}
                     ref={el => renderDinoCanvas(el, sk, currentDesign)}/>
                   <div style={{ fontSize:12, fontWeight:"bold", letterSpacing:1 }}>{sk.label}</div>
@@ -131,7 +133,7 @@ export default function SkinsScreen({
                 </div>
               );
               return (
-                <div key={s.id} onClick={() => buyScenery(s)} style={{ background:active?"#ece8e0":"#faf8f4", border:`2px solid ${active?BORDER:"#ddd"}`, padding:"14px", cursor:"pointer", boxSizing:"border-box" }}>
+                <div key={s.id} onClick={() => { playClick(); buyScenery(s); }} style={{ background:active?"#ece8e0":"#faf8f4", border:`2px solid ${active?BORDER:"#ddd"}`, padding:"14px", cursor:"pointer", boxSizing:"border-box" }}>
                   <div style={{ width:"100%", height:36, background:s.dayBg, marginBottom:8, position:"relative", overflow:"hidden" }}>
                     <div style={{ position:"absolute", bottom:0, left:0, right:0, height:10, background:s.groundTop }}/>
                     <div style={{ position:"absolute", bottom:0, left:0, right:0, height:6,  background:s.groundColor }}/>
@@ -150,10 +152,10 @@ export default function SkinsScreen({
 
         <div style={{ display:"flex", gap:8, marginTop:14 }}>
           {activeScenery === "abyss" && abyssUnlocked
-            ? <button style={{ ...btn(true), flex:1, background:"#b52d2d", color:"#ffffff", borderColor:"#b52d2d" }} onClick={startBossFight}>[ BATTLE ]</button>
-            : <button style={{ ...btn(true), flex:1 }} onClick={startGame}>[ RUN ]</button>
+            ? <button style={{ ...btn(true), flex:1, background:"#b52d2d", color:"#ffffff", border:"2px solid #b52d2d" }} onClick={() => { playClick(); startBossFight(); }}>[ BATTLE ]</button>
+            : <button style={{ ...btn(true), flex:1 }} onClick={() => { playClick(); startGame(); }}>[ RUN ]</button>
           }
-          <button style={{ ...btn(false), flex:1 }} onClick={() => setScreen("menu")}>[ MENU ]</button>
+          <button style={{ ...btn(false), flex:1 }} onClick={() => { playClick(); setScreen("menu"); }}>[ MENU ]</button>
         </div>
       </div>
       {notification  && <div style={notifBox}>{notification}</div>}

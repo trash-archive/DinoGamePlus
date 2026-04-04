@@ -1,6 +1,7 @@
 import { drawPowerupIcon } from "./rendering/drawPowerups";
 import { drawUpgradeIcon } from "./rendering/drawUpgradeIcons";
 import { UPGRADES, UPGRADE_CATS, POWERUP_DEFS, getUpgradeCost } from "./data/gameData";
+import { playClick } from "./hooks/useSoundEffects";
 
 const F      = "'Courier New', monospace";
 const BG     = "#f0ede6";
@@ -66,7 +67,7 @@ export default function ShopScreen({
         {/* Category tabs */}
         <div style={{ display:"flex", gap:6, marginBottom:12, flexWrap:"wrap" }}>
           {UPGRADE_CATS.map(cat => (
-            <button key={cat} style={btn(shopTab===cat, true)} onClick={() => setShopTab(cat)}>
+            <button key={cat} style={btn(shopTab===cat, true)} onClick={() => { playClick(); setShopTab(cat); }}>
               {cat.toUpperCase()}
             </button>
           ))}
@@ -83,7 +84,7 @@ export default function ShopScreen({
               const iconCol   = up.color || DARK;
               return (
                 <div key={up.id}
-                  onClick={() => !maxed && buyUpgrade(up)}
+                  onClick={() => { if(!maxed) { playClick(); buyUpgrade(up); } }}
                   style={{ background:maxed?"#ebe8e2":"#faf8f4", border:`2px solid ${maxed?"#ccc":canAfford?BORDER:"#ccc"}`, padding:"11px", cursor:maxed?"default":canAfford?"pointer":"not-allowed", opacity:maxed?0.65:1, boxSizing:"border-box" }}>
                   <div style={{ display:"flex", justifyContent:"space-between", marginBottom:5, alignItems:"flex-start" }}>
                     <div style={{ display:"flex", gap:6, alignItems:"center" }}>
@@ -139,7 +140,7 @@ export default function ShopScreen({
 
                   {/* Not yet unlocked: show unlock button */}
                   {!owned && (
-                    <div onClick={() => canAffordUnlock && unlockPowerup(def)}
+                    <div onClick={() => { if(canAffordUnlock) { playClick(); unlockPowerup(def); } }}
                       style={{
                         fontSize:10, fontWeight:"bold", padding:"6px 8px",
                         background: canAffordUnlock ? DARK : "#bbb",
@@ -159,7 +160,7 @@ export default function ShopScreen({
                     const cost      = maxed ? 0 : getUpgradeCost(up, level);
                     const canAfford = fossils >= cost;
                     return (
-                      <div key={up.id} onClick={() => !maxed && buyUpgrade(up)}
+                      <div key={up.id} onClick={() => { if(!maxed) { playClick(); buyUpgrade(up); } }}
                         style={{ borderTop:"1px solid #ddd", paddingTop:7, cursor:maxed?"default":canAfford?"pointer":"not-allowed" }}>
                         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:3 }}>
                           <span style={{ fontSize:10, fontWeight:"bold" }}>{up.label}</span>
@@ -213,11 +214,10 @@ export default function ShopScreen({
         {/* Footer buttons */}
         <div style={{ display:"flex", gap:8 }}>
           {activeScenery === "abyss" && abyssUnlocked
-            ? <button style={{ ...btn(true), flex:1, background:"#b52d2d", color:"#ffffff", borderColor:"#b52d2d" }} onClick={startBossFight}>[ BATTLE ]</button>
-            : <button style={{ ...btn(true), flex:1 }} onClick={startGame}>[ RUN ]</button>
+            ? <button style={{ ...btn(true), flex:1, background:"#b52d2d", color:"#ffffff", border:"2px solid #b52d2d" }} onClick={() => { playClick(); startBossFight(); }}>[ BATTLE ]</button>
+            : <button style={{ ...btn(true), flex:1 }} onClick={() => { playClick(); startGame(); }}>[ RUN ]</button>
           }
-          <button style={{ ...btn(false), flex:1 }} onClick={() => setScreen("skins")}>[ COLLECTION ]</button>
-          <button style={{ ...btn(false), flex:1 }} onClick={() => setScreen("menu")}>[ MENU ]</button>
+          <button style={{ ...btn(false), flex:1 }} onClick={() => { playClick(); setScreen("menu"); }}>[ MENU ]</button>
         </div>
       </div>
       {notification  && <div style={notifBox}>{notification}</div>}

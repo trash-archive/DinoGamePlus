@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-export default function useCozyMusic() {
+export default function useCozyMusic(paused = false) {
   const audioRef   = useRef(null);
   const startedRef = useRef(false);
   const [blocked, setBlocked] = useState(false);
@@ -37,6 +37,17 @@ export default function useCozyMusic() {
       audio.src = "";
     };
   }, []);
+
+  // Pause music during gameplay, resume on menu/other screens
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (paused) {
+      audio.pause();
+    } else if (startedRef.current) {
+      audio.play().catch(() => {});
+    }
+  }, [paused]);
 
   const setMuted = (val) => {
     setMutedState(val);

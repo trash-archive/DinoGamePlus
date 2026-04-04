@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { fetchLeaderboard, isNameTaken } from "./leaderboard";
 import { getSavedName, savePlayerName, getPlayerId } from "./supabase";
+import { playClick } from "./hooks/useSoundEffects";
 
 const F      = "'Courier New', monospace";
 const BG     = "#f0ede6";
@@ -49,16 +50,17 @@ export default function LeaderboardScreen({ lbData, setLbData, lbLoading, setLbL
     <div style={outer}>
       <div style={wrap}>
         {/* Header */}
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16, flexWrap:"wrap", gap:8 }}>
           <div>
             <div style={{ fontSize:10, letterSpacing:4, color:MUTED }}>GLOBAL</div>
             <div style={{ fontSize:20, fontWeight:"bold", letterSpacing:2 }}>LEADERBOARD</div>
           </div>
-          <div style={{ display:"flex", gap:6 }}>
-            <button style={{ ...btn(false,true), fontSize:9 }} onClick={() => setShowDetails(v => !v)}>
+          <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+            <button style={{ ...btn(false,true), fontSize:9 }} onClick={() => { playClick(); setShowDetails(v => !v); }}>
               {showDetails ? "[ LESS ]" : "[ DETAILS ]"}
             </button>
             <button style={{ ...btn(false,true), fontSize:9 }} onClick={async () => {
+              playClick();
               setLbLoading(true);
               const data = await fetchLeaderboard();
               setLbData(data);
@@ -69,7 +71,7 @@ export default function LeaderboardScreen({ lbData, setLbData, lbLoading, setLbL
 
         {/* Rename */}
         <div style={{ marginBottom:14, padding:"10px 12px", background:"#f5f2ec", border:"1px solid #ddd" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"nowrap", overflow:"hidden" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
             <span style={{ fontSize:10, color:MUTED, letterSpacing:1 }}>YOUR NAME:</span>
             {lbRenaming ? (
               <>
@@ -82,13 +84,13 @@ export default function LeaderboardScreen({ lbData, setLbData, lbLoading, setLbL
                   style={{ fontFamily:F, fontSize:11, fontWeight:"bold", padding:"4px 8px", border:`2px solid ${lbNameError?"#cc2200":BORDER}`, background:BG, letterSpacing:2, width:130, textTransform:"uppercase" }}
                   maxLength={20} placeholder="ENTER NAME"
                 />
-                <button style={btn(true,true)} onClick={() => saveName(lbNewName)}>[ SAVE ]</button>
-                <button style={btn(false,true)} onClick={() => { setLbRenaming(false); setLbNameError(""); }}>[ CANCEL ]</button>
+                <button style={btn(true,true)} onClick={() => { playClick(); saveName(lbNewName); }}>[ SAVE ]</button>
+                <button style={btn(false,true)} onClick={() => { playClick(); setLbRenaming(false); setLbNameError(""); }}>[ CANCEL ]</button>
               </>
             ) : (
               <>
                 <span style={{ fontSize:11, fontWeight:"bold", letterSpacing:2, color:DARK }}>{getSavedName()}</span>
-                <button style={btn(false,true)} onClick={() => { setLbNewName(getSavedName()); setLbRenaming(true); setLbNameError(""); }}>[ RENAME ]</button>
+                <button style={btn(false,true)} onClick={() => { playClick(); setLbNewName(getSavedName()); setLbRenaming(true); setLbNameError(""); }}>[ RENAME ]</button>
               </>
             )}
           </div>
@@ -157,7 +159,7 @@ export default function LeaderboardScreen({ lbData, setLbData, lbLoading, setLbL
           </>
         )}
 
-        <button style={{ ...btn(false), width:"100%" }} onClick={onBack}>[ BACK ]</button>
+        <button style={{ ...btn(false), width:"100%" }} onClick={() => { playClick(); onBack(); }}>[ BACK ]</button>
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { playClick, getSoundMuted, setSoundMuted } from "./hooks/useSoundEffects";
 
 export default function MenuScreen({
   menuCanvasRef, menuDinoClicks, setMenuDinoClicks, showCredit, setShowCredit,
@@ -12,6 +13,7 @@ export default function MenuScreen({
   F, BG, DARK, BORDER, MUTED,
 }) {
   const [showSettings, setShowSettings] = useState(false);
+  const [soundMuted, setSoundMutedState] = useState(() => getSoundMuted());
   const outer = { minHeight:"100vh", background:BG, fontFamily:F, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", userSelect:"none", boxSizing:"border-box", width:"100%", overflowX:"hidden" };
   const card  = { background:"#faf8f4", border:`2px solid ${BORDER}`, padding:"28px", boxSizing:"border-box", width:"100%", position:"relative" };
   const btn   = (primary=false) => ({ background:primary?DARK:BG, color:primary?BG:DARK, border:`2px solid ${BORDER}`, padding:primary?"13px 0":"10px 2px", fontSize:primary?14:12, fontFamily:F, cursor:"pointer", letterSpacing:primary?4:0, fontWeight:"bold", boxSizing:"border-box", transition:"opacity 0.1s" });
@@ -38,15 +40,22 @@ export default function MenuScreen({
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
               <span style={{ fontSize:11, letterSpacing:2, color:DARK }}>MUSIC</span>
               <button
-                onClick={() => setMusicMuted(!musicMuted)}
+                onClick={() => { playClick(); setMusicMuted(!musicMuted); }}
                 style={{ background:musicMuted?BG:DARK, color:musicMuted?MUTED:BG, border:`2px solid ${BORDER}`, padding:"4px 14px", fontSize:10, fontFamily:F, cursor:"pointer", letterSpacing:2, fontWeight:"bold" }}
               >{musicMuted ? "OFF" : "ON"}</button>
             </div>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
+              <span style={{ fontSize:11, letterSpacing:2, color:DARK }}>SOUND FX</span>
+              <button
+                onClick={() => { const next = !soundMuted; setSoundMuted(next); setSoundMutedState(next); if(!next) playClick(); }}
+                style={{ background:soundMuted?BG:DARK, color:soundMuted?MUTED:BG, border:`2px solid ${BORDER}`, padding:"4px 14px", fontSize:10, fontFamily:F, cursor:"pointer", letterSpacing:2, fontWeight:"bold" }}
+              >{soundMuted ? "OFF" : "ON"}</button>
+            </div>
             <div style={{ borderTop:`1px solid #ddd`, paddingTop:16, marginTop:4 }}>
-              <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => { setShowSettings(false); setScreen("feedback"); }}>[ FEEDBACK ]</button>
+              <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => { playClick(); setShowSettings(false); setScreen("feedback"); }}>[ FEEDBACK ]</button>
             </div>
             <div style={{ marginTop:8 }}>
-              <button style={{ ...btn(true), width:"100%", fontSize:11 }} onClick={() => setShowSettings(false)}>[ CLOSE ]</button>
+              <button style={{ ...btn(true), width:"100%", fontSize:11 }} onClick={() => { playClick(); setShowSettings(false); }}>[ CLOSE ]</button>
             </div>
           </div>
         </div>
@@ -92,20 +101,20 @@ export default function MenuScreen({
 
           <div style={{ marginBottom:8 }}>
             {activeScenery === "abyss" && abyssUnlocked
-              ? <button style={{ ...btn(true), width:"100%", background:"#b52d2d", color:"#ffffff", borderColor:"#b52d2d" }} onClick={startBossFight}>[ BATTLE ]</button>
-              : <button style={{ ...btn(true), width:"100%" }} onClick={startGame}>[ RUN ]</button>
+              ? <button style={{ ...btn(true), width:"100%", background:"#b52d2d", color:"#ffffff", border:"2px solid #b52d2d" }} onClick={() => { playClick(); startBossFight(); }}>[ BATTLE ]</button>
+              : <button style={{ ...btn(true), width:"100%" }} onClick={() => { playClick(); startGame(); }}>[ RUN ]</button>
             }
           </div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
-            <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => setScreen("shop")}>[ UPGRADES ]</button>
-            <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => setScreen("skins")}>[ COLLECTION ]</button>
+            <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => { playClick(); setScreen("shop"); }}>[ UPGRADES ]</button>
+            <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => { playClick(); setScreen("skins"); }}>[ COLLECTION ]</button>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-            <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => setScreen("achievements")}>[ ACHIEVEMENTS ]</button>
-            <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => setScreen("leaderboard")}>[ LEADERBOARDS ]</button>
+            <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => { playClick(); setScreen("achievements"); }}>[ ACHIEVEMENTS ]</button>
+            <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => { playClick(); setScreen("leaderboard"); }}>[ LEADERBOARDS ]</button>
           </div>
           <div style={{ marginTop:8 }}>
-            <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => setShowSettings(true)}>[ SETTINGS ]</button>
+            <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => { playClick(); setShowSettings(true); }}>[ SETTINGS ]</button>
           </div>
 
           {totalRuns > 0 && (

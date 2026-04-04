@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { playClick } from "./hooks/useSoundEffects";
 
 const F      = "'Courier New', monospace";
 const BG     = "#f0ede6";
@@ -49,9 +50,9 @@ export default function FeedbackScreen({ onBack }) {
           </div>
 
           {/* Type selector */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 14 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
             {TYPES.map(t => (
-              <button key={t} style={{ ...btn(type === t, true), fontSize: 9 }} onClick={() => setType(t)}>
+              <button key={t} style={{ ...btn(type === t, true), fontSize: 9 }} onClick={() => { playClick(); setType(t); }}>
                 {type === t ? `▶ ${t}` : t}
               </button>
             ))}
@@ -88,11 +89,11 @@ export default function FeedbackScreen({ onBack }) {
           {status === "err" && <div style={{ fontSize: 10, color: "#cc2200", letterSpacing: 2, marginBottom: 10 }}>✗ FAILED. CHECK CONNECTION.</div>}
 
           {/* Actions */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            <button style={{ ...btn(false), width: "100%" }} onClick={onBack}>[ BACK ]</button>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <button style={{ ...btn(false), width: "100%" }} onClick={() => { playClick(); onBack(); }}>[ BACK ]</button>
             <button
               style={{ ...btn(true), width: "100%", opacity: (!message.trim() || status === "sending") ? 0.5 : 1 }}
-              onClick={submit}
+              onClick={() => { playClick(); submit(); }}
               disabled={!message.trim() || status === "sending"}
             >
               {status === "sending" ? "[ SENDING... ]" : "[ SUBMIT ]"}

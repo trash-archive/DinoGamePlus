@@ -1,4 +1,5 @@
 // ─── ACHIEVEMENTS ─────────────────────────────────────────────────────────────
+import { playClick } from "./hooks/useSoundEffects";
 export const ACHIEVEMENTS = [
   { id:"first_run",    label:"First Steps",           desc:"Complete your first run",               req:(s)=>s.totalRuns>=1,       reward:10,  tier:"bronze" },
   { id:"run10",        label:"Getting Started",        desc:"Complete 10 runs",                      req:(s)=>s.totalRuns>=10,      reward:25,  tier:"bronze" },
@@ -107,7 +108,7 @@ export default function AchievementsScreen({ unlockedAch, notification, achivNot
             </div>
           );
         })}
-        <button style={{ ...btn, width:"100%" }} onClick={onBack}>[ BACK ]</button>
+        <button style={{ ...btn, width:"100%" }} onClick={() => { playClick(); onBack(); }}>[ BACK ]</button>
       </div>
       {notification  && <div style={notifBox}>{notification}</div>}
       {achivNotif    && <div style={achivNotifBox}>{achivNotif}</div>}
