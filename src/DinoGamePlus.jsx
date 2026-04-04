@@ -310,41 +310,43 @@ export default function DinoIncremental() {
 
   useEffect(()=>{
     if(screen!=="game") return;
-    const canvas=canvasRef.current;
-    if(!canvas) return;
-    const onTouchStart=(e)=>{
-      if(e.cancelable) e.preventDefault();
-      touchStartRef.current={x:e.touches[0].clientX,y:e.touches[0].clientY};
+    const applyGesture=(dx,dy)=>{
+      const absDx=Math.abs(dx), absDy=Math.abs(dy);
+      if(absDx<12&&absDy<12){ doJump(); return; }
+      if(absDy>absDx){
+        if(dy<0){ doJump(); }
+        else{ keysRef.current["ArrowDown"]=true; setTimeout(()=>{keysRef.current["ArrowDown"]=false;},120); }
+      } else {
+        if(dx>0){ keysRef.current["ArrowRight"]=true; setTimeout(()=>{keysRef.current["ArrowRight"]=false;},80); }
+        else    { keysRef.current["ArrowLeft"]=true;  setTimeout(()=>{keysRef.current["ArrowLeft"]=false;}, 80); }
+      }
     };
+    const onTouchStart=(e)=>{ if(e.cancelable) e.preventDefault(); touchStartRef.current={x:e.touches[0].clientX,y:e.touches[0].clientY}; };
     const onTouchEnd=(e)=>{
       if(e.cancelable) e.preventDefault();
       if(!touchStartRef.current) return;
       const dx=e.changedTouches[0].clientX-touchStartRef.current.x;
       const dy=e.changedTouches[0].clientY-touchStartRef.current.y;
       touchStartRef.current=null;
-      const absDx=Math.abs(dx), absDy=Math.abs(dy);
-      if(absDx<12&&absDy<12){ doJump(); return; }
-      if(absDy>absDx){
-        if(dy<0){ doJump(); }
-        else{
-          keysRef.current["ArrowDown"]=true;
-          setTimeout(()=>{keysRef.current["ArrowDown"]=false;},120);
-        }
-      } else {
-        if(dx>0){
-          keysRef.current["ArrowRight"]=true;
-          setTimeout(()=>{keysRef.current["ArrowRight"]=false;},80);
-        } else {
-          keysRef.current["ArrowLeft"]=true;
-          setTimeout(()=>{keysRef.current["ArrowLeft"]=false;},80);
-        }
-      }
+      applyGesture(dx,dy);
     };
-    canvas.addEventListener("touchstart",onTouchStart,{passive:false});
-    canvas.addEventListener("touchend",onTouchEnd,{passive:false});
+    const onMouseDown=(e)=>{ touchStartRef.current={x:e.clientX,y:e.clientY}; };
+    const onMouseUp=(e)=>{
+      if(!touchStartRef.current) return;
+      const dx=e.clientX-touchStartRef.current.x;
+      const dy=e.clientY-touchStartRef.current.y;
+      touchStartRef.current=null;
+      applyGesture(dx,dy);
+    };
+    window.addEventListener("touchstart",onTouchStart,{passive:false});
+    window.addEventListener("touchend",onTouchEnd,{passive:false});
+    window.addEventListener("mousedown",onMouseDown);
+    window.addEventListener("mouseup",onMouseUp);
     return ()=>{
-      canvas.removeEventListener("touchstart",onTouchStart);
-      canvas.removeEventListener("touchend",onTouchEnd);
+      window.removeEventListener("touchstart",onTouchStart);
+      window.removeEventListener("touchend",onTouchEnd);
+      window.removeEventListener("mousedown",onMouseDown);
+      window.removeEventListener("mouseup",onMouseUp);
     };
   },[screen,doJump]);
 
@@ -1381,7 +1383,7 @@ export default function DinoIncremental() {
           </span>
         </div>
         <div style={{border:`2px solid ${BORDER}`,lineHeight:0,width:"100%"}}>
-          <canvas ref={canvasRef} width={CANVAS_W} height={CANVAS_H} style={{display:"block",width:"100%"}} onClick={screen==="game"?doJump:undefined}/>
+          <canvas ref={canvasRef} width={CANVAS_W} height={CANVAS_H} style={{display:"block",width:"100%"}}/>
           {screen==="gameover"&&(
             <GameOverScreen
               lastRun={lastRun}
