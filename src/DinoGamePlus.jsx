@@ -490,7 +490,7 @@ export default function DinoIncremental() {
           : null;
         setLastRunRank(rank);
       });
-      setTimeout(()=>setScreen("gameover"),1800);
+      setTimeout(()=>setScreen("gameover"),450);
     };
 
     const loop=(ts)=>{

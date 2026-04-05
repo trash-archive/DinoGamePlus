@@ -20,7 +20,7 @@ export default function MenuScreen({
   const [sfxVolume,  setSfxVolumeState]  = useState(() => getSfxVolume());
 
   const outer = { minHeight:"100vh", background:BG, fontFamily:F, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", userSelect:"none", boxSizing:"border-box", width:"100%", overflowX:"hidden" };
-  const card  = { background:"#faf8f4", border:`2px solid ${BORDER}`, padding:"28px", boxSizing:"border-box", width:"100%", position:"relative", overflow:"visible" };
+  const card  = { background:"#faf8f4", border:`2px solid ${BORDER}`, padding:"28px", paddingBottom:"28px", boxSizing:"border-box", width:"100%", position:"relative", overflow:"visible" };
   const btn   = (primary=false) => ({ background:primary?DARK:BG, color:primary?BG:DARK, border:`2px solid ${BORDER}`, padding:primary?"13px 0":"10px 2px", fontSize:primary?14:12, fontFamily:F, cursor:"pointer", letterSpacing:primary?4:0, fontWeight:"bold", boxSizing:"border-box", transition:"opacity 0.1s" });
   const notifBox      = { position:"fixed", bottom:24, left:"50%", transform:"translateX(-50%)", background:DARK, color:BG, padding:"9px 22px", fontSize:11, letterSpacing:2, zIndex:999, whiteSpace:"nowrap", border:"1px solid #555" };
   const achivNotifBox = { position:"fixed", top:24,    left:"50%", transform:"translateX(-50%)", background:"#1a1a2a", color:"#ffdd44", padding:"10px 24px", fontSize:11, letterSpacing:2, zIndex:999, whiteSpace:"nowrap", border:"1px solid #ffdd44" };
@@ -220,7 +220,7 @@ export default function MenuScreen({
             <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => { playClick(); setScreen("shop"); }}>[ UPGRADES ]</button>
             <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => { playClick(); setScreen("skins"); }}>[ COLLECTION ]</button>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
             <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => { playClick(); setScreen("achievements"); }}>[ ACHIEVEMENTS ]</button>
             <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => { playClick(); setScreen("leaderboard"); }}>[ LEADERBOARDS ]</button>
           </div>
@@ -229,7 +229,7 @@ export default function MenuScreen({
           {totalRuns > 0 && (
             <div style={{ marginTop:20, paddingTop:16, borderTop:"1px solid #ddd", fontSize:11, color:MUTED, textAlign:"center" }}>
               <div style={{ lineHeight:2 }}>BEST <b style={{ color:DARK }}>{bestDist}m</b> &nbsp;|&nbsp; RUNS <b style={{ color:DARK }}>{totalRuns}</b></div>
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, lineHeight:1 }}>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, lineHeight:1, marginBottom:8 }}>
                 <span style={{ fontSize:16, color:DARK }}>◈</span>
                 <b style={{ color:DARK }}>{Math.floor(fossils)}</b>
                 {passiveRate > 0 && <span style={{ color:MUTED, fontSize:10 }}>(+{passiveRate.toFixed(1)}/s)</span>}
