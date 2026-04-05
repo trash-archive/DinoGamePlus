@@ -10,6 +10,7 @@ export default function MenuScreen({
   musicMuted, setMusicMuted, musicVolume, setMusicVolume,
   activeScenery,
   abyssUnlocked, startBossFight,
+  touchButtons, setTouchButtons,
   F, BG, DARK, BORDER, MUTED,
 }) {
   const [showSettings, setShowSettings] = useState(false);
@@ -68,6 +69,18 @@ export default function MenuScreen({
                 onChange={e => { const v = parseFloat(e.target.value); setSfxVolume(v); setSfxVolumeState(v); }}
                 style={{ width:"100%", accentColor:DARK, opacity:soundMuted?0.3:1 }}
               />
+            </div>
+
+            {/* Touch Buttons */}
+            <div style={{ borderTop:`1px solid #ddd`, paddingTop:16, marginBottom:10 }}>
+              <div style={{ fontSize:10, fontWeight:"bold", letterSpacing:3, color:DARK, marginBottom:10 }}>TOUCH CONTROLS</div>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
+                <span style={{ fontSize:11, letterSpacing:2, color:DARK }}>ON-SCREEN BUTTONS</span>
+                <button onClick={() => { playClick(); setTouchButtons(!touchButtons); }}
+                  style={{ background:touchButtons?DARK:BG, color:touchButtons?BG:MUTED, border:`2px solid ${BORDER}`, padding:"4px 14px", fontSize:10, fontFamily:F, cursor:"pointer", letterSpacing:2, fontWeight:"bold" }}
+                >{touchButtons ? "ON" : "OFF"}</button>
+              </div>
+              <div style={{ fontSize:9, color:MUTED, letterSpacing:1, lineHeight:1.6 }}>Shows ▲▼◀▶ buttons during gameplay. Only unlocked moves appear.</div>
             </div>
 
             {/* Controls */}

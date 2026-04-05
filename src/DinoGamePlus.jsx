@@ -30,6 +30,7 @@ import { spawnCaveObstacle } from "./maps/cave/caveObstacles";
 import { SCENERIES, SKINS, DINO_DESIGNS, DINO_PASSIVES, PASSIVE_ICONS, REGULAR_SCENERY_IDS } from "./data/collectionData.jsx";
 import BossFightScreen from "./BossFightScreen";
 import FeedbackScreen from "./FeedbackScreen";
+import TouchButtons from "./TouchButtons";
 
 
 
@@ -80,6 +81,7 @@ export default function DinoIncremental() {
   const [lastRunRank,      setLastRunRank]       = useState(null);
   const [bossKey,          setBossKey]           = useState(0);
   const [playerMenuRank,   setPlayerMenuRank]    = useState(null);
+  const [touchButtons,     setTouchButtons]     = useLocalStorage("dino_touchButtons", false);
 
 
   const getStats = useCallback((levels) => {
@@ -131,7 +133,7 @@ export default function DinoIncremental() {
       const gained = rate*0.5;
       setFossils(f=>+(f+gained).toFixed(1));
       setTotalFossils(f=>+(f+gained).toFixed(1));
-      setAchievStats(prev=>({...prev, passiveEarned:prev.passiveEarned+gained, totalBones:prev.totalBones+gained}));
+      setAchievStats(prev=>({...prev, passiveEarned:prev.passiveEarned+gained}));
     },500);
     return ()=>clearInterval(id);
   },[upgradeLevels,getStats]);
@@ -150,7 +152,7 @@ export default function DinoIncremental() {
       setTotalFossils(f=>f+totalReward);
       setPendingAch(prev=>[...prev,...newUnlocked]);
     }
-  },[achievStats]);
+  },[achievStats, unlockedAch]);
 
   useEffect(()=>{
     if(pendingAch.length>0){
@@ -342,11 +344,28 @@ export default function DinoIncremental() {
     return ()=>{window.removeEventListener("keydown",onDown);window.removeEventListener("keyup",onUp);};
   },[screen]);
 
+  const touchButtonsRef = useRef(touchButtons);
+  useEffect(() => { touchButtonsRef.current = touchButtons; }, [touchButtons]);
+
   useEffect(()=>{
     if(screen!=="game") return;
-    const applyGesture=(dx,dy)=>{
+    // When on-screen buttons are enabled, skip gesture handling — buttons cover all input
+    if(touchButtonsRef.current) return;
+
+    // Scale CSS pixel deltas to canvas pixel space so gesture thresholds
+    // are consistent regardless of how small the canvas is rendered on screen.
+    const getScale=()=>{
+      const el=canvasRef.current;
+      if(!el) return 1;
+      return CANVAS_W / el.getBoundingClientRect().width;
+    };
+
+    const applyGesture=(cssDx,cssDy)=>{
+      const scale=getScale();
+      const dx=cssDx*scale, dy=cssDy*scale;
       const absDx=Math.abs(dx), absDy=Math.abs(dy);
-      if(absDx<12&&absDy<12){ doJump(); return; }
+      // Tap: tiny movement in canvas space → jump
+      if(absDx<18&&absDy<18){ doJump(); return; }
       if(absDy>absDx){
         if(dy<0){ doJump(); }
         else{ keysRef.current["ArrowDown"]=true; setTimeout(()=>{keysRef.current["ArrowDown"]=false;},120); }
@@ -355,17 +374,29 @@ export default function DinoIncremental() {
         else    { keysRef.current["ArrowLeft"]=true;  setTimeout(()=>{keysRef.current["ArrowLeft"]=false;}, 80); }
       }
     };
-    const onTouchStart=(e)=>{ if(e.cancelable) e.preventDefault(); touchStartRef.current={x:e.touches[0].clientX,y:e.touches[0].clientY}; };
+
+    const onTouchStart=(e)=>{
+      if(e.cancelable) e.preventDefault();
+      touchStartRef.current={x:e.touches[0].clientX,y:e.touches[0].clientY};
+      // Simulate Space keydown so the hold-jump logic runs every frame while finger is down
+      keysRef.current["Space"]=true;
+    };
     const onTouchEnd=(e)=>{
       if(e.cancelable) e.preventDefault();
+      // Release the simulated Space key so jumpHoldTimer stops
+      keysRef.current["Space"]=false;
       if(!touchStartRef.current) return;
       const dx=e.changedTouches[0].clientX-touchStartRef.current.x;
       const dy=e.changedTouches[0].clientY-touchStartRef.current.y;
       touchStartRef.current=null;
       applyGesture(dx,dy);
     };
-    const onMouseDown=(e)=>{ touchStartRef.current={x:e.clientX,y:e.clientY}; };
+    const onMouseDown=(e)=>{
+      touchStartRef.current={x:e.clientX,y:e.clientY};
+      keysRef.current["Space"]=true;
+    };
     const onMouseUp=(e)=>{
+      keysRef.current["Space"]=false;
       if(!touchStartRef.current) return;
       const dx=e.clientX-touchStartRef.current.x;
       const dy=e.clientY-touchStartRef.current.y;
@@ -1488,6 +1519,7 @@ export default function DinoIncremental() {
       musicVolume={musicVolume} setMusicVolume={setMusicVolume}
       activeScenery={activeScenery}
       abyssUnlocked={abyssUnlocked} startBossFight={startBossFight}
+      touchButtons={touchButtons} setTouchButtons={setTouchButtons}
       F={F} BG={BG} DARK={DARK} BORDER={BORDER} MUTED={MUTED}
     />
   );
@@ -1516,6 +1548,9 @@ export default function DinoIncremental() {
             />
           )}
         </div>
+        {touchButtons && screen==="game" && (
+          <TouchButtons keysRef={keysRef} stats={getStats(upgradeLevels)} visible={true} canvasRef={canvasRef} />
+        )}
       </div>
       {notification&&<div style={notifBox}>{notification}</div>}
       {achivNotif&&<div style={achivNotifBox}>{achivNotif}</div>}
