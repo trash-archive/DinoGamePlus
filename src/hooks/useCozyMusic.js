@@ -5,12 +5,14 @@ export default function useCozyMusic(paused = false) {
   const startedRef = useRef(false);
   const [blocked, setBlocked] = useState(false);
   const [muted, setMutedState] = useState(() => localStorage.getItem("dino_music_muted") === "true");
+  const [volume, setVolumeState] = useState(() => parseFloat(localStorage.getItem("dino_music_volume") ?? "0.5"));
 
   useEffect(() => {
     const isMuted = localStorage.getItem("dino_music_muted") === "true";
+    const vol     = parseFloat(localStorage.getItem("dino_music_volume") ?? "0.5");
     const audio = new Audio("/The Adventure Begins 8-bit remix.ogg");
     audio.loop   = true;
-    audio.volume = isMuted ? 0 : 0.5;
+    audio.volume = isMuted ? 0 : vol;
     audioRef.current = audio;
 
     audio.play().then(() => {
@@ -52,8 +54,14 @@ export default function useCozyMusic(paused = false) {
   const setMuted = (val) => {
     setMutedState(val);
     localStorage.setItem("dino_music_muted", String(val));
-    if (audioRef.current) audioRef.current.volume = val ? 0 : 0.5;
+    if (audioRef.current) audioRef.current.volume = val ? 0 : volume;
   };
 
-  return { blocked, muted, setMuted };
+  const setVolume = (val) => {
+    setVolumeState(val);
+    localStorage.setItem("dino_music_volume", String(val));
+    if (audioRef.current && !muted) audioRef.current.volume = val;
+  };
+
+  return { blocked, muted, setMuted, volume, setVolume };
 }

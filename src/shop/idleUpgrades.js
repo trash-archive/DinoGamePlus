@@ -1,7 +1,7 @@
 // ─── IDLE UPGRADES ────────────────────────────────────────────────────────────
 
 export const IDLE_UPGRADES = [
-  { id:"miner",    label:"Bone Miner",    desc:"+0.3 bones/sec passive",  baseCost:200, maxLevel:6, cat:"idle", color:"#aa7733" },
-  { id:"camp",     label:"Bone Camp",     desc:"+0.8 bones/sec idle",     baseCost:400, maxLevel:4, cat:"idle", color:"#558844" },
-  { id:"research", label:"Research Lab",  desc:"+1.5 bones/sec passive",  baseCost:800, maxLevel:3, cat:"idle", color:"#4477aa" },
+  { id:"miner",    label:"Fossil Miner",  desc:"+0.15 fossils/sec passively (max +0.9/sec)",  baseCost:150, maxLevel:6, costMult:1.8, cat:"idle", color:"#aa7733" },
+  { id:"camp",     label:"Fossil Camp",   desc:"+0.5 fossils/sec passively (max +2.0/sec)",   baseCost:350, maxLevel:4, costMult:2.0, cat:"idle", color:"#558844" },
+  { id:"research", label:"Research Lab",  desc:"+1.5 fossils/sec passively (max +4.5/sec)",   baseCost:900, maxLevel:3, costMult:2.4, cat:"idle", color:"#4477aa" },
 ];

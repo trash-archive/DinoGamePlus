@@ -60,6 +60,47 @@ export function drawDino(ctx, x, y, frame, dead, skin, design, isGiant, isDuckin
   ctx.restore();
 }
 
+// ─── SHIELD OUTLINE ───────────────────────────────────────────────────────────
+// Draws the dino shape offset in 4 directions with a blue color to create an outline effect.
+export function drawShieldOutline(ctx, x, y, frame, dead, skin, design, isGiant, isDucking, isTiny, onGround, deathAnim, shieldHits) {
+  const id = design?.id || "raptor";
+  const animLegs = onGround && !dead;
+  const f  = animLegs ? Math.floor(frame/5)%2 : 0;
+  const wf = Math.floor(frame/6)%2;
+  // Pulse between two blues based on hits remaining
+  const pulse = 0.7 + Math.sin(frame * 0.15) * 0.3;
+  const col = `rgba(68,136,221,${pulse})`;
+  const offsets = [[-2,0],[2,0],[0,-2],[0,2]];
+
+  ctx.save();
+  const scale = isGiant ? 1.9 : isTiny ? 0.6 : 1;
+  if(scale !== 1){
+    const bx = x + DINO_W/2, by = y + DINO_H;
+    ctx.translate(bx,by); ctx.scale(scale,scale); ctx.translate(-bx,-by);
+  }
+  if(dead && deathAnim){
+    const cx2 = x + DINO_W/2, cy2 = y + DINO_H/2;
+    ctx.translate(cx2,cy2); ctx.rotate(deathAnim.angle||0); ctx.translate(-cx2,-cy2);
+  }
+
+  for(const [ox,oy] of offsets){
+    const nx = x+ox, ny = y+oy;
+    if     (id==="raptor")   drawRaptor(ctx, nx, ny, dead, col, col, col, isDucking, f);
+    else if(id==="trex")     drawTrex(ctx, nx, ny, dead, col, col, col, isDucking, f);
+    else if(id==="stego")    drawStego(ctx, nx, ny, dead, col, col, col, isDucking, f);
+    else if(id==="pterodac") drawPterodac(ctx, nx, ny, dead, col, col, col, col, wf);
+    else if(id==="anky")     drawAnky(ctx, nx, ny, dead, col, col, col, col, isDucking, f);
+    else if(id==="tri")      drawTri(ctx, nx, ny, dead, col, col, col, col, col, isDucking, f);
+    else if(id==="brachio")  drawBrachio(ctx, nx, ny, dead, col, col, col, isDucking, f);
+    else if(id==="spino")    drawSpino(ctx, nx, ny, dead, col, col, col, col, isDucking, f);
+    else if(id==="pachy")    drawPachy(ctx, nx, ny, dead, col, col, col, col, isDucking, f);
+    else if(id==="para")     drawPara(ctx, nx, ny, dead, col, col, col, col, isDucking, f);
+    else if(id==="dilopho")  drawDilopho(ctx, nx, ny, dead, col, col, col, col, isDucking, f);
+    else if(id==="hasim")    drawHasim(ctx, nx, ny, dead, col, col, col, col, col, isDucking, f);
+  }
+  ctx.restore();
+}
+
 // ─── HEART ────────────────────────────────────────────────────────────────────
 export function drawHeart(ctx, x, y, size = 12, color = "#dd2244") {
   ctx.fillStyle = color;

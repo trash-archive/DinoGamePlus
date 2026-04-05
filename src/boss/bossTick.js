@@ -1,6 +1,7 @@
 // ─── BOSS TICK ────────────────────────────────────────────────────────────────
 import { GRAVITY, JUMP_FORCE, GROUND_Y, DINO_W, DINO_H, CANVAS_W, DUCK_H } from "../constants";
 import { BOSS_MAX_HP, BOSS_X, BOSS_Y, buildBarrage } from "./bossConstants";
+import { playBite } from "../hooks/useSoundEffects";
 
 // ─── PARTICLE HELPERS ─────────────────────────────────────────────────────────
 export function spawnExplosion(gs, x, y, col1, col2, count = 10) {
@@ -113,6 +114,7 @@ export function tickBoss(gs, keys, prevKeys, dt, onDeath, onWin) {
 
   if(keys["KeyF"] && !prevKeys["KeyF"] && gs.biteCooldown <= 0 && gs.stats.hasBite) {
     gs.biteCooldown = 45;
+    playBite();
     if(gs.blindWindow) {
       gs.bossHp = Math.max(0, gs.bossHp - 1);
       gs.biteFlash = 12;

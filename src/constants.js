@@ -1,6 +1,8 @@
 // ─── GAME CONSTANTS ───────────────────────────────────────────────────────────
 export const GRAVITY    = 0.55;
-export const JUMP_FORCE = -13.5;
+export const JUMP_FORCE = -7.5;
+export const JUMP_HOLD_FORCE = 0.32;
+export const JUMP_HOLD_FRAMES = 6;
 export const GROUND_Y   = 210;
 export const DINO_W     = 40;
 export const DINO_H     = 48;

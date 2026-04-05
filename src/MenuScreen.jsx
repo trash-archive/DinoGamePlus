@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { playClick, getSoundMuted, setSoundMuted } from "./hooks/useSoundEffects";
+import { playClick, getSoundMuted, setSoundMuted, getSfxVolume, setSfxVolume } from "./hooks/useSoundEffects";
 
 export default function MenuScreen({
   menuCanvasRef, menuDinoClicks, setMenuDinoClicks, showCredit, setShowCredit,
@@ -7,61 +7,114 @@ export default function MenuScreen({
   notification, achivNotif,
   ownedSkins, ownedDesigns, ownedSceneries,
   playerMenuRank,
-  musicMuted, setMusicMuted,
+  musicMuted, setMusicMuted, musicVolume, setMusicVolume,
   activeScenery,
   abyssUnlocked, startBossFight,
   F, BG, DARK, BORDER, MUTED,
 }) {
   const [showSettings, setShowSettings] = useState(false);
+  const [tabVisible, setTabVisible] = useState(false);
   const [soundMuted, setSoundMutedState] = useState(() => getSoundMuted());
+  const [sfxVolume,  setSfxVolumeState]  = useState(() => getSfxVolume());
+
   const outer = { minHeight:"100vh", background:BG, fontFamily:F, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", userSelect:"none", boxSizing:"border-box", width:"100%", overflowX:"hidden" };
-  const card  = { background:"#faf8f4", border:`2px solid ${BORDER}`, padding:"28px", boxSizing:"border-box", width:"100%", position:"relative" };
+  const card  = { background:"#faf8f4", border:`2px solid ${BORDER}`, padding:"28px", boxSizing:"border-box", width:"100%", position:"relative", overflow:"visible" };
   const btn   = (primary=false) => ({ background:primary?DARK:BG, color:primary?BG:DARK, border:`2px solid ${BORDER}`, padding:primary?"13px 0":"10px 2px", fontSize:primary?14:12, fontFamily:F, cursor:"pointer", letterSpacing:primary?4:0, fontWeight:"bold", boxSizing:"border-box", transition:"opacity 0.1s" });
-  const notifBox     = { position:"fixed", bottom:24, left:"50%", transform:"translateX(-50%)", background:DARK, color:BG, padding:"9px 22px", fontSize:11, letterSpacing:2, zIndex:999, whiteSpace:"nowrap", border:"1px solid #555" };
-  const achivNotifBox= { position:"fixed", top:24,    left:"50%", transform:"translateX(-50%)", background:"#1a1a2a", color:"#ffdd44", padding:"10px 24px", fontSize:11, letterSpacing:2, zIndex:999, whiteSpace:"nowrap", border:"1px solid #ffdd44" };
+  const notifBox      = { position:"fixed", bottom:24, left:"50%", transform:"translateX(-50%)", background:DARK, color:BG, padding:"9px 22px", fontSize:11, letterSpacing:2, zIndex:999, whiteSpace:"nowrap", border:"1px solid #555" };
+  const achivNotifBox = { position:"fixed", top:24,    left:"50%", transform:"translateX(-50%)", background:"#1a1a2a", color:"#ffdd44", padding:"10px 24px", fontSize:11, letterSpacing:2, zIndex:999, whiteSpace:"nowrap", border:"1px solid #ffdd44" };
 
   const hasAllCollection =
     (ownedSkins?.length    >= 12) &&
     (ownedDesigns?.length  >= 12) &&
     (ownedSceneries?.length >= 8);
 
-  const rankLabel = playerMenuRank === 1 ? "1ST" : playerMenuRank === 2 ? "2ND" : playerMenuRank === 3 ? "3RD" : `${playerMenuRank}TH`;
-  const bannerBg = playerMenuRank === 1 ? "#c9a227" : playerMenuRank === 2 ? "#7a8fa6" : playerMenuRank === 3 ? "#a0522d" : DARK;
+  const rankLabel  = playerMenuRank === 1 ? "1ST" : playerMenuRank === 2 ? "2ND" : playerMenuRank === 3 ? "3RD" : `${playerMenuRank}TH`;
+  const bannerBg   = playerMenuRank === 1 ? "#c9a227" : playerMenuRank === 2 ? "#7a8fa6" : playerMenuRank === 3 ? "#a0522d" : DARK;
   const bannerColor = playerMenuRank <= 3 ? "#fff" : BG;
 
   return (
     <div style={outer}>
+
+      {/* Settings modal */}
       {showSettings && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.55)", zIndex:200, display:"flex", alignItems:"center", justifyContent:"center" }}
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.55)", zIndex:200, display:"flex", alignItems:"flex-start", justifyContent:"center", padding:"16px", overflowY:"auto" }}
           onClick={() => setShowSettings(false)}>
-          <div style={{ background:"#faf8f4", border:`2px solid ${BORDER}`, padding:"28px", width:"100%", maxWidth:340, fontFamily:F, boxSizing:"border-box" }}
+          <div style={{ background:"#faf8f4", border:`2px solid ${BORDER}`, padding:"24px", width:"100%", maxWidth:340, fontFamily:F, boxSizing:"border-box", margin:"auto" }}
             onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize:13, fontWeight:"bold", letterSpacing:4, marginBottom:20, color:DARK }}>SETTINGS</div>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
+            <div style={{ fontSize:13, fontWeight:"bold", letterSpacing:4, marginBottom:18, color:DARK }}>SETTINGS</div>
+
+            {/* Audio */}
+            <div style={{ fontSize:10, fontWeight:"bold", letterSpacing:3, color:DARK, marginBottom:10 }}>AUDIO</div>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
               <span style={{ fontSize:11, letterSpacing:2, color:DARK }}>MUSIC</span>
-              <button
-                onClick={() => { playClick(); setMusicMuted(!musicMuted); }}
+              <button onClick={() => { playClick(); setMusicMuted(!musicMuted); }}
                 style={{ background:musicMuted?BG:DARK, color:musicMuted?MUTED:BG, border:`2px solid ${BORDER}`, padding:"4px 14px", fontSize:10, fontFamily:F, cursor:"pointer", letterSpacing:2, fontWeight:"bold" }}
               >{musicMuted ? "OFF" : "ON"}</button>
             </div>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
+            <div style={{ marginBottom:14 }}>
+              <input type="range" min="0" max="1" step="0.05" value={musicVolume} disabled={musicMuted}
+                onChange={e => setMusicVolume(parseFloat(e.target.value))}
+                style={{ width:"100%", accentColor:DARK, opacity:musicMuted?0.3:1 }}
+              />
+            </div>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
               <span style={{ fontSize:11, letterSpacing:2, color:DARK }}>SOUND FX</span>
-              <button
-                onClick={() => { const next = !soundMuted; setSoundMuted(next); setSoundMutedState(next); if(!next) playClick(); }}
+              <button onClick={() => { const next = !soundMuted; setSoundMuted(next); setSoundMutedState(next); if(!next) playClick(); }}
                 style={{ background:soundMuted?BG:DARK, color:soundMuted?MUTED:BG, border:`2px solid ${BORDER}`, padding:"4px 14px", fontSize:10, fontFamily:F, cursor:"pointer", letterSpacing:2, fontWeight:"bold" }}
               >{soundMuted ? "OFF" : "ON"}</button>
             </div>
-            <div style={{ borderTop:`1px solid #ddd`, paddingTop:16, marginTop:4 }}>
-              <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => { playClick(); setShowSettings(false); setScreen("feedback"); }}>[ FEEDBACK ]</button>
+            <div style={{ marginBottom:18 }}>
+              <input type="range" min="0" max="1" step="0.05" value={sfxVolume} disabled={soundMuted}
+                onChange={e => { const v = parseFloat(e.target.value); setSfxVolume(v); setSfxVolumeState(v); }}
+                style={{ width:"100%", accentColor:DARK, opacity:soundMuted?0.3:1 }}
+              />
             </div>
-            <div style={{ marginTop:8 }}>
+
+            {/* Controls */}
+            <div style={{ borderTop:`1px solid #ddd`, paddingTop:16, marginBottom:10 }}>
+              <div style={{ fontSize:10, fontWeight:"bold", letterSpacing:3, color:DARK, marginBottom:12 }}>CONTROLS</div>
+
+              <div style={{ fontSize:10, letterSpacing:2, color:MUTED, marginBottom:6 }}>KEYBOARD</div>
+              {[
+                ["JUMP",      "Space / W / ↑"],
+                ["DASH FWD",  "D / →"],
+                ["DASH BACK", "A / ←"],
+                ["FAST DROP", "S / ↓"],
+                ["DUCK",      "S / ↓  (ground)"],
+              ].map(([action, key]) => (
+                <div key={action} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:7, gap:8 }}>
+                  <span style={{ fontSize:10, color:MUTED, letterSpacing:1, flexShrink:0 }}>{action}</span>
+                  <span style={{ fontSize:10, color:DARK, fontWeight:"bold", letterSpacing:1, textAlign:"right" }}>{key}</span>
+                </div>
+              ))}
+
+              <div style={{ fontSize:10, letterSpacing:2, color:MUTED, marginBottom:6, marginTop:14 }}>TOUCH / MOBILE</div>
+              {[
+                ["JUMP",      "Tap / Swipe up"],
+                ["FAST DROP", "Swipe down"],
+                ["DASH FWD",  "Swipe right"],
+                ["DASH BACK", "Swipe left"],
+              ].map(([action, key]) => (
+                <div key={action} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:7, gap:8 }}>
+                  <span style={{ fontSize:10, color:MUTED, letterSpacing:1, flexShrink:0 }}>{action}</span>
+                  <span style={{ fontSize:10, color:DARK, fontWeight:"bold", letterSpacing:1, textAlign:"right" }}>{key}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Footer */}
+            <div style={{ borderTop:`1px solid #ddd`, paddingTop:14, marginTop:4, display:"flex", flexDirection:"column", gap:8 }}>
+              <button style={{ ...btn(false), width:"100%", fontSize:11 }} onClick={() => { playClick(); setShowSettings(false); setScreen("feedback"); }}>[ FEEDBACK ]</button>
               <button style={{ ...btn(true), width:"100%", fontSize:11 }} onClick={() => { playClick(); setShowSettings(false); }}>[ CLOSE ]</button>
             </div>
           </div>
         </div>
       )}
+
       <div style={{ width:"100%", maxWidth:480, padding:"0 16px", boxSizing:"border-box" }}>
         <div style={card}>
+
+          {/* Rank banner */}
           {playerMenuRank && (
             <div style={{ position:"absolute", top:0, left:14, zIndex:10 }}>
               <div style={{ background:bannerBg, color:bannerColor, fontFamily:F, padding:"5px 8px 0", fontSize:9, letterSpacing:2, textAlign:"center", clipPath:"polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%)", width:"clamp(34px,8vw,44px)", height:"clamp(52px,14vw,68px)" }}>
@@ -70,6 +123,34 @@ export default function MenuScreen({
               </div>
             </div>
           )}
+
+          {/* Desktop: invisible hover strip + vertical tab on right edge */}
+          <div className="settings-hover-strip"
+            style={{ position:"absolute", top:0, left:"100%", width:24, height:"100%", zIndex:99 }}
+            onMouseEnter={() => setTabVisible(true)}
+            onMouseLeave={() => setTabVisible(false)}
+          />
+          <div className="settings-tab-desktop"
+            onMouseEnter={() => setTabVisible(true)}
+            onMouseLeave={() => setTabVisible(false)}
+            onClick={() => { playClick(); setShowSettings(true); }}
+            style={{
+              position:"absolute", top:0, left:"100%",
+              background:DARK, color:BG,
+              writingMode:"vertical-rl", textOrientation:"mixed",
+              fontSize:9, letterSpacing:3, fontWeight:"bold", fontFamily:F,
+              padding:"12px 5px", cursor:"pointer",
+              border:`2px solid ${BORDER}`, borderLeft:"none",
+              borderRadius:"0",
+              userSelect:"none",
+              opacity: tabVisible ? 1 : 0,
+              pointerEvents: tabVisible ? "auto" : "none",
+              transition:"opacity 0.18s ease",
+              zIndex:100,
+            }}
+          >SETTINGS</div>
+
+          {/* Header */}
           <div style={{ textAlign:"center", marginBottom:24 }}>
             <div style={{ fontSize:36, fontWeight:"bold", letterSpacing:4, marginBottom:2 }}>DINO</div>
             <div style={{ fontSize:14, letterSpacing:6, marginBottom:16, color:MUTED }}>REIMAGINED</div>
@@ -99,6 +180,7 @@ export default function MenuScreen({
             </p>
           </div>
 
+          {/* Buttons */}
           <div style={{ marginBottom:8 }}>
             {activeScenery === "abyss" && abyssUnlocked
               ? <button style={{ ...btn(true), width:"100%", background:"#b52d2d", color:"#ffffff", border:"2px solid #b52d2d" }} onClick={() => { playClick(); startBossFight(); }}>[ BATTLE ]</button>
@@ -113,10 +195,8 @@ export default function MenuScreen({
             <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => { playClick(); setScreen("achievements"); }}>[ ACHIEVEMENTS ]</button>
             <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => { playClick(); setScreen("leaderboard"); }}>[ LEADERBOARDS ]</button>
           </div>
-          <div style={{ marginTop:8 }}>
-            <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => { playClick(); setShowSettings(true); }}>[ SETTINGS ]</button>
-          </div>
 
+          {/* Stats */}
           {totalRuns > 0 && (
             <div style={{ marginTop:20, paddingTop:16, borderTop:"1px solid #ddd", fontSize:11, color:MUTED, textAlign:"center" }}>
               <div style={{ lineHeight:2 }}>BEST <b style={{ color:DARK }}>{bestDist}m</b> &nbsp;|&nbsp; RUNS <b style={{ color:DARK }}>{totalRuns}</b></div>
@@ -127,8 +207,29 @@ export default function MenuScreen({
               </div>
             </div>
           )}
+
+          {/* Mobile/tablet: settings button pinned to bottom center of card */}
+          <div className="settings-btn-mobile" style={{ position:"absolute", bottom:0, left:"50%", transform:"translateX(-50%)" }}>
+            <button
+              onClick={() => { playClick(); setShowSettings(true); }}
+              style={{
+                background:DARK,
+                border:"none", cursor:"pointer",
+                padding:"6px 32px 4px",
+                clipPath:"polygon(12% 0%, 88% 0%, 100% 100%, 0% 100%)",
+                display:"flex", alignItems:"center", justifyContent:"center",
+                width:120,
+              }}
+            >
+              <svg width="16" height="11" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M5 15l7-7 7 7" stroke={BG} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          </div>
+
         </div>
       </div>
+
       {notification  && <div style={notifBox}>{notification}</div>}
       {achivNotif    && <div style={achivNotifBox}>{achivNotif}</div>}
     </div>

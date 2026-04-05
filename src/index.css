@@ -105,3 +105,21 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+/* Settings bookmark: desktop shows hover tab, mobile shows inline button */
+@media (min-width: 769px) {
+  .settings-btn-mobile { display: none !important; }
+}
+@media (max-width: 768px) {
+  .settings-hover-strip { display: none !important; }
+  .settings-tab-desktop { display: none !important; }
+}
+
+button:focus, button:focus-visible, button:active {
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}

@@ -3,12 +3,12 @@ import { submitScore, fetchLeaderboard } from "./leaderboard";
 import { getSavedName, getPlayerId } from "./supabase";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import useCozyMusic from "./hooks/useCozyMusic";
-import useSoundEffects from "./hooks/useSoundEffects";
-import { GRAVITY, JUMP_FORCE, GROUND_Y, DINO_W, DINO_H, CANVAS_W, CANVAS_H, DAY_CYCLE, DUCK_H } from "./constants";
+import useSoundEffects, { playDashForward, playDashBack, playFastDrop, playDuckSlide } from "./hooks/useSoundEffects";
+import { GRAVITY, JUMP_FORCE, JUMP_HOLD_FORCE, JUMP_HOLD_FRAMES, GROUND_Y, DINO_W, DINO_H, CANVAS_W, CANVAS_H, DAY_CYCLE, DUCK_H } from "./constants";
 import { lerp, clamp, drawFossilDiamond } from "./utils/helpers";
 import { getSceneryColors, getHudColors } from "./utils/scenery";
 import { getObstacleHitbox, rectsOverlap } from "./utils/collision";
-import { drawDino, drawHeart, drawPassiveEffect } from "./rendering/drawDino";
+import { drawDino, drawHeart, drawPassiveEffect, drawShieldOutline } from "./rendering/drawDino";
 import { drawObstacleForScenery } from "./rendering/drawObstacles";
 import { drawStars, drawPixelSun, drawPixelMoon, drawClouds, drawGround, drawBonePickup, drawEntitySilhouette } from "./rendering/drawWorld";
 import { drawPowerupIcon } from "./rendering/drawPowerups";
@@ -45,8 +45,10 @@ export default function DinoIncremental() {
   const touchStartRef = useRef(null);
 
   const [screen,         setScreen]         = useState("menu");
-  const { muted: musicMuted, setMuted: setMusicMuted } = useCozyMusic(screen === "game" || screen === "gameover");
+  const { muted: musicMuted, setMuted: setMusicMuted, volume: musicVolume, setVolume: setMusicVolume } = useCozyMusic(screen === "game" || screen === "gameover");
   const { playJump, playPoint, playDie } = useSoundEffects();
+  const playJumpRef = useRef(playJump);
+  useEffect(()=>{ playJumpRef.current = playJump; },[playJump]);
   const [fossils,        setFossils]        = useLocalStorage("dino_fossils", 0);
   const [totalFossils,   setTotalFossils]   = useLocalStorage("dino_totalFossils", 0);
   const [bestDist,       setBestDist]       = useLocalStorage("dino_bestDist", 0);
@@ -83,10 +85,9 @@ export default function DinoIncremental() {
   const getStats = useCallback((levels) => {
     const ul = levels || {};
     return {
-      jumpBoost:      (ul.jump||0)*1.8,
-      fossilMult:     1+(ul.fossil||0)*0.20,
+      jumpBoost:      (ul.jump||0)*2.5,
       shieldChance:   (ul.shield||0)*0.06,
-      speedReduction: (ul.speed||0)*0.15,
+      speedReduction: (ul.speed||0)*0.08,
       hasMagnet:      (ul.magnet||0)>0,
       magnetLevel:    ul.magnet||0,
       hasDoubleJump:  (ul.dblJump||0)>0,
@@ -95,24 +96,26 @@ export default function DinoIncremental() {
       hasFastDrop:    (ul.fastdrop||0)>0,
       hasDuck:        (ul.duck||0)>0,
       dashCdReduction:(ul.dashCd||0)*10,
+      fossilSenseMult: 1+(ul.fossil||0)*0.20,
       comboBonus:     (ul.combo||0)*0.12,
-      nearMissBonus:  (ul.nearMiss||0)*3,
       extraLives:     ul.extraLife||0,
       invFramesBonus: (ul.invFrames||0)*8,
       nightBonus:     (ul.nightBonus||0)*0.25,
       transBonus:     (ul.transBonus||0)*0.25,
       speedBonusMult: (ul.speedBonus||0)*0.5,
-      passiveFossils: (ul.miner||0)*0.3+(ul.camp||0)*0.8+(ul.research||0)*1.5,
-      shieldHits:     1+(ul.pwShieldDur||0),
-      speedMult:      2.0+(ul.pwSpeedMult||0)*0.25,
+      fossilValue:    1+(ul.fossilValue||0),
+      fossilPickupMult: 1+(ul.fossilMult||0),
+      runDripRate:    (ul.runDrip||0)*0.0003,
+      passiveFossils: (ul.miner||0)*0.15+(ul.camp||0)*0.5+(ul.research||0)*1.5,
+      shieldHits:     1+Math.min(ul.pwShieldDur||0, 4),
       giantDurBonus:    (ul.pwGiantDur||0)*60,
       magnetRngBonus:   (ul.pwMagnetRng||0)*80,
       frenzyDurBonus:   (ul.pwFrenzyDur||0)*60,
-      rareDrop:         (ul.pwRareDrop||0)*0.05,
+      rareDrop:         (ul.powerupLuck||0)*0.05,
       heartChance:      (ul.pwHeartChance||0)*0.03,
       ghostDurBonus:    (ul.pwGhostDur||0)*60,
       tinyDurBonus:     (ul.pwTinyDur||0)*60,
-      meteorCountBonus: (ul.pwMeteorCount||0)*2,
+      meteorDurBonus:  (ul.pwMeteorCount||0)*60,
       doublerDurBonus:  (ul.pwDoublerDur||0)*60,
       slowDurBonus:     (ul.pwSlowDur||0)*60,
       windfallDurBonus: (ul.pwWindfallDur||0)*60,
@@ -251,7 +254,7 @@ export default function DinoIncremental() {
     const design  = DINO_DESIGNS.find(d=>d.id===equippedDesign)||DINO_DESIGNS[0];
     gsRef.current = {
       dino:{ x:70, y:GROUND_Y-DINO_H, vy:0, onGround:true, doubleJumped:false, dead:false,
-             dashTimer:0, dashDir:0, dashCooldown:0, ducking:false, invTimer:0 },
+             dashTimer:0, dashDir:0, dashCooldown:0, ducking:false, invTimer:0, jumpHoldTimer:0, jumpBuffer:0 },
       deathAnim: null, // { angle, vy, y }
       obstacles:[],
       pickups:[],
@@ -272,11 +275,11 @@ export default function DinoIncremental() {
       stats, lives:(equippedDesign==="trex"?2:1)+stats.extraLives, combo:0, comboTimer:0,
       alive:true, nightBlend:0, inNight:false,
       lastCycleNight:false, nightCycleCount:0,
-      nearMissTimer:0, shieldHitsLeft:0,
+      shieldHitsLeft:0,
       sunX:CANVAS_W+20, sunY:30, moonX:CANVAS_W+200, moonY:28,
       sunAlpha:1, moonAlpha:0,
       skin:currentSkin, design, scenery,
-      maxComboThisRun:0, nearMissCount:0, giantCrushes:0, usedDash:false, hitTaken:false,
+      maxComboThisRun:0, giantCrushes:0, usedDash:false, hitTaken:false,
       runStartTime: Date.now(),
       // Per-run passive state
       raptorSpeedBonus:0,    // raptor: distance milestones -> bone % (cap 10%)
@@ -292,6 +295,8 @@ export default function DinoIncremental() {
       // Spino: night bonus tracked in render
       // Entity silhouette state
       entity:{ x: CANVAS_W * 0.65, y: 60, alpha: 0, visible: false, timer: 0, fadeDir: 0 },
+      meteorAnim: [],
+      meteorSpawnTimer: 0,
     };
     keysRef.current={};
     prevKeysRef.current={};
@@ -301,16 +306,20 @@ export default function DinoIncremental() {
   const doJump = useCallback(()=>{
     const gs=gsRef.current;
     if(!gs||!gs.alive) return;
-    if(gs.activePowerups.speed_pw) return;
     if(gs.dino.ducking){gs.dino.ducking=false; return;}
     if(gs.dino.onGround){
-      gs.dino.vy=JUMP_FORCE-gs.stats.jumpBoost*0.42;
+      gs.dino.vy=JUMP_FORCE;
       gs.dino.onGround=false; gs.dino.doubleJumped=false;
+      gs.dino.jumpHoldTimer=JUMP_HOLD_FRAMES+gs.stats.jumpBoost;
       playJump();
     } else if(gs.stats.hasDoubleJump&&!gs.dino.doubleJumped){
-      gs.dino.vy=JUMP_FORCE-gs.stats.jumpBoost*0.28;
+      gs.dino.vy=JUMP_FORCE;
       gs.dino.doubleJumped=true;
+      gs.dino.jumpHoldTimer=JUMP_HOLD_FRAMES+gs.stats.jumpBoost;
       playJump();
+    } else {
+      // Buffer the jump for up to 8 frames in case we land shortly
+      gs.dino.jumpBuffer = 8;
     }
   },[playJump]);
 
@@ -421,7 +430,6 @@ export default function DinoIncremental() {
           totalBones:prev.totalBones+earned,
           nightCycles:prev.nightCycles+gs.nightCycleCount,
           maxCombo:Math.max(prev.maxCombo,gs.maxComboThisRun),
-          totalNearMiss:prev.totalNearMiss+gs.nearMissCount,
           giantCrushes:prev.giantCrushes+gs.giantCrushes,
           bestDistNoDash:gs.usedDash?prev.bestDistNoDash:Math.max(prev.bestDistNoDash,dist),
           bestDistNoHit:gs.hitTaken?prev.bestDistNoHit:Math.max(prev.bestDistNoHit||0,dist),
@@ -459,7 +467,7 @@ export default function DinoIncremental() {
       if(!gs) return;
 
       const k=keysRef.current, pk=prevKeysRef.current;
-      const hasSpdPw   = !!gs.activePowerups.speed_pw;
+      const hasSpdPw   = false; // speed_pw removed — not in shop
       const hasSlowPw  = !!gs.activePowerups.slowmo_pw;
       const hasGiant   = !!gs.activePowerups.giant_pw;
       const hasGhost   = !!gs.activePowerups.ghost_pw;
@@ -484,7 +492,6 @@ export default function DinoIncremental() {
         gs.frame++;
         gs.speed=Math.min(gs.baseSpeed+gs.distance*0.0016,22);
         gs.distance+=gs.speed*dt*0.1;
-        gs.groundOffset=(gs.groundOffset+gs.speed*dt)%(CANVAS_W*4);
 
         // ── Raptor passive: +0.5% per 500m, cap 10% (20 milestones) ──────────
         if(designId==="raptor"){
@@ -622,12 +629,41 @@ export default function DinoIncremental() {
             gs.coinManiaTimer=7;
           }
         }
-        if(gs.activePowerups.meteor_pw&&!gs.activePowerups.meteor_pw.fired){
-          gs.activePowerups.meteor_pw.fired=true;
-          const n=gs.obstacles.length; gs.obstacles=[];
-          const bonus=gs.stats.meteorCountBonus||0;
-          if(n>0){gs.fossilsEarned+=n*(4+bonus);addFloat(gs,`METEOR! +${n*(4+bonus)}`,60,60,"#ee6600");}
-          delete gs.activePowerups.meteor_pw;
+        // Meteor rain: spawn falling meteors periodically while active
+        if(gs.activePowerups.meteor_pw){
+          gs.meteorSpawnTimer = (gs.meteorSpawnTimer||0) + dt;
+          if(gs.meteorSpawnTimer >= 12){
+            gs.meteorSpawnTimer = 0;
+            const mx = 20 + Math.random() * (CANVAS_W - 40);
+            gs.meteorAnim = gs.meteorAnim || [];
+            gs.meteorAnim.push({ x:mx, y:-20, vy:14+Math.random()*8, vx:(Math.random()-0.5)*2 });
+          }
+        } else {
+          gs.meteorSpawnTimer = 0;
+        }
+        // Update falling meteors
+        if(gs.meteorAnim && gs.meteorAnim.length > 0){
+          gs.meteorAnim = gs.meteorAnim.filter(ma => {
+            ma.y += ma.vy;
+            ma.x += ma.vx;
+            ma.vy += 0.8;
+            if(ma.y >= GROUND_Y){
+              // On impact: destroy nearby obstacles and bullets, award fossils
+              const impactX = ma.x;
+              gs.obstacles = gs.obstacles.filter(o => {
+                const hb = getObstacleHitbox(o);
+                if(Math.abs(hb.x + hb.w/2 - impactX) < 80){
+                  if(o.bullets) o.bullets = [];
+                  gs.fossilsEarned += 3;
+                  addFloat(gs, `+3`, hb.x, hb.y - 10, "#ee6600");
+                  return false;
+                }
+                return true;
+              });
+              return false; // remove meteor
+            }
+            return true;
+          });
         }
 
         // ── Physics ──────────────────────────────────────────────────────────
@@ -641,16 +677,30 @@ export default function DinoIncremental() {
 
           if((k["Space"]||k["ArrowUp"]||k["KeyW"])&&!(pk["Space"]||pk["ArrowUp"]||pk["KeyW"])) doJump();
 
+          // Variable jump: hold key to extend jump height
+          const jumpHeld = k["Space"]||k["ArrowUp"]||k["KeyW"];
+          if(jumpHeld && gs.dino.jumpHoldTimer>0 && gs.dino.vy<0){
+            gs.dino.vy -= JUMP_HOLD_FORCE*dt;
+            gs.dino.jumpHoldTimer -= dt;
+          } else if(!jumpHeld){
+            gs.dino.jumpHoldTimer=0;
+          }
+
           // Dash  Efull canvas bounds (10 to CANVAS_W-60)
           if(gs.stats.hasDash&&k["ArrowRight"]&&!pk["ArrowRight"]&&gs.dino.dashTimer<=0&&gs.dino.dashCooldown<=0){
             gs.dino.dashTimer=10; gs.dino.dashDir=1; gs.dino.dashCooldown=baseDashCd; gs.usedDash=true;
+            playDashForward();
           }
           if(gs.stats.hasBackDash&&k["ArrowLeft"]&&!pk["ArrowLeft"]&&gs.dino.dashTimer<=0&&gs.dino.dashCooldown<=0){
             gs.dino.dashTimer=10; gs.dino.dashDir=-1; gs.dino.dashCooldown=baseDashCd; gs.usedDash=true;
+            playDashBack();
           }
           if(gs.stats.hasDuck&&gs.dino.onGround){
+            const wasDucking=gs.dino.ducking;
             gs.dino.ducking=(k["ArrowDown"]||k["KeyS"]);
+            if(gs.dino.ducking&&!wasDucking) playDuckSlide();
           } else if(!gs.dino.onGround){
+            if(gs.stats.hasFastDrop&&(k["ArrowDown"]||k["KeyS"])&&!(pk["ArrowDown"]||pk["KeyS"])) playFastDrop();
             if(gs.stats.hasFastDrop&&(k["ArrowDown"]||k["KeyS"])) gs.dino.vy+=GRAVITY*2.5*dt;
             gs.dino.ducking=false;
           }
@@ -669,18 +719,27 @@ export default function DinoIncremental() {
             gs.dino.vy=0;
             gs.dino.onGround=true;
             gs.dino.doubleJumped=false;
+            // Consume buffered jump on landing
+            if(gs.dino.jumpBuffer>0){
+              gs.dino.jumpBuffer=0;
+              gs.dino.vy=JUMP_FORCE;
+              gs.dino.onGround=false;
+              gs.dino.jumpHoldTimer=JUMP_HOLD_FRAMES+gs.stats.jumpBoost;
+              playJumpRef.current();
+            }
           }
+          // Tick down jump buffer
+          if(gs.dino.jumpBuffer>0) gs.dino.jumpBuffer-=dt;
         }
 
         prevKeysRef.current={...k};
 
         let effSpeed=gs.speed;
-        if(hasSpdPw)  effSpeed*=gs.stats.speedMult;
         if(hasSlowPw) effSpeed*=0.38;
+        gs.groundOffset=(gs.groundOffset+effSpeed*dt)%(CANVAS_W*4);
 
         // ── Spawn obstacles ──────────────────────────────────────────────────
         if(gs.comboTimer>0){ gs.comboTimer-=dt; if(gs.comboTimer<=0) gs.combo=0; }
-        if(gs.nearMissTimer>0) gs.nearMissTimer-=dt;
 
         const tier=Math.min(10,Math.floor(gs.distance/180));
         const minGap=Math.max(44,140-effSpeed*5-tier*2.5);
@@ -729,7 +788,8 @@ export default function DinoIncremental() {
         }
         // Heart: separate low-chance spawn check every ~120 frames
         if(gs.unlockedPowerups.includes("heart_pw")&&gs.frame%120===0){
-          if(Math.random()<0.02+gs.stats.heartChance){
+          const heartSpawnChance = 0.02 + gs.stats.heartChance + gs.stats.rareDrop * 0.5;
+          if(Math.random()<heartSpawnChance){
             const hdef=POWERUP_DEFS.find(d=>d.id==="heart_pw");
             gs.powerupPickups.push({x:CANVAS_W+10,y:GROUND_Y-32-Math.random()*58,def:hdef,collected:false});
           }
@@ -1007,7 +1067,7 @@ export default function DinoIncremental() {
                   playDie();
                   addFloat(gs,"-1 LIFE",gs.dino.x,gs.dino.y-24,"#ee3344");
                 } else {
-                  gs.hitTaken=true; endGame(gs); return;
+                  gs.lives=0; gs.hitTaken=true; endGame(gs); return;
                 }
                 break;
               }
@@ -1036,27 +1096,11 @@ export default function DinoIncremental() {
             // Dilopho passive: phase through everything when active
             if(designId==="dilopho"&&gs.dilophoPhaseActive>0) continue;
 
-            // Anky passive: near miss destroys obstacle
-            if(designId==="anky"&&!rectsOverlap(DX,DY,DW,DH,hb.x,hb.y,hb.w,hb.h)&&
-               rectsOverlap(DX,DY,DW,DH,hb.x-12,hb.y-8,hb.w+24,hb.h+16)){
-              gs.obstacles.splice(i,1);
-              addFloat(gs,"CLUB SWEEP!",hb.x,hb.y-10,"#ffaa00");
-              gs.nearMissCount++;
-              continue;
-            }
+            const actualHit = gs.dino.invTimer<=0&&rectsOverlap(DX,DY,DW,DH,hb.x,hb.y,hb.w,hb.h);
+            const inNearZone = gs.dino.invTimer<=0&&!actualHit&&rectsOverlap(DX,DY,DW,DH,hb.x-12,hb.y-8,hb.w+24,hb.h+16);
 
-            // Near miss detection
-            if(!rectsOverlap(DX,DY,DW,DH,hb.x,hb.y,hb.w,hb.h)&&
-               rectsOverlap(DX,DY,DW,DH,hb.x-12,hb.y-8,hb.w+24,hb.h+16)&&gs.nearMissTimer<=0){
-              gs.nearMissTimer=38; gs.nearMissCount++;
-              if(gs.stats.nearMissBonus>0){
-                gs.fossilsEarned+=gs.stats.nearMissBonus;
-                addFloat(gs,`NR MISS +${gs.stats.nearMissBonus}`,gs.dino.x-8,gs.dino.y-22,"#ffaa00");
-              }
-            }
-
-            // Collision
-            if(gs.dino.invTimer<=0&&rectsOverlap(DX,DY,DW,DH,hb.x,hb.y,hb.w,hb.h)){
+            // Collision first
+            if(actualHit){
               if(gs.activePowerups.shield_pw){
                 gs.shieldHitsLeft--; if(gs.shieldHitsLeft<=0) delete gs.activePowerups.shield_pw;
                 gs.obstacles.splice(i,1); gs.dino.invTimer=20+gs.stats.invFramesBonus; gs.hitTaken=true;
@@ -1069,9 +1113,16 @@ export default function DinoIncremental() {
                 playDie();
                 addFloat(gs,"-1 LIFE",gs.dino.x,gs.dino.y-24,"#ee3344");
               } else {
-                gs.hitTaken=true; endGame(gs); return;
+                gs.lives=0; gs.hitTaken=true; endGame(gs); return;
               }
               break;
+            }
+
+            // Anky passive: near miss destroys obstacle
+            if(designId==="anky"&&inNearZone){
+              gs.obstacles.splice(i,1);
+              addFloat(gs,"CLUB SWEEP!",hb.x,hb.y-10,"#ffaa00");
+              continue;
             }
           }
         }
@@ -1092,8 +1143,10 @@ export default function DinoIncremental() {
             if(designId==="para"){ gs.comboTimer=150; if(gs.combo>20) gs.combo=20; }
             // Pterodac passive: airborne pickups worth 1.5x
             const pteroM = (designId==="pterodac"&&!gs.dino.onGround) ? 1.5 : 1;
-            const earned=gs.stats.fossilMult*(1+gs.combo*(0.08+gs.stats.comboBonus))*nightM*frenzyM*doubM*raptorM*pteroM*1.3;
+            const comboM = 1 + gs.combo * (0.08 + gs.stats.comboBonus);
+            const earned = gs.stats.fossilValue * gs.stats.fossilSenseMult * gs.stats.fossilPickupMult * comboM * nightM * frenzyM * doubM * raptorM * pteroM;
             gs.fossilsEarned+=earned;
+            if(earned>1) addFloat(gs,`+${Math.floor(earned)}`,p.x,p.y-10,"#ffdd44");
           }
         }
         for(const p of gs.powerupPickups){
@@ -1101,10 +1154,11 @@ export default function DinoIncremental() {
             p.collected=true;
             const def=p.def;
             if(def.id==="shield_pw"){gs.activePowerups.shield_pw={timer:Infinity,duration:0};gs.shieldHitsLeft=gs.stats.shieldHits;}
-            else if(def.id==="meteor_pw"){gs.activePowerups.meteor_pw={timer:1,duration:1,fired:false};}
             else if(def.id==="heart_pw"){
-              if(gs.lives<4){gs.lives++;addFloat(gs,"+1 LIFE!",gs.dino.x-10,gs.dino.y-28,"#dd2244");}
-              else{const b=Math.floor(20*gs.stats.fossilMult);gs.fossilsEarned+=b;addFloat(gs,`FULL HP +${b}`,gs.dino.x-10,gs.dino.y-28,"#ffdd44");}
+              const baseLives = gs.design?.id==="trex" ? 2 : 1;
+              const maxLives = baseLives + gs.stats.extraLives;
+              if(gs.lives < maxLives){ gs.lives++; addFloat(gs,"+1 LIFE!",gs.dino.x-10,gs.dino.y-28,"#dd2244"); }
+              else{ const b=Math.floor(10*gs.stats.fossilSenseMult); gs.fossilsEarned+=b; addFloat(gs,`+${b}`,gs.dino.x-10,gs.dino.y-28,"#ffdd44"); }
             }
             else{
               const dBonus=def.id==="giant_pw"?gs.stats.giantDurBonus
@@ -1114,6 +1168,7 @@ export default function DinoIncremental() {
                 :def.id==="doubler_pw"?gs.stats.doublerDurBonus
                 :def.id==="slowmo_pw"?gs.stats.slowDurBonus
                 :def.id==="coinmania_pw"?gs.stats.windfallDurBonus
+                :def.id==="meteor_pw"?gs.stats.meteorDurBonus
                 :0;
               gs.activePowerups[def.id]={timer:def.duration+dBonus,duration:def.duration+dBonus};
             }
@@ -1125,7 +1180,7 @@ export default function DinoIncremental() {
           }
         }
 
-        gs.fossilsEarned+=gs.speed*0.0015*gs.stats.fossilMult*nightM*frenzyM*doubM*raptorM*dt;
+        if(gs.stats.runDripRate>0) gs.fossilsEarned+=gs.speed*gs.stats.runDripRate*(1+gs.stats.speedBonusMult)*frenzyM*doubM*dt;
         gs.floatingTexts=gs.floatingTexts.filter(t=>{t.y+=t.vy*dt;t.life-=dt;return t.life>0;});
         gs.passiveEffects=gs.passiveEffects.filter(e=>{e.life+=dt;return e.life<e.maxLife;});
 
@@ -1182,7 +1237,7 @@ export default function DinoIncremental() {
       }
 
       // Powerup overlays
-      const hasSpdPwR  = !!gs.activePowerups.speed_pw;
+      const hasSpdPwR  = false;
       const hasGiantR  = !!gs.activePowerups.giant_pw;
       const hasGhostR  = !!gs.activePowerups.ghost_pw;
       const hasSlowPwR = !!gs.activePowerups.slowmo_pw;
@@ -1191,8 +1246,9 @@ export default function DinoIncremental() {
       const hasTinyR   = !!gs.activePowerups.tiny_pw;
 
       if(gs.activePowerups.shield_pw){
-        ctx.strokeStyle="#4488dd";ctx.lineWidth=2;ctx.beginPath();
-        ctx.arc(gs.dino.x+DINO_W/2,gs.dino.y+DINO_H/2,DINO_W,0,Math.PI*2);ctx.stroke();
+        drawShieldOutline(ctx,gs.dino.x,gs.dino.y,gs.frame,gs.dino.dead,
+          gs.skin,gs.design,hasGiantR,gs.dino.ducking,hasTinyR,gs.dino.onGround,
+          gs.deathAnim,gs.shieldHitsLeft);
       }
       if(hasSpdPwR){const sc2=gs.skin?.color||"#2a2a2a";for(let i=1;i<=4;i++){ctx.fillStyle=sc2;ctx.globalAlpha=0.1;ctx.fillRect(gs.dino.x-i*14,gs.dino.y+4,DINO_W,DINO_H-8);}ctx.globalAlpha=1;}
       for(const e of gs.passiveEffects) drawPassiveEffect(ctx,e.type,e.x,e.y,gs.frame,e.life/e.maxLife);
@@ -1206,6 +1262,26 @@ export default function DinoIncremental() {
       drawDino(ctx,gs.dino.x,gs.dino.y,gs.frame,gs.dino.dead,
         gs.skin,gs.design,hasGiantR,gs.dino.ducking,hasTinyR,hasGhostR,
         gs.dino.invTimer, gs.dino.onGround, gs.deathAnim);
+
+      // Meteor rain rendering
+      if(gs.meteorAnim && gs.meteorAnim.length > 0){
+        for(const ma of gs.meteorAnim){
+          ctx.save();
+          // Trail
+          for(let i=1;i<=5;i++){
+            ctx.globalAlpha=0.12*(6-i);
+            ctx.fillStyle="#ff4400";
+            const tw=14-i*2;
+            ctx.fillRect(ma.x-tw/2-ma.vx*i*0.5, ma.y-ma.vy*i*0.4-tw/2, tw, tw);
+          }
+          // Fireball core
+          ctx.globalAlpha=1;
+          ctx.fillStyle="#ff6600"; ctx.fillRect(ma.x-9, ma.y-9, 18, 18);
+          ctx.fillStyle="#ffcc00"; ctx.fillRect(ma.x-6, ma.y-6, 12, 12);
+          ctx.fillStyle="#ffffff"; ctx.fillRect(ma.x-3, ma.y-3, 6,  6);
+          ctx.restore();
+        }
+      }
 
       // Floating texts
       for(const t of gs.floatingTexts){
@@ -1275,8 +1351,11 @@ export default function DinoIncremental() {
           ctx.fillStyle=HUD.hud;ctx.font="9px 'Courier New'";
           ctx.fillText(def.label,CANVAS_W-88,barY+17);barY+=20;
         } else if(def.duration===0){
-          ctx.fillStyle=def.color;ctx.font="bold 9px 'Courier New'";
-          ctx.fillText(`[${def.label}] x${gs.shieldHitsLeft}`,CANVAS_W-92,barY+8);barY+=16;
+          const frac=gs.shieldHitsLeft/gs.stats.shieldHits;
+          ctx.fillStyle="rgba(0,0,0,0.22)";ctx.fillRect(CANVAS_W-88,barY,76,6);
+          ctx.fillStyle=def.color;ctx.fillRect(CANVAS_W-88,barY,Math.floor(76*frac),6);
+          ctx.fillStyle=HUD.hud;ctx.font="9px 'Courier New'";
+          ctx.fillText(`${def.label} x${gs.shieldHitsLeft}`,CANVAS_W-88,barY+17);barY+=20;
         }
       }
 
@@ -1296,27 +1375,34 @@ export default function DinoIncremental() {
 
   // ─── BUY FUNCTIONS ───────────────────────────────────────────────────────
   const buyUpgrade = useCallback((up)=>{
-    setFossils(cur=>{
-      const level=upgradeLevels[up.id]||0;
-      if(level>=up.maxLevel){showNotif("Already maxed!");return cur;}
-      const cost=getUpgradeCost(up,level);
-      if(cur<cost){showNotif("Not enough bones!");return cur;}
-      setUpgradeLevels(prev=>({...prev,[up.id]:(prev[up.id]||0)+1}));
-      setAchievStats(prev=>{
-        const nu=prev.totalUpgrades+1;
-        const mvIds=["jump","dblJump","dash","backdash","fastdrop","duck","dashCd"];
-        const allMax=mvIds.every(id=>(upgradeLevels[id]||0)>=(UPGRADES.find(u=>u.id===id)?.maxLevel||1));
-        return {...prev,totalUpgrades:nu,allMovementMax:allMax};
-      });
-      showNotif(`${up.label} upgraded!`);
-      return +(cur-cost).toFixed(1);
+    const level=upgradeLevels[up.id]||0;
+    if(level>=up.maxLevel){showNotif(`${up.label} is already maxed out!`);return;}
+    if(up.id==="dashCd"&&!(upgradeLevels.dash>=1)&&!(upgradeLevels.backdash>=1)){
+      showNotif("Unlock Forward Dash or Back Dash first.");return;
+    }
+    if(up.id==="speedBonus"&&!(upgradeLevels.runDrip>=1)){
+      showNotif("Unlock Fossil Trail first.");return;
+    }
+    if(up.id==="powerupLuck"&&unlockedPowerups.length===0){
+      showNotif("Unlock at least one powerup first.");return;
+    }
+    const cost=getUpgradeCost(up,level);
+    if(fossils<cost){showNotif(`Not enough fossils — need ${cost - Math.floor(fossils)} more.`);return;}
+    setFossils(cur=>+(cur-cost).toFixed(1));
+    setUpgradeLevels(prev=>({...prev,[up.id]:(prev[up.id]||0)+1}));
+    setAchievStats(prev=>{
+      const nu=prev.totalUpgrades+1;
+      const mvIds=["jump","dblJump","dash","backdash","fastdrop","duck","dashCd"];
+      const allMax=mvIds.every(id=>(upgradeLevels[id]||0)>=(UPGRADES.find(u=>u.id===id)?.maxLevel||1));
+      return {...prev,totalUpgrades:nu,allMovementMax:allMax};
     });
-  },[upgradeLevels,showNotif]);
+    showNotif(`${up.label} upgraded to level ${(upgradeLevels[up.id]||0)+1}!`);
+  },[upgradeLevels,fossils,showNotif]);
 
   const buySkin = useCallback((sk)=>{
     if(ownedSkins.includes(sk.id)){setEquippedSkin(sk.id);showNotif(`${sk.label} equipped!`);return;}
     setFossils(cur=>{
-      if(cur<sk.cost){showNotif("Not enough bones!");return cur;}
+      if(cur<sk.cost){showNotif(`Not enough fossils — need ${sk.cost - Math.floor(cur)} more.`);return cur;}
       setOwnedSkins(p=>[...p,sk.id]); setEquippedSkin(sk.id);
       setAchievStats(prev=>({...prev,ownedSkins:prev.ownedSkins+1}));
       showNotif(`${sk.label} skin unlocked!`);
@@ -1325,11 +1411,11 @@ export default function DinoIncremental() {
   },[ownedSkins,showNotif]);
 
   const buyDesign = useCallback((d)=>{
-    if(ownedDesigns.includes(d.id)){setEquippedDesign(d.id);showNotif(`${d.label} equipped!`);return;}
-    if(d.unlockDist&&bestDist<d.unlockDist){showNotif(`Reach ${d.unlockDist}m to unlock!`);return;}
+    if(ownedDesigns.includes(d.id)){setEquippedDesign(d.id);showNotif(`${d.label} is now active.`);return;}
+    if(d.unlockDist&&bestDist<d.unlockDist){showNotif(`Reach ${d.unlockDist}m to unlock ${d.label}.`);return;}
     if(d.cost>0){
       setFossils(cur=>{
-        if(cur<d.cost){showNotif("Not enough bones!");return cur;}
+        if(cur<d.cost){showNotif(`Not enough fossils — need ${d.cost - Math.floor(cur)} more.`);return cur;}
         setOwnedDesigns(p=>[...p,d.id]); setEquippedDesign(d.id);
         showNotif(`${d.label} unlocked!`);
         return cur-d.cost;
@@ -1341,9 +1427,9 @@ export default function DinoIncremental() {
   },[ownedDesigns,bestDist,showNotif]);
 
   const buyScenery = useCallback((s)=>{
-    if(ownedSceneries.includes(s.id)){setActiveScenery(s.id);showNotif(`${s.label} activated!`);return;}
+    if(ownedSceneries.includes(s.id)){setActiveScenery(s.id);showNotif(`${s.label} is now active.`);return;}
     setFossils(cur=>{
-      if(cur<s.cost){showNotif("Not enough bones!");return cur;}
+      if(cur<s.cost){showNotif(`Not enough fossils — need ${s.cost - Math.floor(cur)} more.`);return cur;}
       setOwnedSceneries(p=>[...p,s.id]); setActiveScenery(s.id);
       setAchievStats(prev=>({...prev,ownedSceneries:prev.ownedSceneries+1}));
       showNotif(`${s.label} unlocked!`);
@@ -1352,9 +1438,9 @@ export default function DinoIncremental() {
   },[ownedSceneries,showNotif]);
 
   const unlockPowerup = useCallback((def)=>{
-    if(unlockedPowerups.includes(def.id)){showNotif(`${def.label} already unlocked!`);return;}
+    if(unlockedPowerups.includes(def.id)){showNotif(`${def.label} is already unlocked.`);return;}
     setFossils(cur=>{
-      if(cur<def.unlockCost){showNotif("Not enough bones!");return cur;}
+      if(cur<def.unlockCost){showNotif(`Not enough fossils — need ${def.unlockCost - Math.floor(cur)} more.`);return cur;}
       setUnlockedPowerups(p=>[...p,def.id]);
       showNotif(`${def.label} powerup unlocked!`);
       return cur-def.unlockCost;
@@ -1399,6 +1485,7 @@ export default function DinoIncremental() {
       ownedSkins={ownedSkins} ownedDesigns={ownedDesigns} ownedSceneries={ownedSceneries}
       playerMenuRank={playerMenuRank}
       musicMuted={musicMuted} setMusicMuted={setMusicMuted}
+      musicVolume={musicVolume} setMusicVolume={setMusicVolume}
       activeScenery={activeScenery}
       abyssUnlocked={abyssUnlocked} startBossFight={startBossFight}
       F={F} BG={BG} DARK={DARK} BORDER={BORDER} MUTED={MUTED}
@@ -1496,7 +1583,7 @@ export default function DinoIncremental() {
       onWin={()=>{
         setFossils(f => f + 5000);
         setTotalFossils(f => f + 5000);
-        showNotif("+5000 FOSSILS! The Horror Entity is defeated!");
+        showNotif("The Horror Entity is defeated! +5000 fossils!");
         setScreen("menu");
       }}
       onDeath={()=>setBossKey(k => k + 1)}

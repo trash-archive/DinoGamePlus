@@ -346,6 +346,86 @@ function drawIconSpeedBonus(ctx, x, y, col) {
   ctx.fillRect(x+16, y+6,  3,  3);
 }
 
+function drawIconFossilWorth(ctx, x, y, col) {
+  // Diamond gem with a +1 notch
+  ctx.fillStyle = col;
+  // Diamond top
+  ctx.fillRect(x+9,  y+1,  4,  2);
+  ctx.fillRect(x+7,  y+3,  8,  2);
+  ctx.fillRect(x+5,  y+5,  12, 2);
+  // Diamond middle
+  ctx.fillRect(x+3,  y+7,  16, 4);
+  // Diamond bottom
+  ctx.fillRect(x+5,  y+11, 12, 2);
+  ctx.fillRect(x+7,  y+13, 8,  2);
+  ctx.fillRect(x+9,  y+15, 4,  2);
+  ctx.fillRect(x+10, y+17, 2,  2);
+  // Shine
+  ctx.fillStyle = "rgba(255,255,255,0.5)";
+  ctx.fillRect(x+6,  y+7,  4,  2);
+  ctx.fillRect(x+7,  y+5,  2,  2);
+  // +1 tag bottom-right
+  ctx.fillStyle = col;
+  ctx.fillRect(x+14, y+15, 2,  6);
+  ctx.fillRect(x+13, y+16, 2,  2);
+  ctx.fillRect(x+14, y+21, 4,  1);
+}
+
+function drawIconFossilMultiplier(ctx, x, y, col) {
+  // Two stacked diamonds with an x between
+  ctx.fillStyle = col;
+  // Left diamond (small)
+  ctx.fillRect(x+2,  y+8,  2,  2);
+  ctx.fillRect(x+1,  y+10, 4,  2);
+  ctx.fillRect(x+2,  y+12, 2,  2);
+  // Right diamond (small)
+  ctx.fillRect(x+16, y+8,  2,  2);
+  ctx.fillRect(x+15, y+10, 4,  2);
+  ctx.fillRect(x+16, y+12, 2,  2);
+  // x symbol in center
+  ctx.fillRect(x+9,  y+9,  2,  2);
+  ctx.fillRect(x+11, y+11, 2,  2);
+  ctx.fillRect(x+9,  y+13, 2,  2);
+  ctx.fillRect(x+11, y+9,  2,  2);
+  ctx.fillRect(x+9,  y+11, 4,  2);
+  // Shine dots
+  ctx.fillStyle = "rgba(255,255,255,0.5)";
+  ctx.fillRect(x+2,  y+9,  1,  1);
+  ctx.fillRect(x+16, y+9,  1,  1);
+  // Arrow lines suggesting multiplication
+  ctx.fillStyle = col;
+  ctx.fillRect(x+5,  y+4,  12, 2);
+  ctx.fillRect(x+5,  y+16, 12, 2);
+  ctx.fillRect(x+4,  y+5,  2,  2);
+  ctx.fillRect(x+16, y+5,  2,  2);
+  ctx.fillRect(x+4,  y+15, 2,  2);
+  ctx.fillRect(x+16, y+15, 2,  2);
+}
+
+function drawIconFossilTrail(ctx, x, y, col) {
+  // Dino footprint trail with fossil diamonds
+  ctx.fillStyle = col;
+  // Three fossil diamonds shrinking into the distance
+  // Large (foreground)
+  ctx.fillRect(x+14, y+13, 2,  2);
+  ctx.fillRect(x+13, y+15, 4,  2);
+  ctx.fillRect(x+14, y+17, 2,  2);
+  // Medium
+  ctx.fillRect(x+8,  y+9,  2,  2);
+  ctx.fillRect(x+7,  y+11, 4,  2);
+  ctx.fillRect(x+8,  y+13, 2,  2);
+  // Small (background)
+  ctx.fillRect(x+3,  y+5,  2,  2);
+  ctx.fillRect(x+2,  y+7,  4,  2);
+  ctx.fillRect(x+3,  y+9,  2,  2);
+  // Trail dots connecting them
+  ctx.fillStyle = "rgba(255,255,255,0.4)";
+  ctx.fillRect(x+6,  y+12, 2,  2);
+  ctx.fillRect(x+11, y+15, 2,  2);
+  ctx.fillRect(x+5,  y+8,  2,  2);
+  ctx.fillRect(x+10, y+11, 2,  2);
+}
+
 // ─── IDLE ICONS ───────────────────────────────────────────────────────────────
 
 function drawIconMiner(ctx, x, y, col) {
@@ -398,6 +478,24 @@ function drawIconResearch(ctx, x, y, col) {
 }
 
 // ─── DISPATCH ─────────────────────────────────────────────────────────────────
+
+function drawIconLock(ctx, x, y, col) {
+  ctx.fillStyle = col;
+  // Shackle (top arc)
+  ctx.fillRect(x+7,  y+2,  8,  2);
+  ctx.fillRect(x+5,  y+4,  4,  2);
+  ctx.fillRect(x+13, y+4,  4,  2);
+  ctx.fillRect(x+4,  y+6,  3,  5);
+  ctx.fillRect(x+15, y+6,  3,  5);
+  // Body
+  ctx.fillRect(x+3,  y+11, 16, 10);
+  // Keyhole
+  ctx.fillStyle = "#f0ede6";
+  ctx.fillRect(x+9,  y+14, 4,  2);
+  ctx.fillRect(x+10, y+16, 2,  3);
+}
+export function drawLockIcon(ctx, x, y, col) { drawIconLock(ctx, x, y, col); }
+
 export function drawUpgradeIcon(ctx, id, x, y, col) {
   switch (id) {
     // Movement
@@ -409,13 +507,15 @@ export function drawUpgradeIcon(ctx, id, x, y, col) {
     case "duck":       drawIconDuck(ctx, x, y, col);         break;
     case "dashCd":     drawIconDashCooldown(ctx, x, y, col); break;
     // Income
-    case "fossil":     drawIconFossil(ctx, x, y, col);       break;
-    case "combo":      drawIconCombo(ctx, x, y, col);        break;
-    case "magnet":     drawIconMagnetIncome(ctx, x, y, col); break;
-    case "nearMiss":   drawIconNearMiss(ctx, x, y, col);     break;
-    case "nightBonus": drawIconNightBonus(ctx, x, y, col);   break;
-    case "transBonus": drawIconCycleReward(ctx, x, y, col);  break;
-    case "speedBonus": drawIconSpeedBonus(ctx, x, y, col);   break;
+    case "fossil":      drawIconFossil(ctx, x, y, col);           break;
+    case "fossilValue": drawIconFossilWorth(ctx, x, y, col);      break;
+    case "fossilMult":  drawIconFossilMultiplier(ctx, x, y, col); break;
+    case "runDrip":     drawIconFossilTrail(ctx, x, y, col);      break;
+    case "combo":       drawIconCombo(ctx, x, y, col);            break;
+    case "magnet":      drawIconMagnetIncome(ctx, x, y, col);     break;
+    case "nightBonus":  drawIconNightBonus(ctx, x, y, col);       break;
+    case "transBonus":  drawIconCycleReward(ctx, x, y, col);      break;
+    case "speedBonus":  drawIconSpeedBonus(ctx, x, y, col);       break;
     // Survival
     case "shield":     drawIconShield(ctx, x, y, col);       break;
     case "speed":      drawIconSafeStart(ctx, x, y, col);    break;
