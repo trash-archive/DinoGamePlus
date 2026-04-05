@@ -81,7 +81,7 @@ export default function LeaderboardScreen({ lbData, setLbData, lbLoading, setLbL
                     if (e.key === "Enter") saveName(lbNewName);
                     if (e.key === "Escape") { setLbRenaming(false); setLbNameError(""); }
                   }}
-                  style={{ fontFamily:F, fontSize:11, fontWeight:"bold", padding:"4px 8px", border:`2px solid ${lbNameError?"#cc2200":BORDER}`, background:BG, letterSpacing:2, width:130, textTransform:"uppercase" }}
+                  style={{ fontFamily:F, fontSize:11, fontWeight:"bold", padding:"4px 8px", border:`2px solid ${lbNameError?"#cc2200":BORDER}`, background:BG, color:DARK, letterSpacing:2, width:130, textTransform:"uppercase" }}
                   maxLength={20} placeholder="ENTER NAME"
                 />
                 <button style={btn(true,true)} onClick={() => { playClick(); saveName(lbNewName); }}>[ SAVE ]</button>
@@ -108,12 +108,12 @@ export default function LeaderboardScreen({ lbData, setLbData, lbLoading, setLbL
               <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"center", gap:8 }}>
                 {podiumSlots.map(({ pos, h, color, label }) => {
                   const entry = top3[pos];
-                  if (!entry) return <div key={pos} style={{ width:140 }} />;
+                  if (!entry) return <div key={pos} style={{ flex:1, minWidth:0 }} />;
                   const isMe = entry.player_id === myId;
                   const dt = fmtDate(entry.updated_at);
                   return (
-                    <div key={pos} style={{ display:"flex", flexDirection:"column", alignItems:"center", width:showDetails?140:120 }}>
-                      <div style={{ fontSize:11, fontWeight:"bold", color, letterSpacing:1, textAlign:"center", maxWidth:showDetails?130:110, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", marginBottom:2 }}>
+                    <div key={pos} style={{ display:"flex", flexDirection:"column", alignItems:"center", flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:11, fontWeight:"bold", color, letterSpacing:1, textAlign:"center", width:"100%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", marginBottom:2, paddingInline:2, boxSizing:"border-box" }}>
                         {entry.name}{isMe && " ◀"}
                       </div>
                       <div style={{ fontSize:showDetails?11:10, fontWeight:"bold", color:DARK, marginBottom:1 }}>{entry.best_dist.toLocaleString()}m</div>
