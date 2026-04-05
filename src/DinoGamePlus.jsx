@@ -81,7 +81,10 @@ export default function DinoIncremental() {
   const [lastRunRank,      setLastRunRank]       = useState(null);
   const [bossKey,          setBossKey]           = useState(0);
   const [playerMenuRank,   setPlayerMenuRank]    = useState(null);
-  const [touchButtons,     setTouchButtons]     = useLocalStorage("dino_touchButtons", false);
+  const [touchButtons,     setTouchButtons]     = useLocalStorage("dino_touchButtons", () => {
+    // Default ON for touch/mobile devices
+    return window.matchMedia("(pointer: coarse)").matches || window.innerWidth <= 1024;
+  });
 
 
   const getStats = useCallback((levels) => {
@@ -1604,7 +1607,7 @@ export default function DinoIncremental() {
   );
 
   if(screen==="feedback") return (
-    <FeedbackScreen onBack={()=>setScreen("menu")} />
+    <FeedbackScreen onBack={()=>setScreen("menu")} showNotif={showNotif} />
   );
 
   if(screen==="bossfight") return (

@@ -15,6 +15,7 @@ export default function MenuScreen({
 }) {
   const [showSettings, setShowSettings] = useState(false);
   const [tabVisible, setTabVisible] = useState(false);
+  const [showTrapMenu, setShowTrapMenu] = useState(false);
   const [soundMuted, setSoundMutedState] = useState(() => getSoundMuted());
   const [sfxVolume,  setSfxVolumeState]  = useState(() => getSfxVolume());
 
@@ -73,14 +74,16 @@ export default function MenuScreen({
 
             {/* Touch Buttons */}
             <div style={{ borderTop:`1px solid #ddd`, paddingTop:16, marginBottom:10 }}>
-              <div style={{ fontSize:10, fontWeight:"bold", letterSpacing:3, color:DARK, marginBottom:10 }}>TOUCH CONTROLS</div>
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
-                <span style={{ fontSize:11, letterSpacing:2, color:DARK }}>ON-SCREEN BUTTONS</span>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
+                <div>
+                  <div style={{ fontSize:10, fontWeight:"bold", letterSpacing:3, color:DARK, marginBottom:3 }}>ON-SCREEN BUTTONS</div>
+                  <div style={{ fontSize:9, color:MUTED, letterSpacing:1 }}>Auto-enabled on touch devices</div>
+                </div>
                 <button onClick={() => { playClick(); setTouchButtons(!touchButtons); }}
-                  style={{ background:touchButtons?DARK:BG, color:touchButtons?BG:MUTED, border:`2px solid ${BORDER}`, padding:"4px 14px", fontSize:10, fontFamily:F, cursor:"pointer", letterSpacing:2, fontWeight:"bold" }}
+                  style={{ background:touchButtons?DARK:BG, color:touchButtons?BG:MUTED, border:`2px solid ${BORDER}`, padding:"4px 14px", fontSize:10, fontFamily:F, cursor:"pointer", letterSpacing:2, fontWeight:"bold", flexShrink:0 }}
                 >{touchButtons ? "ON" : "OFF"}</button>
               </div>
-              <div style={{ fontSize:9, color:MUTED, letterSpacing:1, lineHeight:1.6 }}>Shows ▲▼◀▶ buttons during gameplay. Only unlocked moves appear.</div>
+              <div style={{ fontSize:9, color:MUTED, letterSpacing:1, lineHeight:1.6 }}>Shows ▲▼◀▶ D-pad during gameplay. Only unlocked moves appear.</div>
             </div>
 
             {/* Controls */}
@@ -102,7 +105,10 @@ export default function MenuScreen({
               ))}
 
               <div style={{ fontSize:10, letterSpacing:2, color:MUTED, marginBottom:6, marginTop:14 }}>TOUCH / MOBILE</div>
-              {[
+              <div style={{ fontSize:9, color:MUTED, letterSpacing:1, lineHeight:1.6, marginBottom:8 }}>
+                {touchButtons ? "On-screen D-pad active — swipe gestures disabled." : "Swipe gestures active — enable On-Screen Buttons above for D-pad."}
+              </div>
+              {!touchButtons && [
                 ["JUMP",      "Tap / Swipe up"],
                 ["FAST DROP", "Swipe down"],
                 ["DASH FWD",  "Swipe right"],
@@ -113,11 +119,21 @@ export default function MenuScreen({
                   <span style={{ fontSize:10, color:DARK, fontWeight:"bold", letterSpacing:1, textAlign:"right" }}>{key}</span>
                 </div>
               ))}
+              {touchButtons && [
+                ["JUMP",      "▲ button"],
+                ["DASH FWD",  "▶ button (if unlocked)"],
+                ["DASH BACK", "◀ button (if unlocked)"],
+                ["FAST DROP", "▼ button (if unlocked)"],
+              ].map(([action, key]) => (
+                <div key={action} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:7, gap:8 }}>
+                  <span style={{ fontSize:10, color:MUTED, letterSpacing:1, flexShrink:0 }}>{action}</span>
+                  <span style={{ fontSize:10, color:DARK, fontWeight:"bold", letterSpacing:1, textAlign:"right" }}>{key}</span>
+                </div>
+              ))}
             </div>
 
             {/* Footer */}
             <div style={{ borderTop:`1px solid #ddd`, paddingTop:14, marginTop:4, display:"flex", flexDirection:"column", gap:8 }}>
-              <button style={{ ...btn(false), width:"100%", fontSize:11 }} onClick={() => { playClick(); setShowSettings(false); setScreen("feedback"); }}>[ FEEDBACK ]</button>
               <button style={{ ...btn(true), width:"100%", fontSize:11 }} onClick={() => { playClick(); setShowSettings(false); }}>[ CLOSE ]</button>
             </div>
           </div>
@@ -221,23 +237,41 @@ export default function MenuScreen({
             </div>
           )}
 
-          {/* Mobile/tablet: settings button pinned to bottom center of card */}
-          <div className="settings-btn-mobile" style={{ position:"absolute", bottom:0, left:"50%", transform:"translateX(-50%)" }}>
+          {/* Mobile/tablet: trapezoid handle + slide-down drawer */}
+          <div className="settings-btn-mobile" style={{ position:"absolute", bottom:0, left:0, right:0, display:"flex", flexDirection:"column", alignItems:"center" }}>
+            {/* Trapezoid handle */}
             <button
-              onClick={() => { playClick(); setShowSettings(true); }}
+              onClick={() => { playClick(); setShowTrapMenu(v => !v); }}
               style={{
-                background:DARK,
-                border:"none", cursor:"pointer",
+                background:DARK, border:"none", cursor:"pointer",
                 padding:"6px 32px 4px",
                 clipPath:"polygon(12% 0%, 88% 0%, 100% 100%, 0% 100%)",
                 display:"flex", alignItems:"center", justifyContent:"center",
-                width:120,
+                width:120, position:"relative", zIndex:2,
               }}
             >
               <svg width="16" height="11" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M5 15l7-7 7 7" stroke={BG} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d={showTrapMenu ? "M19 9l-7 7-7-7" : "M5 15l7-7 7 7"} stroke={BG} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
+            {/* Slide-down drawer */}
+            <div style={{
+              overflow:"hidden",
+              maxHeight: showTrapMenu ? 120 : 0,
+              transition:"max-height 0.28s ease",
+              width:"100%",
+              background:DARK,
+              display:"flex", flexDirection:"column",
+            }}>
+              <button
+                onClick={() => { playClick(); setShowTrapMenu(false); setShowSettings(true); }}
+                style={{ background:"transparent", color:BG, border:"none", borderBottom:`1px solid rgba(255,255,255,0.12)`, padding:"10px 0", fontSize:10, fontFamily:F, cursor:"pointer", letterSpacing:2, fontWeight:"bold", width:"100%" }}
+              >SETTINGS</button>
+              <button
+                onClick={() => { playClick(); setShowTrapMenu(false); setScreen("feedback"); }}
+                style={{ background:"transparent", color:BG, border:"none", padding:"10px 0", fontSize:10, fontFamily:F, cursor:"pointer", letterSpacing:2, fontWeight:"bold", width:"100%" }}
+              >COMMUNITY WALL</button>
+            </div>
           </div>
 
         </div>

@@ -25,13 +25,19 @@ function sortFeedbacks(list) {
   });
 }
 
-export default function FeedbackScreen({ onBack }) {
+export default function FeedbackScreen({ onBack, showNotif }) {
   const [feedbacks, setFeedbacks] = useState([]);
   const [fbLoading, setFbLoading] = useState(true);
   const [votes,     setVotes]     = useState(() => getVotes());
+  const votesRef = { current: votes };
+  votesRef.current = votes;
   const [showForm,  setShowForm]  = useState(false);
+  const [filter,    setFilter]    = useState("ALL");
   const [page,      setPage]      = useState(1);
+  const [toast,     setToast]     = useState(null);
   const PAGE_SIZE = 10;
+
+  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2200); };
 
   // form state
   const [type,    setType]    = useState("FEEDBACK");
@@ -75,8 +81,9 @@ export default function FeedbackScreen({ onBack }) {
       if (!json.ok) throw new Error();
       setMessage(""); setName(""); setType("FEEDBACK"); setStatus(null);
       setShowForm(false);
-      await fetchFeedbacks();
-    } catch { setStatus("err"); }
+      showToast("✓ SUBMITTED! THANK YOU.");
+      fetchFeedbacks();
+    } catch { setStatus("err"); showToast("✗ FAILED. CHECK CONNECTION."); }
   };
 
   // direction: "up" | "down"
@@ -84,35 +91,35 @@ export default function FeedbackScreen({ onBack }) {
     const id = fb.FeedbackId;
     if (!id) return;
 
-    const current = votes[id]; // "up" | "down" | undefined
+    // read fresh votes from ref to avoid stale closure
+    const current = votesRef.current[id]; // "up" | "down" | undefined
     const isUndo  = current === direction;
-    const newVotes = { ...votes };
 
-    // optimistic update
+    const newVotes = { ...votesRef.current };
+    if (isUndo) delete newVotes[id];
+    else        newVotes[id] = direction;
+    saveVotes(newVotes);
+    setVotes(newVotes);
+
+    // optimistic update — read counts from prev state, apply delta
     setFeedbacks(prev => sortFeedbacks(prev.map(f => {
       if (f.FeedbackId !== id) return f;
       let up   = Number(f.Upvotes)   || 0;
       let down = Number(f.Downvotes) || 0;
 
       if (isUndo) {
-        // remove existing vote
         if (current === "up")   up   = Math.max(0, up   - 1);
         if (current === "down") down = Math.max(0, down - 1);
       } else {
-        // remove old vote if switching
+        // undo old vote if switching
         if (current === "up")   up   = Math.max(0, up   - 1);
         if (current === "down") down = Math.max(0, down - 1);
-        // apply new vote
+        // apply new
         if (direction === "up")   up   += 1;
         if (direction === "down") down += 1;
       }
       return { ...f, Upvotes: up, Downvotes: down };
     })));
-
-    if (isUndo) delete newVotes[id];
-    else        newVotes[id] = direction;
-    saveVotes(newVotes);
-    setVotes(newVotes);
 
     // sync to sheet
     try {
@@ -146,18 +153,35 @@ export default function FeedbackScreen({ onBack }) {
             </div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               <button style={{ ...btn(false, true), fontSize: 9 }} onClick={() => { playClick(); fetchFeedbacks(); }}>[ REFRESH ]</button>
-              <button style={{ ...btn(true,  true), fontSize: 9 }} onClick={() => { playClick(); setShowForm(true); setStatus(null); }}>[ + ADD ]</button>
+              <button style={{ ...btn(true,  true), fontSize: 9 }} onClick={() => { playClick(); setShowForm(true); setStatus(null); }}>[ ADD ]</button>
             </div>
           </div>
+
+          <div style={{ borderTop: `1px solid #ddd`, marginBottom: 12 }} />
+
+          {/* Category filter */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+            <span style={{ fontSize: 9, letterSpacing: 2, color: MUTED, whiteSpace: "nowrap" }}>FILTER</span>
+            <select value={filter} onChange={e => { setFilter(e.target.value); setPage(1); }}
+              style={{ fontFamily: F, fontSize: 10, fontWeight: "bold", letterSpacing: 2, padding: "6px 10px",
+                border: `2px solid ${BORDER}`, background: BG, color: DARK, cursor: "pointer", flex: "1 1 120px", minWidth: 0, appearance: "none",
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%231a1a1a'/%3E%3C/svg%3E")`,
+                backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center", paddingRight: 28 }}>
+              <option value="ALL">ALL</option>
+              {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+
+          <div style={{ borderTop: `1px solid #ddd`, marginBottom: 12 }} />
 
           {/* Feed */}
           {fbLoading ? (
             <div style={{ textAlign: "center", padding: "32px 0", fontSize: 10, color: MUTED, letterSpacing: 3 }}>LOADING...</div>
-          ) : feedbacks.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "32px 0", fontSize: 10, color: MUTED, letterSpacing: 2 }}>NO FEEDBACK YET. BE THE FIRST!</div>
           ) : (() => {
-            const totalPages = Math.ceil(feedbacks.length / PAGE_SIZE);
-            const slice = feedbacks.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+            const filtered = filter === "ALL" ? feedbacks : feedbacks.filter(f => f.Type === filter);
+            if (filtered.length === 0) return <div style={{ textAlign: "center", padding: "32px 0", fontSize: 10, color: MUTED, letterSpacing: 2 }}>NO FEEDBACK YET. BE THE FIRST!</div>;
+            const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+            const slice = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
             return (
               <>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -198,14 +222,14 @@ export default function FeedbackScreen({ onBack }) {
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 14, flexWrap: "wrap" }}>
                     <button onClick={() => { playClick(); setPage(p => Math.max(1, p - 1)); }}
                       disabled={page === 1}
-                      style={{ ...btn(false, true), fontSize: 9, opacity: page === 1 ? 0.35 : 1 }}>[ ◀ ]</button>
+                      style={{ ...btn(false, true), fontSize: 9, opacity: page === 1 ? 0.35 : 1 }}>◀</button>
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
                       <button key={p} onClick={() => { playClick(); setPage(p); }}
                         style={{ ...btn(page === p, true), fontSize: 9, minWidth: 32 }}>{p}</button>
                     ))}
                     <button onClick={() => { playClick(); setPage(p => Math.min(totalPages, p + 1)); }}
                       disabled={page === totalPages}
-                      style={{ ...btn(false, true), fontSize: 9, opacity: page === totalPages ? 0.35 : 1 }}>[ ▶ ]</button>
+                      style={{ ...btn(false, true), fontSize: 9, opacity: page === totalPages ? 0.35 : 1 }}>▶</button>
                   </div>
                 )}
               </>
@@ -267,7 +291,6 @@ export default function FeedbackScreen({ onBack }) {
               <div style={{ fontSize: 9, color: MUTED, textAlign: "right" }}>{message.length}/500</div>
             </div>
 
-            {status === "ok"  && <div style={{ fontSize: 10, color: "#448844", letterSpacing: 2, marginBottom: 10 }}>✓ SUBMITTED! THANK YOU.</div>}
             {status === "err" && <div style={{ fontSize: 10, color: "#cc2200", letterSpacing: 2, marginBottom: 10 }}>✗ FAILED. CHECK CONNECTION.</div>}
 
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -282,6 +305,7 @@ export default function FeedbackScreen({ onBack }) {
           </div>
         </div>
       )}
+      {toast && <div style={{ position:"fixed", bottom:24, left:"50%", transform:"translateX(-50%)", background:DARK, color:BG, padding:"9px 22px", fontSize:11, letterSpacing:2, zIndex:999, whiteSpace:"nowrap", border:"1px solid #555" }}>{toast}</div>}
     </div>
   );
 }
