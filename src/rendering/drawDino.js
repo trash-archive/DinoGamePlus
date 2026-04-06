@@ -102,23 +102,33 @@ export function drawShieldOutline(ctx, x, y, frame, dead, skin, design, isGiant,
 }
 
 // ─── PTERODAC FLY OUTLINE ─────────────────────────────────────────────────────
-export function drawPterodacFlyOutline(ctx, x, y, frame, isDucking) {
+export function drawPterodacFlyOutline(ctx, x, y, frame, isDucking, isGiant, isTiny) {
   const pulse = 0.5 + Math.sin(frame * 0.15) * 0.5;
   const col = `rgba(68,170,255,${pulse})`;
   const wf = Math.floor(frame/6)%2;
   ctx.save();
+  const scale = isGiant ? 1.9 : isTiny ? 0.6 : 1;
+  if(scale !== 1) {
+    const bx = x + DINO_W/2, by = y + DINO_H;
+    ctx.translate(bx,by); ctx.scale(scale,scale); ctx.translate(-bx,-by);
+  }
   for(const [ox,oy] of [[-3,0],[3,0],[0,-3],[0,3]])
     drawPterodac(ctx, x+ox, y+oy, false, col, col, col, col, wf, isDucking);
   ctx.restore();
 }
 
 // ─── SPEED RUSH OUTLINE ──────────────────────────────────────────────────────
-export function drawSpeedRushOutline(ctx, x, y, frame, isDucking, timer) {
-  const fade = Math.min(1, timer / 60); // fade out over last 60 frames
+export function drawSpeedRushOutline(ctx, x, y, frame, isDucking, timer, isGiant, isTiny) {
+  const fade = Math.min(1, timer / 60);
   const pulse = (0.5 + Math.sin(frame * 0.18) * 0.5) * fade;
   const col = `rgba(0,220,100,${pulse})`;
   const f = Math.floor(frame/5)%2;
+  const scale = isGiant ? 1.9 : isTiny ? 0.6 : 1;
   ctx.save();
+  if(scale !== 1) {
+    const bx = x + DINO_W/2, by = y + DINO_H;
+    ctx.translate(bx,by); ctx.scale(scale,scale); ctx.translate(-bx,-by);
+  }
   for(const [ox,oy] of [[-3,0],[3,0],[0,-3],[0,3]])
     drawRaptor(ctx, x+ox, y+oy, false, col, col, col, isDucking, f);
   ctx.restore();

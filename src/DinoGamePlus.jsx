@@ -10,6 +10,8 @@ import { getSceneryColors, getHudColors } from "./utils/scenery";
 import { getObstacleHitbox, rectsOverlap } from "./utils/collision";
 import { drawDino, drawHeart, drawPassiveEffect, drawShieldOutline, drawSpeedRushOutline, drawPterodacFlyOutline } from "./rendering/drawDino";
 import { drawStego } from "./dinos/stego";
+import { drawAnky }  from "./dinos/anky";
+import { drawTri }   from "./dinos/tri";
 import { drawObstacleForScenery } from "./rendering/drawObstacles";
 import { drawStars, drawPixelSun, drawPixelMoon, drawClouds, drawGround, drawBonePickup, drawEntitySilhouette } from "./rendering/drawWorld";
 import { drawPowerupIcon } from "./rendering/drawPowerups";
@@ -296,6 +298,7 @@ export default function DinoIncremental() {
       pterodacFlyTimer:0, pterodacFlyCooldown:30*60,   // fly 10s/30s — first lift after 30s
       ankyPulseTimer:0,                                 // pulse every 40s
       triHornTimer:0,                                   // horn burst every 30s
+      triHorns:[],                                       // flying horn projectiles
       pachyHeadbuttTimer:0, pachyHeadbuttActive:0,      // headbutt 5s/30s
       dilophoPhaseTimer:0, dilophoPhaseActive:0,        // phase 5s/30s
       // Tri: first obstacle destroyed (legacy)
@@ -587,31 +590,56 @@ export default function DinoIncremental() {
         }
         if(designId==="anky"){
           gs.ankyPulseTimer=(gs.ankyPulseTimer||0)+dt;
-          if(gs.ankyPulseTimer>=40*FPS60){
+          if(gs.ankyPulseTimer>=15*FPS60){
             gs.ankyPulseTimer=0;
             const before=gs.obstacles.length;
+            // Clear ALL obstacles and their bullets on screen
             gs.obstacles=gs.obstacles.filter(o=>{
               const hb=getObstacleHitbox(o);
               const dx=hb.x+hb.w/2-(gs.dino.x+DINO_W/2);
               const dy=hb.y+hb.h/2-(gs.dino.y+DINO_H/2);
-              return Math.sqrt(dx*dx+dy*dy)>160;
+              if(Math.sqrt(dx*dx+dy*dy)<=220){
+                if(o.bullets) o.bullets=[];
+                return false;
+              }
+              return true;
             });
             const cleared=before-gs.obstacles.length;
             if(cleared>0) addFloat(gs,`PULSE WAVE! x${cleared}`,gs.dino.x-20,gs.dino.y-36,"#ffaa00");
             else addFloat(gs,"PULSE WAVE!",gs.dino.x-20,gs.dino.y-36,"#ffaa00");
             addPassiveEffect(gs,"pulseWave",gs.dino.x,gs.dino.y);
+            gs.ankyFlashTimer = 50;
           }
+          if((gs.ankyFlashTimer||0)>0) gs.ankyFlashTimer-=dt;
         }
         if(designId==="tri"){
           gs.triHornTimer=(gs.triHornTimer||0)+dt;
-          if(gs.triHornTimer>=30*FPS60){
+          if(gs.triHornTimer>=20*FPS60){
             gs.triHornTimer=0;
-            // Destroy all obstacles and bullets on screen
+            // Destroy all obstacles AND their bullets on screen
             const cleared=gs.obstacles.length;
+            gs.obstacles.forEach(o=>{ if(o.bullets) o.bullets=[]; });
             gs.obstacles=[];
             if(cleared>0) addFloat(gs,`HORN BURST! x${cleared}`,gs.dino.x-20,gs.dino.y-36,"#cc8800");
             else addFloat(gs,"HORN BURST!",gs.dino.x-20,gs.dino.y-36,"#cc8800");
-            addPassiveEffect(gs,"hornBurst",gs.dino.x,gs.dino.y);
+            // Launch 5 horn projectiles in spread pattern
+            gs.triHorns = [
+              { x:gs.dino.x+36, y:gs.dino.y+10, vx:18, vy:0    },  // straight forward
+              { x:gs.dino.x+36, y:gs.dino.y+10, vx:15, vy:-8   },  // up-right
+              { x:gs.dino.x+36, y:gs.dino.y+10, vx:15, vy: 8   },  // down-right
+              { x:gs.dino.x+36, y:gs.dino.y+10, vx:11, vy:-14  },  // steep up
+              { x:gs.dino.x+36, y:gs.dino.y+10, vx:11, vy: 14  },  // steep down
+            ];
+            gs.triFlashTimer=50;
+          }
+          if((gs.triFlashTimer||0)>0) gs.triFlashTimer-=dt;
+          // Move horn projectiles
+          if(gs.triHorns && gs.triHorns.length>0){
+            gs.triHorns = gs.triHorns.filter(h=>{
+              h.x += h.vx * dt;
+              h.y += h.vy * dt;
+              return h.x < CANVAS_W + 20 && h.y > -20 && h.y < CANVAS_H + 20;
+            });
           }
         }
         if(designId==="pachy"){
@@ -1171,7 +1199,6 @@ export default function DinoIncremental() {
             if(designId==="dilopho"&&gs.dilophoPhaseActive>0) continue;
 
             const actualHit = gs.dino.invTimer<=0&&rectsOverlap(DX,DY,DW,DH,hb.x,hb.y,hb.w,hb.h);
-            const inNearZone = gs.dino.invTimer<=0&&!actualHit&&rectsOverlap(DX,DY,DW,DH,hb.x-12,hb.y-8,hb.w+24,hb.h+16);
 
             // Collision first
             if(actualHit){
@@ -1193,12 +1220,6 @@ export default function DinoIncremental() {
               break;
             }
 
-            // Anky passive: near miss destroys obstacle
-            if(designId==="anky"&&inNearZone){
-              gs.obstacles.splice(i,1);
-              addFloat(gs,"CLUB SWEEP!",hb.x,hb.y-10,"#ffaa00");
-              continue;
-            }
           }
         }
 
@@ -1331,13 +1352,84 @@ export default function DinoIncremental() {
       if(hasFrenzyR){ctx.fillStyle=`rgba(220,30,100,${0.04+Math.sin(gs.frame*0.18)*0.03})`;ctx.fillRect(0,0,CANVAS_W,CANVAS_H);}
       if(hasDoublerR){ctx.fillStyle="rgba(255,220,30,0.06)";ctx.fillRect(0,0,CANVAS_W,CANVAS_H);}
 
+      // Anky pulse wave flash on activation
+      if(designId==="anky" && (gs.ankyFlashTimer||0) > 0) {
+        const fade = gs.ankyFlashTimer / 50;
+        const pulse = 0.6 + Math.sin(gs.frame * 0.4) * 0.4;
+        const col = `rgba(255,160,0,${fade * pulse})`;
+        const f2 = gs.dino.onGround ? Math.floor(gs.frame/5)%2 : 0;
+        const scale = hasGiantR ? 1.9 : hasTinyR ? 0.6 : 1;
+        ctx.save();
+        if(scale !== 1) {
+          const bx = gs.dino.x + DINO_W/2, by = gs.dino.y + DINO_H;
+          ctx.translate(bx,by); ctx.scale(scale,scale); ctx.translate(-bx,-by);
+        }
+        for(const [ox,oy] of [[-3,0],[3,0],[0,-3],[0,3]])
+          drawAnky(ctx, gs.dino.x+ox, gs.dino.y+oy, false, col, col, col, col, gs.dino.ducking, f2);
+        ctx.restore();
+        ctx.save();
+        ctx.globalAlpha = fade * 0.10;
+        ctx.fillStyle = "#ffaa00";
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+        ctx.restore();
+      }
+
+      // Tri horn projectiles flying across screen
+      if(designId==="tri" && gs.triHorns && gs.triHorns.length > 0) {
+        for(const h of gs.triHorns) {
+          ctx.save();
+          ctx.translate(h.x, h.y);
+          const angle = Math.atan2(h.vy, h.vx);
+          ctx.rotate(angle);
+          // Horn shape: long pointed triangle
+          ctx.fillStyle = "#cc8800";
+          ctx.fillRect(-2, -3, 18, 6);   // shaft
+          ctx.fillRect(14, -4, 6,  8);   // wide base of tip
+          ctx.fillRect(18, -3, 5,  6);   // mid tip
+          ctx.fillRect(21, -2, 4,  4);   // narrow tip
+          ctx.fillRect(23, -1, 4,  2);   // point
+          // highlight
+          ctx.fillStyle = "#ffcc44";
+          ctx.fillRect(0,  -2, 14, 2);   // top highlight
+          ctx.fillRect(14, -3,  5, 2);
+          ctx.restore();
+        }
+      }
+
+      // Tri horn burst flash on activation
+      if(designId==="tri" && (gs.triFlashTimer||0) > 0) {
+        const fade = gs.triFlashTimer / 50;
+        const pulse = 0.6 + Math.sin(gs.frame * 0.4) * 0.4;
+        const col = `rgba(220,150,0,${fade * pulse})`;
+        const f2 = gs.dino.onGround ? Math.floor(gs.frame/5)%2 : 0;
+        const scale = hasGiantR ? 1.9 : hasTinyR ? 0.6 : 1;
+        ctx.save();
+        if(scale !== 1) {
+          const bx = gs.dino.x + DINO_W/2, by = gs.dino.y + DINO_H;
+          ctx.translate(bx,by); ctx.scale(scale,scale); ctx.translate(-bx,-by);
+        }
+        for(const [ox,oy] of [[-3,0],[3,0],[0,-3],[0,3]])
+          drawTri(ctx, gs.dino.x+ox, gs.dino.y+oy, false, col, col, col, col, col, gs.dino.ducking, f2);
+        ctx.restore();
+        ctx.save();
+        ctx.globalAlpha = fade * 0.10;
+        ctx.fillStyle = "#cc8800";
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+        ctx.restore();
+      }
+
       // Stego plate armor flash on proc
       if(designId==="stego" && gs.stegoFlashTimer > 0) {
         const fade = gs.stegoFlashTimer / 40;
         const pulse = 0.6 + Math.sin(gs.frame * 0.4) * 0.4;
         const col = `rgba(255,200,50,${fade * pulse})`;
         const f2 = gs.dino.onGround ? Math.floor(gs.frame/5)%2 : 0;
+        const scale = hasGiantR ? 1.9 : hasTinyR ? 0.6 : 1;
         ctx.save();
+        if(scale !== 1) {
+          const bx = gs.dino.x + DINO_W/2, by = gs.dino.y + DINO_H;
+          ctx.translate(bx,by); ctx.scale(scale,scale); ctx.translate(-bx,-by);
+        }
         for(const [ox,oy] of [[-3,0],[3,0],[0,-3],[0,3]])
           drawStego(ctx, gs.dino.x+ox, gs.dino.y+oy, false, col, col, col, gs.dino.ducking, f2);
         ctx.restore();
@@ -1350,11 +1442,11 @@ export default function DinoIncremental() {
 
       // Pterodac fly mode: blue pulsing outline while active
       if(designId==="pterodac" && gs.pterodacFlyTimer > 0)
-        drawPterodacFlyOutline(ctx, gs.dino.x, gs.dino.y, gs.frame, gs.dino.ducking);
+        drawPterodacFlyOutline(ctx, gs.dino.x, gs.dino.y, gs.frame, gs.dino.ducking, hasGiantR, hasTinyR);
 
       // Raptor speed rush: green outline only while timer is active
       if(designId==="raptor" && gs.raptorOutlineTimer > 0)
-        drawSpeedRushOutline(ctx, gs.dino.x, gs.dino.y, gs.frame, gs.dino.ducking, gs.raptorOutlineTimer);
+        drawSpeedRushOutline(ctx, gs.dino.x, gs.dino.y, gs.frame, gs.dino.ducking, gs.raptorOutlineTimer, hasGiantR, hasTinyR);
 
       // Draw dino  Epass onGround so legs freeze mid-air
       drawDino(ctx,gs.dino.x,gs.dino.y,gs.frame,gs.dino.dead,
@@ -1455,6 +1547,24 @@ export default function DinoIncremental() {
           ctx.fillStyle=HUD.hud;ctx.font="9px 'Courier New'";
           ctx.fillText(`${def.label} x${gs.shieldHitsLeft}`,CANVAS_W-88,barY+17);barY+=20;
         }
+      }
+
+      // Tri horn burst cooldown bar
+      if(designId2==="tri") {
+        const frac = Math.min(1, (gs.triHornTimer||0) / (20*60));
+        ctx.fillStyle="rgba(0,0,0,0.22)"; ctx.fillRect(12,60,80,5);
+        ctx.fillStyle="#cc8800";          ctx.fillRect(12,60,Math.floor(80*frac),5);
+        ctx.fillStyle=HUD.hud; ctx.font="8px 'Courier New'";
+        ctx.fillText(frac>=1?"HORN READY":"HORN BURST",12,74);
+      }
+
+      // Anky pulse wave cooldown bar
+      if(designId2==="anky") {
+        const frac = Math.min(1, (gs.ankyPulseTimer||0) / (15*60));
+        ctx.fillStyle="rgba(0,0,0,0.22)"; ctx.fillRect(12,60,80,5);
+        ctx.fillStyle="#ffaa00";          ctx.fillRect(12,60,Math.floor(80*frac),5);
+        ctx.fillStyle=HUD.hud; ctx.font="8px 'Courier New'";
+        ctx.fillText(frac>=1?"PULSE READY":"PULSE WAVE",12,74);
       }
 
       // Pterodac fly mode timer bar
