@@ -63,8 +63,8 @@ export const DINO_DESIGNS = [
 export const DINO_PASSIVES = {
   raptor:    { label:"Speed Rush",      desc:"Every 500m grants +0.5% bone income (max 10%). Builds over distance." },
   trex:      { label:"Apex Predator",   desc:"Starts every run with 2 hearts. Raw power from the start." },
-  stego:     { label:"Plate Armor",     desc:"Shield proc chance increased by 50%. The back plates absorb punishment." },
-  pterodac:  { label:"Thermal Lift",    desc:"Activates fly mode for 5s every 30s — airborne pickups worth 1.5x." },
+  stego:     { label:"Plate Armor",     desc:"Has a 20% chance to block any hit for free. The plates absorb the damage so you don't lose a life." },
+  pterodac:  { label:"Thermal Lift",    desc:"Every 30s, enters fly mode for 10s. Use Up/Down to fly freely anywhere on screen. Bones picked up while airborne are worth 1.5x." },
   anky:      { label:"Pulse Wave",      desc:"Every 40s emits a shockwave that destroys all surrounding obstacles." },
   tri:       { label:"Horn Burst",      desc:"Every 30s fires horns in all directions, destroying obstacles & projectiles." },
   brachio:   { label:"Long Reach",      desc:"Permanent +60px bone collection range. The long neck scoops up nearby bones." },

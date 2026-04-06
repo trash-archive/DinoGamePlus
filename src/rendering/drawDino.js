@@ -47,7 +47,7 @@ export function drawDino(ctx, x, y, frame, dead, skin, design, isGiant, isDuckin
   if     (id==="raptor")   drawRaptor(ctx, x, y, dead, c, ec, ac, isDucking, f);
   else if(id==="trex")     drawTrex(ctx, x, y, dead, c, ec, ac, isDucking, f);
   else if(id==="stego")    drawStego(ctx, x, y, dead, c, ec, pc, isDucking, f);
-  else if(id==="pterodac") drawPterodac(ctx, x, y, dead, c, ec, ac, fc, wf);
+  else if(id==="pterodac") drawPterodac(ctx, x, y, dead, c, ec, ac, fc, wf, isDucking);
   else if(id==="anky")     drawAnky(ctx, x, y, dead, c, ec, ac, pc, isDucking, f);
   else if(id==="tri")      drawTri(ctx, x, y, dead, c, ec, ac, pc, fc, isDucking, f);
   else if(id==="brachio")  drawBrachio(ctx, x, y, dead, c, ec, ac, isDucking, f);
@@ -88,7 +88,7 @@ export function drawShieldOutline(ctx, x, y, frame, dead, skin, design, isGiant,
     if     (id==="raptor")   drawRaptor(ctx, nx, ny, dead, col, col, col, isDucking, f);
     else if(id==="trex")     drawTrex(ctx, nx, ny, dead, col, col, col, isDucking, f);
     else if(id==="stego")    drawStego(ctx, nx, ny, dead, col, col, col, isDucking, f);
-    else if(id==="pterodac") drawPterodac(ctx, nx, ny, dead, col, col, col, col, wf);
+    else if(id==="pterodac") drawPterodac(ctx, nx, ny, dead, col, col, col, col, wf, isDucking);
     else if(id==="anky")     drawAnky(ctx, nx, ny, dead, col, col, col, col, isDucking, f);
     else if(id==="tri")      drawTri(ctx, nx, ny, dead, col, col, col, col, col, isDucking, f);
     else if(id==="brachio")  drawBrachio(ctx, nx, ny, dead, col, col, col, isDucking, f);
@@ -98,6 +98,29 @@ export function drawShieldOutline(ctx, x, y, frame, dead, skin, design, isGiant,
     else if(id==="dilopho")  drawDilopho(ctx, nx, ny, dead, col, col, col, col, isDucking, f);
     else if(id==="hasim")    drawHasim(ctx, nx, ny, dead, col, col, col, col, col, isDucking, f);
   }
+  ctx.restore();
+}
+
+// ─── PTERODAC FLY OUTLINE ─────────────────────────────────────────────────────
+export function drawPterodacFlyOutline(ctx, x, y, frame, isDucking) {
+  const pulse = 0.5 + Math.sin(frame * 0.15) * 0.5;
+  const col = `rgba(68,170,255,${pulse})`;
+  const wf = Math.floor(frame/6)%2;
+  ctx.save();
+  for(const [ox,oy] of [[-3,0],[3,0],[0,-3],[0,3]])
+    drawPterodac(ctx, x+ox, y+oy, false, col, col, col, col, wf, isDucking);
+  ctx.restore();
+}
+
+// ─── SPEED RUSH OUTLINE ──────────────────────────────────────────────────────
+export function drawSpeedRushOutline(ctx, x, y, frame, isDucking, timer) {
+  const fade = Math.min(1, timer / 60); // fade out over last 60 frames
+  const pulse = (0.5 + Math.sin(frame * 0.18) * 0.5) * fade;
+  const col = `rgba(0,220,100,${pulse})`;
+  const f = Math.floor(frame/5)%2;
+  ctx.save();
+  for(const [ox,oy] of [[-3,0],[3,0],[0,-3],[0,3]])
+    drawRaptor(ctx, x+ox, y+oy, false, col, col, col, isDucking, f);
   ctx.restore();
 }
 
@@ -116,64 +139,148 @@ export function drawHeart(ctx, x, y, size = 12, color = "#dd2244") {
 
 // ─── PASSIVE EFFECTS ──────────────────────────────────────────────────────────
 export function drawPassiveEffect(ctx, type, x, y, frame, progress) {
-  const alpha = Math.min(1, (1 - progress) * 2);
+  const fade = Math.min(1, (1 - progress) * 2);
+  const cx = x + 20, cy = y + 24;
   ctx.save();
-  ctx.globalAlpha = alpha;
 
   if(type === "phaseShift") {
-    for(let i = 0; i < 3; i++) {
-      const r = 28 + i * 18 + progress * 40;
-      ctx.strokeStyle = "#66dd22"; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(x + 20, y + 24, r, 0, Math.PI * 2); ctx.stroke();
+    // Expanding ghost rings + full-body shimmer
+    for(let i = 0; i < 4; i++) {
+      const r = 20 + i * 22 + progress * 120;
+      const a = Math.max(0, fade * (0.9 - i * 0.18));
+      ctx.globalAlpha = a;
+      ctx.strokeStyle = i % 2 === 0 ? "#66ff22" : "#aaffaa";
+      ctx.lineWidth = 3 - i * 0.5;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
     }
-    ctx.strokeStyle = `rgba(102,221,34,${0.6 - progress * 0.6})`;
-    ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
-    ctx.strokeRect(x - 4, y - 4, 48, 56);
+    // Dashed bounding box flicker
+    ctx.globalAlpha = fade * 0.7;
+    ctx.strokeStyle = "#66ff22"; ctx.lineWidth = 2;
+    ctx.setLineDash([5, 3]);
+    ctx.strokeRect(x - 6, y - 8, 52, 62);
     ctx.setLineDash([]);
+    // Green particle sparks
+    for(let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2 + progress * 3;
+      const r = 30 + progress * 60;
+      ctx.globalAlpha = fade * 0.8;
+      ctx.fillStyle = "#88ff44";
+      ctx.fillRect(cx + Math.cos(angle)*r - 2, cy + Math.sin(angle)*r - 2, 4, 4);
+    }
+
   } else if(type === "thermalLift") {
-    for(let i = 0; i < 5; i++) {
-      const lx = x + 4 + i * 8, ly = y + 48 - progress * 60;
-      ctx.fillStyle = i % 2 === 0 ? "#44aaff" : "#88ddff";
-      ctx.fillRect(lx, ly, 2, 8 + i * 2); ctx.fillRect(lx - 1, ly - 6, 4, 4);
+    // Big upward thermal column + rising sparks
+    ctx.globalAlpha = fade * 0.35;
+    ctx.fillStyle = "#44aaff";
+    ctx.fillRect(x - 30, y - 40 + progress * 40, 100, 80);
+    ctx.globalAlpha = fade;
+    for(let i = 0; i < 8; i++) {
+      const lx = x - 10 + i * 10;
+      const ly = y + 50 - progress * 120 - (i % 3) * 14;
+      const w = 4 - (i % 2);
+      ctx.fillStyle = i % 2 === 0 ? "#44aaff" : "#aaddff";
+      ctx.fillRect(lx, ly, w, 10 + i * 2);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(lx, ly - 4, w, 4);
     }
-    ctx.fillStyle = "rgba(68,170,255,0.25)"; ctx.fillRect(x - 20, y + 8, 80, 20);
+    // Horizontal wind lines
+    for(let i = 0; i < 4; i++) {
+      ctx.globalAlpha = fade * (0.5 - i * 0.1);
+      ctx.fillStyle = "#88ccff";
+      ctx.fillRect(x - 40 + i * 5, y + 10 + i * 8, 30 + i * 10, 2);
+    }
+
   } else if(type === "pulseWave") {
-    const maxR = 180;
-    for(let i = 0; i < 2; i++) {
-      const r = progress * maxR + i * 30;
-      const a = Math.max(0, 0.7 - r / maxR);
-      ctx.strokeStyle = `rgba(255,170,0,${a})`; ctx.lineWidth = 3 - i;
-      ctx.beginPath(); ctx.arc(x + 20, y + 24, r, 0, Math.PI * 2); ctx.stroke();
+    // 4 expanding shockwave rings
+    for(let i = 0; i < 4; i++) {
+      const r = progress * 220 + i * 28;
+      const a = Math.max(0, fade * (0.85 - r / 220));
+      ctx.globalAlpha = a;
+      ctx.strokeStyle = i % 2 === 0 ? "#ffaa00" : "#ffdd44";
+      ctx.lineWidth = 4 - i;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
     }
-    if(progress < 0.2) {
-      ctx.fillStyle = `rgba(255,200,50,${0.5 - progress * 2.5})`;
-      ctx.fillRect(x - 30, y - 20, 100, 80);
+    // Flash burst at start
+    if(progress < 0.15) {
+      ctx.globalAlpha = fade * (0.8 - progress * 5);
+      ctx.fillStyle = "#ffcc00";
+      ctx.fillRect(x - 50, y - 40, 140, 100);
     }
+    // Debris particles flying outward
+    for(let i = 0; i < 10; i++) {
+      const angle = (i / 10) * Math.PI * 2;
+      const r = progress * 160;
+      ctx.globalAlpha = fade * 0.7;
+      ctx.fillStyle = i % 2 === 0 ? "#ffaa00" : "#ff6600";
+      ctx.fillRect(cx + Math.cos(angle)*r - 3, cy + Math.sin(angle)*r - 3, 6, 6);
+    }
+
   } else if(type === "hornBurst") {
-    const cx2 = x + 20, cy2 = y + 24;
-    const len = 40 + progress * 120;
+    // 8 thick horn beams + tip diamonds
+    const len = 50 + progress * 180;
     for(let i = 0; i < 8; i++) {
       const angle = (i / 8) * Math.PI * 2;
-      const ex = cx2 + Math.cos(angle) * len, ey = cy2 + Math.sin(angle) * len;
-      ctx.strokeStyle = `rgba(204,136,0,${0.8 - progress * 0.8})`; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(cx2, cy2); ctx.lineTo(ex, ey); ctx.stroke();
-      ctx.fillStyle = "#ffcc44"; ctx.fillRect(ex - 2, ey - 2, 4, 4);
+      const ex = cx + Math.cos(angle) * len, ey = cy + Math.sin(angle) * len;
+      ctx.globalAlpha = fade * (0.9 - progress * 0.7);
+      ctx.strokeStyle = i % 2 === 0 ? "#cc8800" : "#ffcc00";
+      ctx.lineWidth = 5 - progress * 3;
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(ex, ey); ctx.stroke();
+      // Tip flash
+      ctx.globalAlpha = fade * 0.9;
+      ctx.fillStyle = "#ffee44";
+      ctx.fillRect(ex - 4, ey - 4, 8, 8);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(ex - 2, ey - 2, 4, 4);
     }
+    // Center flash
+    if(progress < 0.2) {
+      ctx.globalAlpha = fade * (1 - progress * 5);
+      ctx.fillStyle = "#ffdd00";
+      ctx.fillRect(cx - 20, cy - 20, 40, 40);
+    }
+
   } else if(type === "headbutt") {
-    for(let i = 0; i < 4; i++) {
-      const lx = x + 40 + i * 20 + progress * 60;
-      ctx.fillStyle = `rgba(255,204,0,${0.6 - i * 0.12})`;
-      ctx.fillRect(lx, y + 10 + i * 6, 18 - i * 3, 3);
-    }
-    if(progress < 0.25) {
-      ctx.fillStyle = `rgba(255,220,50,${0.5 - progress * 2})`;
-      ctx.fillRect(x + 10, y, 30, 30);
-    }
-  } else if(type === "speedRush") {
+    // Forward shockwave — big horizontal blast to the right
     for(let i = 0; i < 5; i++) {
-      const lx = x - 20 - i * 14 - progress * 30, ly = y + 14 + i * 6;
-      ctx.fillStyle = `rgba(0,204,102,${0.5 - i * 0.08})`;
-      ctx.fillRect(lx, ly, 12 + i * 4, 2);
+      const lx = x + 36 + i * 24 + progress * 140;
+      const h  = 28 - i * 4;
+      ctx.globalAlpha = fade * (0.8 - i * 0.13);
+      ctx.fillStyle = i % 2 === 0 ? "#ffcc00" : "#ff8800";
+      ctx.fillRect(lx, cy - h/2, 18 - i*2, h);
+    }
+    // Impact flash at head
+    if(progress < 0.2) {
+      ctx.globalAlpha = fade * (1 - progress * 5);
+      ctx.fillStyle = "#ffee44";
+      ctx.fillRect(x + 20, y - 4, 36, 36);
+    }
+    // Shockwave ring forward
+    const rw = progress * 180;
+    ctx.globalAlpha = fade * Math.max(0, 0.7 - progress);
+    ctx.strokeStyle = "#ffaa00"; ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.ellipse(x + 40 + progress * 60, cy, rw * 0.3, rw * 0.6, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    // Debris chunks
+    for(let i = 0; i < 6; i++) {
+      const dx = x + 40 + i * 20 + progress * 100;
+      const dy = cy - 20 + i * 8 - progress * 30;
+      ctx.globalAlpha = fade * 0.8;
+      ctx.fillStyle = i % 2 === 0 ? "#ffcc00" : "#cc6600";
+      ctx.fillRect(dx, dy, 8, 8);
+    }
+
+  } else if(type === "speedRush") {
+    // Only speed streaks at the effect spawn position — no dino outline here
+    for(let i = 0; i < 6; i++) {
+      const lx   = x - 18 - i * 16 - progress * 40;
+      const ly   = y + 10 + i * 6;
+      const len2 = 14 + i * 6;
+      ctx.globalAlpha = fade * (0.65 - i * 0.08);
+      ctx.fillStyle = i % 2 === 0 ? "#00dd66" : "#88ffcc";
+      ctx.fillRect(lx, ly, len2, 2);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(lx + len2 - 3, ly, 3, 2);
     }
   }
 

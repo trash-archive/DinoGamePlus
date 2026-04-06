@@ -8,7 +8,8 @@ import { GRAVITY, JUMP_FORCE, JUMP_HOLD_FORCE, JUMP_HOLD_FRAMES, GROUND_Y, DINO_
 import { lerp, clamp, drawFossilDiamond } from "./utils/helpers";
 import { getSceneryColors, getHudColors } from "./utils/scenery";
 import { getObstacleHitbox, rectsOverlap } from "./utils/collision";
-import { drawDino, drawHeart, drawPassiveEffect, drawShieldOutline } from "./rendering/drawDino";
+import { drawDino, drawHeart, drawPassiveEffect, drawShieldOutline, drawSpeedRushOutline, drawPterodacFlyOutline } from "./rendering/drawDino";
+import { drawStego } from "./dinos/stego";
 import { drawObstacleForScenery } from "./rendering/drawObstacles";
 import { drawStars, drawPixelSun, drawPixelMoon, drawClouds, drawGround, drawBonePickup, drawEntitySilhouette } from "./rendering/drawWorld";
 import { drawPowerupIcon } from "./rendering/drawPowerups";
@@ -288,9 +289,11 @@ export default function DinoIncremental() {
       runStartTime: Date.now(),
       // Per-run passive state
       raptorSpeedBonus:0,    // raptor: distance milestones -> bone % (cap 10%)
+      raptorOutlineTimer:0,  // frames to show green outline after milestone
+      stegoFlashTimer:0,     // frames to show plate armor flash on proc
       pachyReviveUsed:false, // pachy: one free revive (legacy, kept for bullet hit)
       // Timed passive cooldowns (in frames)
-      pterodacFlyTimer:0, pterodacFlyCooldown:30*60,   // fly 5s/30s — first lift after 30s
+      pterodacFlyTimer:0, pterodacFlyCooldown:30*60,   // fly 10s/30s — first lift after 30s
       ankyPulseTimer:0,                                 // pulse every 40s
       triHornTimer:0,                                   // horn burst every 30s
       pachyHeadbuttTimer:0, pachyHeadbuttActive:0,      // headbutt 5s/30s
@@ -532,25 +535,54 @@ export default function DinoIncremental() {
           const milestone=Math.min(20,Math.floor(gs.distance/500));
           if(milestone>gs.raptorSpeedBonus){
             gs.raptorSpeedBonus=milestone;
+            gs.raptorOutlineTimer=180; // show outline for ~3s
             const pct=(milestone*0.5).toFixed(1);
             addFloat(gs,`SPEED RUSH! +${pct}% bones`,80,80,"#00cc66");
             addPassiveEffect(gs,"speedRush",gs.dino.x,gs.dino.y);
           }
+          if(gs.raptorOutlineTimer>0) gs.raptorOutlineTimer-=dt;
         }
 
         // ── Timed passives (60fps base) ──────────────────────────────────────
         const FPS60 = 60; // timers in frames at ~60fps
         if(designId==="pterodac"){
-          if(gs.pterodacFlyCooldown>0) gs.pterodacFlyCooldown-=dt;
           if(gs.pterodacFlyTimer>0){
             gs.pterodacFlyTimer-=dt;
-            // Force airborne during fly mode
-            if(gs.dino.onGround){ gs.dino.vy=JUMP_FORCE*0.7; gs.dino.onGround=false; }
-          } else if(gs.pterodacFlyCooldown<=0){
-            gs.pterodacFlyTimer=5*FPS60; // 5s in dt units (~300 frames)
-            gs.pterodacFlyCooldown=30*FPS60;
-            addFloat(gs,"FLY MODE!",gs.dino.x-10,gs.dino.y-28,"#44aaff");
-            addPassiveEffect(gs,"thermalLift",gs.dino.x,gs.dino.y);
+            // Free flight: vertical by up/down, horizontal dash still works
+            const flyUp   = k["Space"]||k["ArrowUp"]||k["KeyW"];
+            const flyDown = k["ArrowDown"]||k["KeyS"];
+            const flySpeed = 3.5;
+            if(flyUp)   gs.dino.y = Math.max(10,              gs.dino.y - flySpeed*dt);
+            if(flyDown) gs.dino.y = Math.min(GROUND_Y-DINO_H, gs.dino.y + flySpeed*dt);
+            gs.dino.vy = 0;
+            gs.dino.onGround = false;
+            // Dash works during fly mode
+            if(gs.dino.invTimer>0) gs.dino.invTimer-=dt;
+            if(gs.dino.dashCooldown>0) gs.dino.dashCooldown-=dt;
+            const flyDashCd = Math.max(15,45-gs.stats.dashCdReduction);
+            if(gs.stats.hasDash&&k["ArrowRight"]&&!pk["ArrowRight"]&&gs.dino.dashTimer<=0&&gs.dino.dashCooldown<=0){
+              gs.dino.dashTimer=10; gs.dino.dashDir=1; gs.dino.dashCooldown=flyDashCd; gs.usedDash=true;
+              playDashForward();
+            }
+            if(gs.stats.hasBackDash&&k["ArrowLeft"]&&!pk["ArrowLeft"]&&gs.dino.dashTimer<=0&&gs.dino.dashCooldown<=0){
+              gs.dino.dashTimer=10; gs.dino.dashDir=-1; gs.dino.dashCooldown=flyDashCd; gs.usedDash=true;
+              playDashBack();
+            }
+            if(gs.dino.dashTimer>0){
+              gs.dino.x+=gs.dino.dashDir*7*dt;
+              gs.dino.dashTimer-=dt;
+              gs.dino.x=Math.max(10, Math.min(CANVAS_W-60, gs.dino.x));
+            }
+            if(gs.pterodacFlyTimer<=0)
+              addFloat(gs,"FLY MODE ENDED",gs.dino.x-20,gs.dino.y-28,"#44aaff");
+          } else {
+            if(gs.pterodacFlyCooldown>0){
+              gs.pterodacFlyCooldown-=dt;
+            } else {
+              gs.pterodacFlyTimer  = 10*FPS60;
+              gs.pterodacFlyCooldown = 30*FPS60;
+              addFloat(gs,"FLY MODE!",gs.dino.x-10,gs.dino.y-28,"#44aaff");
+            }
           }
         }
         if(designId==="anky"){
@@ -700,11 +732,11 @@ export default function DinoIncremental() {
           });
         }
 
-        // ── Physics ──────────────────────────────────────────────────────────
+        // ── Physics (skipped for pterodac during fly mode) ─────────────────
         if(hasSpdPw){
           gs.dino.vy+=GRAVITY*dt; gs.dino.y+=gs.dino.vy*dt;
           if(gs.dino.y>=GROUND_Y-DINO_H){gs.dino.y=GROUND_Y-DINO_H;gs.dino.vy=0;gs.dino.onGround=true;}
-        } else {
+        } else if(!(designId==="pterodac" && gs.pterodacFlyTimer>0)) {
           if(gs.dino.invTimer>0) gs.dino.invTimer-=dt;
           if(gs.dino.dashCooldown>0) gs.dino.dashCooldown-=dt;
           const baseDashCd=Math.max(15,45-gs.stats.dashCdReduction);
@@ -1075,6 +1107,13 @@ export default function DinoIncremental() {
 
         // Tri: horn burst handled by timed passive above
 
+        if(gs.stegoFlashTimer>0) gs.stegoFlashTimer-=dt;
+
+        // ── Per-frame passive multipliers (needed by collision + collect) ────
+        const raptorM = designId==="raptor" ? 1+(gs.raptorSpeedBonus*0.005) : 1;
+        const spinoPickupM = (designId==="spino" && gs.nightBlend > 0.5) ? 1.30 : 1;
+        const stegoShieldBonus = designId==="stego" ? 0.20 + gs.stats.shieldChance * 0.5 : 0;
+
         // ── Bullet collision (separate from obstacle body) ───────────────────
         // Giant mode: silently destroy all projectiles, no fossils awarded
         if(hasGiant||hasSpdPw){
@@ -1094,8 +1133,9 @@ export default function DinoIncremental() {
                 if(gs.activePowerups.shield_pw){
                   gs.shieldHitsLeft--; if(gs.shieldHitsLeft<=0) delete gs.activePowerups.shield_pw;
                   gs.dino.invTimer=20+gs.stats.invFramesBonus; gs.hitTaken=true;
-                } else if(gs.stats.shieldChance>Math.random()){
+                } else if((gs.stats.shieldChance + stegoShieldBonus)>Math.random()){
                   gs.dino.invTimer=20+gs.stats.invFramesBonus; gs.hitTaken=true;
+                  if(designId==="stego"){ gs.stegoFlashTimer=40; addFloat(gs,"PLATE ARMOR!",gs.dino.x-10,gs.dino.y-28,"#ffcc00"); }
                 } else if(gs.lives>1){
                   gs.lives--; gs.dino.invTimer=30+gs.stats.invFramesBonus; gs.hitTaken=true;
                   playDie();
@@ -1138,8 +1178,9 @@ export default function DinoIncremental() {
               if(gs.activePowerups.shield_pw){
                 gs.shieldHitsLeft--; if(gs.shieldHitsLeft<=0) delete gs.activePowerups.shield_pw;
                 gs.obstacles.splice(i,1); gs.dino.invTimer=20+gs.stats.invFramesBonus; gs.hitTaken=true;
-              } else if(gs.stats.shieldChance>Math.random()){
+              } else if((gs.stats.shieldChance + stegoShieldBonus)>Math.random()){
                 gs.obstacles.splice(i,1); gs.dino.invTimer=20+gs.stats.invFramesBonus; gs.hitTaken=true;
+                if(designId==="stego"){ gs.stegoFlashTimer=40; addFloat(gs,"PLATE ARMOR!",gs.dino.x-10,gs.dino.y-28,"#ffcc00"); }
               } else if(gs.lives>1){
                 gs.lives--;
                 gs.obstacles.splice(i,1);
@@ -1165,8 +1206,6 @@ export default function DinoIncremental() {
         const nightM  = 1+(gs.nightBlend*gs.stats.nightBonus);
         const frenzyM = hasFrenzy?3:1;
         const doubM   = hasDoubler?2:1;
-        // Raptor speed rush: +3% per milestone
-        const raptorM = designId==="raptor" ? 1+(gs.raptorSpeedBonus*0.005) : 1;
 
         for(const p of gs.pickups){
           if(!p.collected&&rectsOverlap(DX,DY,DW,DH,p.x,p.y,14,14)){
@@ -1178,7 +1217,7 @@ export default function DinoIncremental() {
             // Pterodac passive: airborne pickups worth 1.5x
             const pteroM = (designId==="pterodac"&&!gs.dino.onGround) ? 1.5 : 1;
             const comboM = 1 + gs.combo * (0.08 + gs.stats.comboBonus);
-            const earned = gs.stats.fossilValue * gs.stats.fossilSenseMult * gs.stats.fossilPickupMult * comboM * nightM * frenzyM * doubM * raptorM * pteroM;
+            const earned = gs.stats.fossilValue * gs.stats.fossilSenseMult * gs.stats.fossilPickupMult * comboM * nightM * frenzyM * doubM * raptorM * pteroM * spinoPickupM;
             gs.fossilsEarned+=earned;
             if(earned>1) addFloat(gs,`+${Math.floor(earned)}`,p.x,p.y-10,"#ffdd44");
           }
@@ -1292,6 +1331,31 @@ export default function DinoIncremental() {
       if(hasFrenzyR){ctx.fillStyle=`rgba(220,30,100,${0.04+Math.sin(gs.frame*0.18)*0.03})`;ctx.fillRect(0,0,CANVAS_W,CANVAS_H);}
       if(hasDoublerR){ctx.fillStyle="rgba(255,220,30,0.06)";ctx.fillRect(0,0,CANVAS_W,CANVAS_H);}
 
+      // Stego plate armor flash on proc
+      if(designId==="stego" && gs.stegoFlashTimer > 0) {
+        const fade = gs.stegoFlashTimer / 40;
+        const pulse = 0.6 + Math.sin(gs.frame * 0.4) * 0.4;
+        const col = `rgba(255,200,50,${fade * pulse})`;
+        const f2 = gs.dino.onGround ? Math.floor(gs.frame/5)%2 : 0;
+        ctx.save();
+        for(const [ox,oy] of [[-3,0],[3,0],[0,-3],[0,3]])
+          drawStego(ctx, gs.dino.x+ox, gs.dino.y+oy, false, col, col, col, gs.dino.ducking, f2);
+        ctx.restore();
+        ctx.save();
+        ctx.globalAlpha = fade * 0.12;
+        ctx.fillStyle = "#ffcc00";
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+        ctx.restore();
+      }
+
+      // Pterodac fly mode: blue pulsing outline while active
+      if(designId==="pterodac" && gs.pterodacFlyTimer > 0)
+        drawPterodacFlyOutline(ctx, gs.dino.x, gs.dino.y, gs.frame, gs.dino.ducking);
+
+      // Raptor speed rush: green outline only while timer is active
+      if(designId==="raptor" && gs.raptorOutlineTimer > 0)
+        drawSpeedRushOutline(ctx, gs.dino.x, gs.dino.y, gs.frame, gs.dino.ducking, gs.raptorOutlineTimer);
+
       // Draw dino  Epass onGround so legs freeze mid-air
       drawDino(ctx,gs.dino.x,gs.dino.y,gs.frame,gs.dino.dead,
         gs.skin,gs.design,hasGiantR,gs.dino.ducking,hasTinyR,hasGhostR,
@@ -1391,6 +1455,19 @@ export default function DinoIncremental() {
           ctx.fillStyle=HUD.hud;ctx.font="9px 'Courier New'";
           ctx.fillText(`${def.label} x${gs.shieldHitsLeft}`,CANVAS_W-88,barY+17);barY+=20;
         }
+      }
+
+      // Pterodac fly mode timer bar
+      if(designId2==="pterodac") {
+        const isFly = gs.pterodacFlyTimer > 0;
+        const frac  = isFly
+          ? gs.pterodacFlyTimer  / (10*60)
+          : 1 - gs.pterodacFlyCooldown / (30*60);
+        const barCol = isFly ? "#44aaff" : "#226688";
+        ctx.fillStyle="rgba(0,0,0,0.22)"; ctx.fillRect(12,60,80,5);
+        ctx.fillStyle=barCol;             ctx.fillRect(12,60,Math.floor(80*Math.min(1,Math.max(0,frac))),5);
+        ctx.fillStyle=HUD.hud; ctx.font="8px 'Courier New'";
+        ctx.fillText(isFly?"FLYING":"FLY READY",12,74);
       }
 
       // Raptor speed rush indicator
