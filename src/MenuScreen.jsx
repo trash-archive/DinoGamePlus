@@ -11,6 +11,7 @@ export default function MenuScreen({
   activeScenery,
   abyssUnlocked, startBossFight,
   touchButtons, setTouchButtons,
+  touchButtonOpacity, setTouchButtonOpacity,
   F, BG, DARK, BORDER, MUTED,
 }) {
   const [showSettings, setShowSettings] = useState(false);
@@ -85,6 +86,16 @@ export default function MenuScreen({
               </div>
               <div style={{ fontSize:9, color:MUTED, letterSpacing:1, lineHeight:1.6 }}>Shows ▲▼◀▶ D-pad during gameplay. Only unlocked moves appear.</div>
             </div>
+            <div style={{ marginBottom:14 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
+                <span style={{ fontSize:10, letterSpacing:2, color:DARK }}>BUTTON OPACITY</span>
+                <span style={{ fontSize:10, color:MUTED, fontFamily:"monospace" }}>{Math.round(touchButtonOpacity*100)}%</span>
+              </div>
+              <input type="range" min="0.1" max="1" step="0.05" value={touchButtonOpacity} disabled={!touchButtons}
+                onChange={e => setTouchButtonOpacity(parseFloat(e.target.value))}
+                style={{ width:"100%", accentColor:DARK, opacity:touchButtons?1:0.3 }}
+              />
+            </div>
 
             {/* Controls */}
             <div style={{ borderTop:`1px solid #ddd`, paddingTop:16, marginBottom:10 }}>
@@ -106,30 +117,35 @@ export default function MenuScreen({
 
               <div style={{ fontSize:10, letterSpacing:2, color:MUTED, marginBottom:6, marginTop:14 }}>TOUCH / MOBILE</div>
               <div style={{ fontSize:9, color:MUTED, letterSpacing:1, lineHeight:1.6, marginBottom:8 }}>
-                {touchButtons ? "On-screen D-pad active — swipe gestures disabled." : "Swipe gestures active — enable On-Screen Buttons above for D-pad."}
+                {touchButtons ? "D-pad active — swipe gestures are disabled." : "Swipe gestures active — tap, swipe to control the dino."}
               </div>
-              {!touchButtons && [
+              {[
                 ["JUMP",      "Tap / Swipe up"],
                 ["FAST DROP", "Swipe down"],
                 ["DASH FWD",  "Swipe right"],
                 ["DASH BACK", "Swipe left"],
               ].map(([action, key]) => (
-                <div key={action} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:7, gap:8 }}>
+                <div key={action} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:7, gap:8, opacity:touchButtons?0.3:1 }}>
                   <span style={{ fontSize:10, color:MUTED, letterSpacing:1, flexShrink:0 }}>{action}</span>
                   <span style={{ fontSize:10, color:DARK, fontWeight:"bold", letterSpacing:1, textAlign:"right" }}>{key}</span>
                 </div>
               ))}
-              {touchButtons && [
-                ["JUMP",      "▲ button"],
-                ["DASH FWD",  "▶ button (if unlocked)"],
-                ["DASH BACK", "◀ button (if unlocked)"],
-                ["FAST DROP", "▼ button (if unlocked)"],
-              ].map(([action, key]) => (
-                <div key={action} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:7, gap:8 }}>
-                  <span style={{ fontSize:10, color:MUTED, letterSpacing:1, flexShrink:0 }}>{action}</span>
-                  <span style={{ fontSize:10, color:DARK, fontWeight:"bold", letterSpacing:1, textAlign:"right" }}>{key}</span>
-                </div>
-              ))}
+              {touchButtons && (
+                <>
+                  <div style={{ fontSize:10, letterSpacing:2, color:MUTED, marginBottom:6, marginTop:10 }}>D-PAD BUTTONS</div>
+                  {[
+                    ["JUMP",      "▲ button"],
+                    ["DASH FWD",  "▶ button (if unlocked)"],
+                    ["DASH BACK", "◀ button (if unlocked)"],
+                    ["FAST DROP", "▼ button (if unlocked)"],
+                  ].map(([action, key]) => (
+                    <div key={action} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:7, gap:8 }}>
+                      <span style={{ fontSize:10, color:MUTED, letterSpacing:1, flexShrink:0 }}>{action}</span>
+                      <span style={{ fontSize:10, color:DARK, fontWeight:"bold", letterSpacing:1, textAlign:"right" }}>{key}</span>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
 
             {/* Footer */}

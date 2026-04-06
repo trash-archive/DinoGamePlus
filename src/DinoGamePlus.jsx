@@ -81,6 +81,7 @@ export default function DinoIncremental() {
   const [lastRunRank,      setLastRunRank]       = useState(null);
   const [bossKey,          setBossKey]           = useState(0);
   const [playerMenuRank,   setPlayerMenuRank]    = useState(null);
+  const [touchButtonOpacity, setTouchButtonOpacity] = useLocalStorage("dino_touchButtonOpacity", 0.88);
   const [touchButtons,     setTouchButtons]     = useLocalStorage("dino_touchButtons", () => {
     // Default ON for touch/mobile devices
     return window.matchMedia("(pointer: coarse)").matches || window.innerWidth <= 1024;
@@ -1523,6 +1524,7 @@ export default function DinoIncremental() {
       activeScenery={activeScenery}
       abyssUnlocked={abyssUnlocked} startBossFight={startBossFight}
       touchButtons={touchButtons} setTouchButtons={setTouchButtons}
+      touchButtonOpacity={touchButtonOpacity} setTouchButtonOpacity={setTouchButtonOpacity}
       F={F} BG={BG} DARK={DARK} BORDER={BORDER} MUTED={MUTED}
     />
   );
@@ -1552,7 +1554,7 @@ export default function DinoIncremental() {
           )}
         </div>
         {touchButtons && screen==="game" && (
-          <TouchButtons keysRef={keysRef} stats={getStats(upgradeLevels)} visible={true} canvasRef={canvasRef} />
+          <TouchButtons keysRef={keysRef} stats={getStats(upgradeLevels)} visible={true} canvasRef={canvasRef} opacity={touchButtonOpacity} />
         )}
       </div>
       {notification&&<div style={notifBox}>{notification}</div>}

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 // ─── SINGLE BUTTON ────────────────────────────────────────────────────────────
-function Btn({ label, empty, onPress, onRelease, col, row }) {
+function Btn({ label, empty, onPress, onRelease, col, row, opacity }) {
   if (empty) return null;
 
   const handlers = {
@@ -36,7 +36,7 @@ function Btn({ label, empty, onPress, onRelease, col, row }) {
         cursor: "pointer",
         flexShrink: 0,
         boxSizing: "border-box",
-        opacity: 0.88,
+        opacity: opacity,
         WebkitTapHighlightColor: "transparent",
       }}
     >
@@ -46,7 +46,7 @@ function Btn({ label, empty, onPress, onRelease, col, row }) {
 }
 
 // ─── TOUCH BUTTONS ────────────────────────────────────────────────────────────
-export default function TouchButtons({ keysRef, stats, visible, canvasRef }) {
+export default function TouchButtons({ keysRef, stats, visible, canvasRef, opacity = 0.88 }) {
   const heldKeys = useRef(new Set());
   const [topPx, setTopPx] = useState(null);
 
@@ -100,13 +100,13 @@ export default function TouchButtons({ keysRef, stats, visible, canvasRef }) {
 
   const dpad = (
     <>
-      <Btn label="▲" col={2} row={1}
+      <Btn label="▲" col={2} row={1} opacity={opacity}
         onPress={() => press("Space")} onRelease={() => release("Space")} />
-      {hasLeft  && <Btn label="◀" col={1} row={2}
+      {hasLeft  && <Btn label="◀" col={1} row={2} opacity={opacity}
         onPress={() => press("ArrowLeft")}  onRelease={() => release("ArrowLeft")} />}
-      {hasRight && <Btn label="▶" col={3} row={2}
+      {hasRight && <Btn label="▶" col={3} row={2} opacity={opacity}
         onPress={() => press("ArrowRight")} onRelease={() => release("ArrowRight")} />}
-      {hasDown  && <Btn label="▼" col={2} row={3}
+      {hasDown  && <Btn label="▼" col={2} row={3} opacity={opacity}
         onPress={() => press("ArrowDown")}  onRelease={() => release("ArrowDown")} />}
     </>
   );
