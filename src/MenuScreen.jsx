@@ -12,6 +12,7 @@ export default function MenuScreen({
   abyssUnlocked, startBossFight,
   touchButtons, setTouchButtons,
   touchButtonOpacity, setTouchButtonOpacity,
+  claimableAch,
   F, BG, DARK, BORDER, MUTED,
 }) {
   const [showSettings, setShowSettings] = useState(false);
@@ -117,7 +118,7 @@ export default function MenuScreen({
 
               <div style={{ fontSize:10, letterSpacing:2, color:MUTED, marginBottom:6, marginTop:14 }}>TOUCH / MOBILE</div>
               <div style={{ fontSize:9, color:MUTED, letterSpacing:1, lineHeight:1.6, marginBottom:8 }}>
-                {touchButtons ? "D-pad active — swipe gestures are disabled." : "Swipe gestures active — tap, swipe to control the dino."}
+                Swipe gestures are always available on touch screens — tap, swipe up/down/left/right to control the dino.
               </div>
               {[
                 ["JUMP",      "Tap / Swipe up"],
@@ -125,7 +126,7 @@ export default function MenuScreen({
                 ["DASH FWD",  "Swipe right"],
                 ["DASH BACK", "Swipe left"],
               ].map(([action, key]) => (
-                <div key={action} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:7, gap:8, opacity:touchButtons?0.3:1 }}>
+                <div key={action} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:7, gap:8 }}>
                   <span style={{ fontSize:10, color:MUTED, letterSpacing:1, flexShrink:0 }}>{action}</span>
                   <span style={{ fontSize:10, color:DARK, fontWeight:"bold", letterSpacing:1, textAlign:"right" }}>{key}</span>
                 </div>
@@ -237,7 +238,12 @@ export default function MenuScreen({
             <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => { playClick(); setScreen("skins"); }}>[ COLLECTION ]</button>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
-            <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => { playClick(); setScreen("achievements"); }}>[ ACHIEVEMENTS ]</button>
+            <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)", position:"relative", overflow:"visible" }} onClick={() => { playClick(); setScreen("achievements"); }}>
+              [ ACHIEVEMENTS ]
+              {claimableAch?.length > 0 && (
+                <span style={{ position:"absolute", top:-2, right:-2, width:10, height:10, background:"#e63946", display:"block", pointerEvents:"none", zIndex:1 }}/>
+              )}
+            </button>
             <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => { playClick(); setScreen("leaderboard"); }}>[ LEADERBOARDS ]</button>
           </div>
 

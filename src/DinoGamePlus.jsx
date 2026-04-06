@@ -73,6 +73,7 @@ export default function DinoIncremental() {
     dinoDistances:{}, bestDistNoHit:0, menuIdleUnlock:false,
   });
   const [unlockedAch,    setUnlockedAch]    = useLocalStorage("dino_unlockedAch", []);
+  const [claimableAch,   setClaimableAch]   = useLocalStorage("dino_claimableAch", []);
   const [pendingAch,     setPendingAch]     = useState([]);
   const [achivNotif,     setAchivNotif]     = useState(null);
   const [unlockedPowerups, setUnlockedPowerups] = useLocalStorage("dino_unlockedPowerups", []);
@@ -82,9 +83,9 @@ export default function DinoIncremental() {
   const [bossKey,          setBossKey]           = useState(0);
   const [playerMenuRank,   setPlayerMenuRank]    = useState(null);
   const [touchButtonOpacity, setTouchButtonOpacity] = useLocalStorage("dino_touchButtonOpacity", 0.88);
-  const [touchButtons,     setTouchButtons]     = useLocalStorage("dino_touchButtons", () => {
-    // Default ON for touch/mobile devices
-    return window.matchMedia("(pointer: coarse)").matches || window.innerWidth <= 1024;
+  const [touchButtons,     setTouchButtons]     = useLocalStorage("dino_touchButtons_v2", () => {
+    // Default ON for touch/mobile devices only
+    return window.matchMedia("(pointer: coarse)").matches;
   });
 
 
@@ -151,9 +152,7 @@ export default function DinoIncremental() {
     if(newUnlocked.length>0){
       const ids=newUnlocked.map(a=>a.id);
       setUnlockedAch(prev=>[...prev,...ids]);
-      const totalReward=newUnlocked.reduce((s,a)=>s+a.reward,0);
-      setFossils(f=>f+totalReward);
-      setTotalFossils(f=>f+totalReward);
+      setClaimableAch(prev=>[...prev,...ids]);
       setPendingAch(prev=>[...prev,...newUnlocked]);
     }
   },[achievStats, unlockedAch]);
@@ -161,7 +160,7 @@ export default function DinoIncremental() {
   useEffect(()=>{
     if(pendingAch.length>0){
       const a=pendingAch[0];
-      setAchivNotif(`🏆 ${a.label} (+${a.rewardLabel || `${a.reward} fossils`})`);
+      setAchivNotif(`${a.label} — Go claim your reward!`);
       const t=setTimeout(()=>{ setAchivNotif(null); setPendingAch(prev=>prev.slice(1)); },3000);
       return ()=>clearTimeout(t);
     }
@@ -1525,6 +1524,7 @@ export default function DinoIncremental() {
       abyssUnlocked={abyssUnlocked} startBossFight={startBossFight}
       touchButtons={touchButtons} setTouchButtons={setTouchButtons}
       touchButtonOpacity={touchButtonOpacity} setTouchButtonOpacity={setTouchButtonOpacity}
+      claimableAch={claimableAch}
       F={F} BG={BG} DARK={DARK} BORDER={BORDER} MUTED={MUTED}
     />
   );
@@ -1593,6 +1593,14 @@ export default function DinoIncremental() {
   if(screen==="achievements") return (
     <AchievementsScreen
       unlockedAch={unlockedAch}
+      claimableAch={claimableAch}
+      onClaim={(id, reward, rewardLabel)=>{
+        setClaimableAch(prev=>prev.filter(x=>x!==id));
+        setFossils(f=>f+reward);
+        setTotalFossils(f=>f+reward);
+        setNotification(`+${rewardLabel || `${reward} fossils`} claimed!`);
+        setTimeout(()=>setNotification(null),2200);
+      }}
       notification={notification} achivNotif={achivNotif}
       onBack={()=>setScreen("menu")}
       F={F} BG={BG} DARK={DARK} BORDER={BORDER} MUTED={MUTED}
