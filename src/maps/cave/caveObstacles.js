@@ -169,14 +169,21 @@ export function drawCaveObstacle(ctx, o, frame) {
 // ── Spawn ─────────────────────────────────────────────────────────────────────
 export function spawnCaveObstacle(r, tier) {
   let otype, type = 0, oy = 0, bullets = [];
-  if(r<0.22){otype="cactus";type=Math.floor(Math.random()*(Math.min(2,Math.floor(tier/2))+1));}
-  else if(r<0.36){otype="bird";oy=GROUND_Y-88-Math.random()*48;if(tier>2&&Math.random()<0.45)oy=GROUND_Y-44;}
-  else if(r<0.50){otype="crystalSpire";type=Math.floor(Math.random()*3);}
-  else if(r<0.62&&tier>=1){otype="crystalCluster";}
-  else if(r<0.72&&tier>=2){otype="stalactite";oy=-30;}
-  else if(r<0.82&&tier>=2){otype="crystalMine";oy=GROUND_Y-80-Math.random()*60;bullets=[];}
-  else if(r<0.91&&tier>=3){otype="crystalGolem";bullets=[];}
-  else if(r<0.97&&tier>=3){otype="voidPortal";}
-  else{otype="crystalSpire";type=0;}
+  if (tier === 0) {
+    otype = r < 0.62 ? "cactus" : "bird";
+    if (otype === "bird") oy = GROUND_Y - 88 - Math.random() * 48;
+    return { otype, type, oy, bullets };
+  }
+  if      (r < 0.18) { otype="cactus"; type=Math.floor(Math.random()*(Math.min(2,Math.floor(tier/2))+1)); }
+  else if (r < 0.32) { otype="bird"; oy=GROUND_Y-88-Math.random()*48;
+                       if(tier>=2&&Math.random()<0.35) oy=GROUND_Y-62;
+                       if(tier>=2&&Math.random()<0.30) oy=GROUND_Y-36; }
+  else if (r < 0.46) { otype="crystalSpire"; type=Math.floor(Math.random()*3); }
+  else if (r < 0.58 && tier>=1) { otype="crystalCluster"; }
+  else if (r < 0.68 && tier>=2) { otype="stalactite"; oy=-30; }
+  else if (r < 0.78 && tier>=2) { otype="crystalMine"; oy=GROUND_Y-80-Math.random()*60; bullets=[]; }
+  else if (r < 0.89 && tier>=3) { otype="crystalGolem"; bullets=[]; }
+  else if (r < 0.97 && tier>=3) { otype="voidPortal"; }
+  else                           { otype="crystalSpire"; type=0; }
   return { otype, type, oy, bullets };
 }

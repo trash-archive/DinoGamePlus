@@ -106,13 +106,20 @@ export function drawVolcanoObstacle(ctx, o, frame) {
 // ── Spawn ─────────────────────────────────────────────────────────────────────
 export function spawnVolcanoObstacle(r, tier) {
   let otype, type = 0, oy = 0, bullets = [];
-  if(r<0.26){otype="cactus";type=Math.floor(Math.random()*(Math.min(2,Math.floor(tier/2))+1));}
-  else if(r<0.40){otype="bird";oy=GROUND_Y-88-Math.random()*48;if(tier>2&&Math.random()<0.45)oy=GROUND_Y-44;}
-  else if(r<0.54){otype="lavarock";}
-  else if(r<0.66&&tier>=1){otype="firePillar";}
-  else if(r<0.76&&tier>=2){otype="lavaburst";bullets=[];}
-  else if(r<0.86&&tier>=2){otype="firewall";}
-  else if(r<0.96&&tier>=3){otype="demon";oy=GROUND_Y-110-Math.random()*40;bullets=[];}
-  else{otype="lavarock";}
+  if (tier === 0) {
+    otype = r < 0.62 ? "cactus" : "bird";
+    if (otype === "bird") oy = GROUND_Y - 88 - Math.random() * 48;
+    return { otype, type, oy, bullets };
+  }
+  if      (r < 0.22) { otype="cactus"; type=Math.floor(Math.random()*(Math.min(2,Math.floor(tier/2))+1)); }
+  else if (r < 0.36) { otype="bird"; oy=GROUND_Y-88-Math.random()*48;
+                       if(tier>=2&&Math.random()<0.35) oy=GROUND_Y-62;
+                       if(tier>=2&&Math.random()<0.30) oy=GROUND_Y-36; }
+  else if (r < 0.50) { otype="lavarock"; }
+  else if (r < 0.62 && tier>=1) { otype="firePillar"; }
+  else if (r < 0.72 && tier>=2) { otype="lavaburst"; bullets=[]; }
+  else if (r < 0.82 && tier>=2) { otype="firewall"; }
+  else if (r < 0.96 && tier>=3) { otype="demon"; oy=GROUND_Y-80-Math.random()*30; bullets=[]; }
+  else                           { otype="lavarock"; }
   return { otype, type, oy, bullets };
 }

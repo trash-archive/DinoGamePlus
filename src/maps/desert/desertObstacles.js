@@ -66,8 +66,8 @@ export function drawDesertObstacle(ctx, o, frame) {
     ctx.fillRect(o.x+27,g-18,5,5);
     ctx.fillStyle = "#88ff00";
     for(const b of (o.bullets||[])) {
-      ctx.fillRect(b.x,b.y,6,6);
-      ctx.fillRect(b.x+2,b.y-2,2,2);
+      ctx.fillRect(b.x,b.y,7,7);
+      ctx.fillStyle = "#ccff44"; ctx.fillRect(b.x+2,b.y+2,3,3); ctx.fillStyle = "#88ff00";
     }
   } else {
     ctx.fillStyle = "#d4a050";
@@ -78,12 +78,19 @@ export function drawDesertObstacle(ctx, o, frame) {
 // ── Spawn ─────────────────────────────────────────────────────────────────────
 export function spawnDesertObstacle(r, tier) {
   let otype, type = 0, oy = 0, bullets = [];
-  if(r<0.30){otype="cactus";type=Math.floor(Math.random()*(Math.min(2,Math.floor(tier/2))+1));}
-  else if(r<0.48){otype="bird";oy=GROUND_Y-88-Math.random()*48;if(tier>2&&Math.random()<0.45)oy=GROUND_Y-44;}
-  else if(r<0.62){otype="dune";}
-  else if(r<0.74&&tier>=1){otype="tumbleweed";}
-  else if(r<0.84&&tier>=2){otype="sandworm";}
-  else if(r<0.94&&tier>=3){otype="scorpion";bullets=[];}
-  else{otype="cactus";type=0;}
+  if (tier === 0) {
+    otype = r < 0.62 ? "cactus" : "bird";
+    if (otype === "bird") oy = GROUND_Y - 88 - Math.random() * 48;
+    return { otype, type, oy, bullets };
+  }
+  if      (r < 0.26) { otype="cactus"; type=Math.floor(Math.random()*(Math.min(2,Math.floor(tier/2))+1)); }
+  else if (r < 0.40) { otype="bird"; oy=GROUND_Y-88-Math.random()*48;
+                       if(tier>=2&&Math.random()<0.35) oy=GROUND_Y-62;
+                       if(tier>=2&&Math.random()<0.30) oy=GROUND_Y-36; }
+  else if (r < 0.54) { otype="dune"; }
+  else if (r < 0.66 && tier>=1) { otype="tumbleweed"; }
+  else if (r < 0.78 && tier>=2) { otype="sandworm"; }
+  else if (r < 0.92 && tier>=3) { otype="scorpion"; bullets=[]; }
+  else                           { otype="cactus"; type=0; }
   return { otype, type, oy, bullets };
 }

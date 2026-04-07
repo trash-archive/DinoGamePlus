@@ -232,21 +232,17 @@ function drawPowerupDoubler(ctx, x, y, col) {
 }
 
 function drawPowerupHeart(ctx, x, y, col) {
-  // Pixel heart
+  // Matches the HUD drawHeart style, scaled to 22px
+  const s = 22;
   ctx.fillStyle = col;
-  ctx.fillRect(x+2,  y+4,  6,  2);
-  ctx.fillRect(x+12, y+4,  6,  2);
-  ctx.fillRect(x+1,  y+6,  8,  6);
-  ctx.fillRect(x+13, y+6,  8,  6);
-  ctx.fillRect(x+1,  y+8,  20, 6);
-  ctx.fillRect(x+3,  y+14, 16, 4);
-  ctx.fillRect(x+5,  y+18, 12, 3);
-  ctx.fillRect(x+7,  y+21, 8,  2);
-  ctx.fillRect(x+9,  y+23, 4,  1);
-  // Highlight
-  ctx.fillStyle = "rgba(255,255,255,0.45)";
-  ctx.fillRect(x+4,  y+6,  3,  3);
-  ctx.fillRect(x+14, y+6,  3,  3);
+  ctx.fillRect(x + s*0.08, y,           s*0.35, s*0.4);
+  ctx.fillRect(x + s*0.55, y,           s*0.35, s*0.4);
+  ctx.fillRect(x,           y + s*0.25, s,      s*0.38);
+  ctx.fillRect(x + s*0.08, y + s*0.6,  s*0.84, s*0.22);
+  ctx.fillRect(x + s*0.22, y + s*0.8,  s*0.55, s*0.15);
+  ctx.fillRect(x + s*0.38, y + s*0.92, s*0.25, s*0.08);
+  ctx.fillStyle = "rgba(255,255,255,0.35)";
+  ctx.fillRect(x + s*0.15, y + s*0.05, s*0.15, s*0.2);
 }
 
 // ─── DISPATCH ─────────────────────────────────────────────────────────────────

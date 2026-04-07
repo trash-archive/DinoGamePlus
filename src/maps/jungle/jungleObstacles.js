@@ -126,13 +126,21 @@ export function drawJungleObstacle(ctx, o, frame) {
 // ── Spawn ─────────────────────────────────────────────────────────────────────
 export function spawnJungleObstacle(r, tier) {
   let otype, type = 0, oy = 0, bullets = [];
-  if(r<0.28){otype="cactus";type=Math.floor(Math.random()*3);}
-  else if(r<0.42){otype="bird";oy=GROUND_Y-88-Math.random()*48;if(tier>2&&Math.random()<0.45)oy=GROUND_Y-44;}
-  else if(r<0.54){otype="rock";}
-  else if(r<0.66&&tier>=1){otype="giantMushroom";}
-  else if(r<0.76&&tier>=1){otype="vineTrap";}
-  else if(r<0.86&&tier>=2){otype="piranha";}
-  else if(r<0.96&&tier>=3){otype="gorilla";bullets=[];}
-  else{otype="cactus";type=0;}
+  if (tier === 0) {
+    otype = r < 0.62 ? "cactus" : "bird";
+    type = 0;
+    if (otype === "bird") oy = GROUND_Y - 88 - Math.random() * 48;
+    return { otype, type, oy, bullets };
+  }
+  if      (r < 0.24) { otype="cactus"; type=Math.floor(Math.random()*3); }
+  else if (r < 0.38) { otype="bird"; oy=GROUND_Y-88-Math.random()*48;
+                       if(tier>=2&&Math.random()<0.35) oy=GROUND_Y-62;
+                       if(tier>=2&&Math.random()<0.30) oy=GROUND_Y-36; }
+  else if (r < 0.50) { otype="rock"; }
+  else if (r < 0.62 && tier>=1) { otype="giantMushroom"; }
+  else if (r < 0.72 && tier>=1) { otype="vineTrap"; }
+  else if (r < 0.82 && tier>=2) { otype="piranha"; }
+  else if (r < 0.96 && tier>=3) { otype="gorilla"; bullets=[]; }
+  else                           { otype="cactus"; type=0; }
   return { otype, type, oy, bullets };
 }

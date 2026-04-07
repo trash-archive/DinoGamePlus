@@ -874,9 +874,11 @@ export default function DinoIncremental() {
             // plains / grasslands
             ({otype,type,oy,bullets}=spawnGrasslandsObstacle(r,tier));
           }
-          gs.obstacles.push({x:CANVAS_W+10,otype,type,y:oy,w:44,bullets,_shootTimer:0});
+          gs.obstacles.push({x:CANVAS_W+10,otype,type,y:oy,w:44,bullets,_shootTimer:0,
+            _spikeTimer: otype==="spiketrap" ? Math.max(30,50-tier*2.5) : undefined,
+          });
           // Cluster: ground static obstacles sometimes spawn 1-2 more of the same type close together
-          const clusterTypes=["cactus","rock","spike","spike_cluster","wall","log","dune","icewall","lavarock","pillar","boulder","crystalSpire","crystalCluster"];
+          const clusterTypes=["cactus","rock","spike","spike_cluster","wall","log","dune","icewall","lavarock","pillar","boulder","crystalSpire","crystalCluster","bonepile","tumbleweed","frostspike"];
           if(clusterTypes.includes(otype)&&tier>=1){
             const clusterChance=0.28+tier*0.02; // ~28-48% chance of a cluster
             const count=Math.random()<clusterChance?(Math.random()<0.3?2:1):0;
@@ -937,7 +939,7 @@ export default function DinoIncremental() {
 
         // ── Move everything ──────────────────────────────────────────────────
         gs.obstacles=gs.obstacles.filter(o=>{
-          o.x-=effSpeed*dt;
+          if(o.otype!=="dust_devil") o.x-=effSpeed*dt;
           // Turret: shoot horizontal bullets, fires when 1/4 body visible
           if(o.otype==="turret"&&o.x<CANVAS_W-20&&o.x>-60){
             const shootInterval=Math.max(70,130-tier*8);
@@ -965,7 +967,7 @@ export default function DinoIncremental() {
             if(o._icicleY===undefined) o._icicleY=-20;
             const dist=Math.abs(o.x-gs.dino.x);
             if(dist<260||o._icicleY>-20){
-              o._icicleY=Math.min(GROUND_Y-34,(o._icicleY||0)+5*dt);
+              o._icicleY=Math.min(GROUND_Y-34,(o._icicleY||0)+3*dt);
             }
           }
           // Lavaburst: shoots lava blobs upward in arc, fires when 1/4 body visible
@@ -1030,14 +1032,39 @@ export default function DinoIncremental() {
             if(o._shootTimer>=shootInterval){
               o._shootTimer=0;
               const bSpd=effSpeed/gs.baseSpeed;
-              o.bullets.push({x:o.x+36,y:GROUND_Y-40,vx:-(6+tier*0.3)*bSpd,vy:0});
+              o.bullets.push({x:o.x+36,y:GROUND_Y-40,vx:-(5+tier*0.3)*bSpd,vy:(-5-tier*0.2)*bSpd});
             }
-            o.bullets=o.bullets.filter(b=>{b.x+=b.vx*dt; return b.x>-20;});
+            o.bullets=o.bullets.filter(b=>{
+              b.x+=b.vx*dt; b.y+=b.vy*dt; b.vy+=0.35*dt;
+              return b.x>-20&&b.y<GROUND_Y;
+            });
+          }
+          // Vulture: dive toward dino when close, then pull back up
+          if(o.otype==="vulture"){
+            const dist=Math.abs(o.x-gs.dino.x);
+            if(o._vultureState===undefined){ o._vultureState=0; o._vultureBaseY=o.y; }
+            if(o._vultureState===0&&dist<200){
+              o._vultureState=1; // diving
+            }
+            if(o._vultureState===1){
+              o.y=Math.min(GROUND_Y-52, o.y+3.5*dt);
+              if(o.y>=GROUND_Y-52) o._vultureState=2; // pull back up
+            } else if(o._vultureState===2){
+              o.y=Math.max(o._vultureBaseY, o.y-2.5*dt);
+              if(o.y<=o._vultureBaseY) o._vultureState=0;
+            }
+          }
+          // Dust devil: slow horizontal drift (wobble left/right)
+          if(o.otype==="dust_devil"){
+            if(o._ddBaseX===undefined) o._ddBaseX=o.x;
+            o._ddPhase=(o._ddPhase||0)+0.04*dt;
+            o._ddBaseX-=effSpeed*dt;
+            o.x=o._ddBaseX+Math.sin(o._ddPhase)*14;
           }
           // VineTrap: snap shut when dino is close
           if(o.otype==="vineTrap"){
             const dist=Math.abs(o.x+20-gs.dino.x);
-            o._snapState = dist<80 ? Math.min(1,(o._snapState||0)+0.15*dt) : Math.max(0,(o._snapState||0)-0.08*dt);
+            o._snapState = dist<80 ? Math.min(1,(o._snapState||0)+0.15*dt) : Math.max(0,(o._snapState||0)-0.12*dt);
           }
           // Gorilla: throw coconuts in arc, fires when 1/4 body visible
           if(o.otype==="gorilla"&&o.x<CANVAS_W-20&&o.x>-60){
@@ -1053,9 +1080,10 @@ export default function DinoIncremental() {
             }
             o.bullets=o.bullets.filter(b=>{b.x+=b.vx*dt; return b.x>-20;});
           }
-          // Spiketrap: extend/retract on timer
+          // Spiketrap: extend/retract on timer — start mid-cycle so always visible on entry
           if(o.otype==="spiketrap"){
-            o._spikeTimer=(o._spikeTimer||0)+dt;
+            if(o._spikeTimer===undefined) o._spikeTimer=0;
+            o._spikeTimer+=dt;
             const cycle=Math.max(60,100-tier*5);
             const phase=(o._spikeTimer%cycle)/cycle;
             o._spikeH = phase<0.5 ? Math.min(28,phase*2*28) : Math.max(0,(1-phase)*2*28);

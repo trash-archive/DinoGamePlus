@@ -24,7 +24,7 @@ export function drawArcticObstacle(ctx, o, frame) {
     const bounce = Math.abs(Math.sin(frame*0.14))*5;
     const rot = (frame*0.09)%(Math.PI*2);
     ctx.save();
-    ctx.translate(o.x+16,g-16-bounce);
+    ctx.translate(o.x+16,g-18-bounce);
     ctx.rotate(rot);
     ctx.fillStyle = "#ddeeff";
     ctx.fillRect(-12,-6,24,12); ctx.fillRect(-8,-12,16,24);
@@ -33,6 +33,16 @@ export function drawArcticObstacle(ctx, o, frame) {
     ctx.fillRect(-10,-10,4,4); ctx.fillRect(6,-10,4,4);
     ctx.fillRect(-10,6,4,4);   ctx.fillRect(6,6,4,4);
     ctx.restore();
+  } else if (o.otype === "frostspike") {
+    // Mid-tier: 3 upward ice spikes, shorter than icewall, taller than snowball
+    ctx.fillStyle = "#88bbdd";
+    for(let i=0;i<3;i++){
+      const bx=o.x+i*14;
+      ctx.fillRect(bx+2,g-32,10,32);
+      ctx.fillStyle="#aaddff"; ctx.fillRect(bx+3,g-32,4,8); ctx.fillStyle="#88bbdd";
+      ctx.beginPath(); ctx.moveTo(bx+2,g-32); ctx.lineTo(bx+7,g-44); ctx.lineTo(bx+12,g-32); ctx.fill();
+      ctx.fillStyle="#ddeeff"; ctx.fillRect(bx+5,g-42,4,6); ctx.fillStyle="#88bbdd";
+    }
   } else if (o.otype === "icicle") {
     const iy = o._icicleY ?? -20;
     ctx.fillStyle = "#aaddff";
@@ -81,12 +91,20 @@ export function drawArcticObstacle(ctx, o, frame) {
 // ── Spawn ─────────────────────────────────────────────────────────────────────
 export function spawnArcticObstacle(r, tier) {
   let otype, type = 0, oy = 0, bullets = [];
-  if(r<0.28){otype="cactus";type=Math.floor(Math.random()*(Math.min(2,Math.floor(tier/2))+1));}
-  else if(r<0.44){otype="bird";oy=GROUND_Y-88-Math.random()*48;if(tier>2&&Math.random()<0.45)oy=GROUND_Y-44;}
-  else if(r<0.58){otype="icewall";}
-  else if(r<0.70&&tier>=1){otype="snowball";}
-  else if(r<0.82&&tier>=2){otype="icicle";oy=-20;}
-  else if(r<0.94&&tier>=3){otype="yeti";bullets=[];}
-  else{otype="cactus";type=0;}
+  if (tier === 0) {
+    otype = r < 0.62 ? "cactus" : "bird";
+    if (otype === "bird") oy = GROUND_Y - 88 - Math.random() * 48;
+    return { otype, type, oy, bullets };
+  }
+  if      (r < 0.24) { otype="cactus"; type=Math.floor(Math.random()*(Math.min(2,Math.floor(tier/2))+1)); }
+  else if (r < 0.38) { otype="bird"; oy=GROUND_Y-88-Math.random()*48;
+                       if(tier>=2&&Math.random()<0.35) oy=GROUND_Y-62;
+                       if(tier>=2&&Math.random()<0.30) oy=GROUND_Y-36; }
+  else if (r < 0.52) { otype="icewall"; }
+  else if (r < 0.63 && tier>=1) { otype="snowball"; }
+  else if (r < 0.73 && tier>=2) { otype="frostspike"; }
+  else if (r < 0.83 && tier>=2) { otype="icicle"; oy=-20; }
+  else if (r < 0.95 && tier>=3) { otype="yeti"; bullets=[]; }
+  else                           { otype="cactus"; type=0; }
   return { otype, type, oy, bullets };
 }
