@@ -56,7 +56,7 @@ export const DINO_DESIGNS = [
   { id:"pachy",    label:"Pachycephalosaurus", cost:15000, desc:"Dome-headed headbutter" },
   { id:"para",     label:"Parasaurolophus", cost:20000, desc:"Crested hadrosaur, crest resonates" },
   { id:"dilopho",  label:"Dilophosaurus", cost:30000, desc:"Frilled venomous sprinter" },
-  { id:"hasim",    label:"Hasim",          cost:0,     desc:"Just happy to be here.", unlockDist:55000 },
+  { id:"hasim",    label:"Hasim",          cost:0,     desc:"Just happy to be here.", unlockDist:10000 },
 ];
 
 // ─── DINO PASSIVE SKILLS ──────────────────────────────────────────────────────
