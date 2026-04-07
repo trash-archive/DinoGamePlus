@@ -43,8 +43,11 @@ function ReplySection({ feedbackId, showToast }) {
     setLoading(false);
   };
 
+  // fetched = cache key exists (even if empty array) meaning getAllReplies already ran
+  const [fetched, setFetched] = useState(() => feedbackId in repliesCache);
+
   const toggle = () => {
-    if (!open && !repliesCache[feedbackId]) fetchReplies();
+    if (!open && !fetched) { fetchReplies(); setFetched(true); }
     setOpen(o => !o);
   };
 
@@ -162,13 +165,25 @@ export default function FeedbackScreen({ onBack, showNotif }) {
   const fetchFeedbacks = async () => {
     setFbLoading(true);
     try {
-      const res  = await fetch(APPS_SCRIPT_URL);
-      const json = await res.json();
-      if (json.ok) {
+      const [fbRes, repRes] = await Promise.all([
+        fetch(APPS_SCRIPT_URL),
+        fetch(`${APPS_SCRIPT_URL}?action=getAllReplies`),
+      ]);
+      const [fbJson, repJson] = await Promise.all([fbRes.json(), repRes.json()]);
+      if (fbJson.ok) {
         setFeedbacks(sortFeedbacks(
-          (json.data || []).filter(f => f.FeedbackId && String(f.Message || "").trim())
+          (fbJson.data || []).filter(f => f.FeedbackId && String(f.Message || "").trim())
         ));
         setPage(1);
+      }
+      if (repJson.ok) {
+        // clear and rebuild cache to avoid duplicates on refresh
+        Object.keys(repliesCache).forEach(k => delete repliesCache[k]);
+        (repJson.data || []).forEach(r => {
+          if (!r.FeedbackId) return;
+          if (!repliesCache[r.FeedbackId]) repliesCache[r.FeedbackId] = [];
+          repliesCache[r.FeedbackId].push(r);
+        });
       }
     } catch { /* silent */ }
     setFbLoading(false);
