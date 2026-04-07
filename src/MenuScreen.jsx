@@ -79,7 +79,7 @@ export default function MenuScreen({
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
                 <div>
                   <div style={{ fontSize:10, fontWeight:"bold", letterSpacing:3, color:DARK, marginBottom:3 }}>ON-SCREEN BUTTONS</div>
-                  <div style={{ fontSize:9, color:MUTED, letterSpacing:1 }}>Auto-enabled on touch devices</div>
+                  <div style={{ fontSize:9, color:MUTED, letterSpacing:1 }}>Default ON on touch/tablet, OFF on desktop</div>
                 </div>
                 <button onClick={() => { playClick(); setTouchButtons(!touchButtons); }}
                   style={{ background:touchButtons?DARK:BG, color:touchButtons?BG:MUTED, border:`2px solid ${BORDER}`, padding:"4px 14px", fontSize:10, fontFamily:F, cursor:"pointer", letterSpacing:2, fontWeight:"bold", flexShrink:0 }}

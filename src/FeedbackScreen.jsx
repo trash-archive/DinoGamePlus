@@ -16,6 +16,120 @@ const VOTES_KEY = "dino_votes_v2";
 function getVotes() { try { return JSON.parse(localStorage.getItem(VOTES_KEY) || "{}"); } catch { return {}; } }
 function saveVotes(v) { localStorage.setItem(VOTES_KEY, JSON.stringify(v)); }
 
+// module-level reply cache so re-opening is instant
+const repliesCache = {};
+
+function ReplySection({ feedbackId, showToast }) {
+  const [open,     setOpen]     = useState(false);
+  const [replies,  setReplies]  = useState(() => repliesCache[feedbackId] || []);
+  const [loading,  setLoading]  = useState(false);
+  const [replyMsg, setReplyMsg] = useState("");
+  const [replyName,setReplyName]= useState("");
+  const [sending,  setSending]  = useState(false);
+  const [showForm, setShowForm] = useState(false);
+
+  const fmtDate = (ts) => ts ? new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "";
+
+  const fetchReplies = async () => {
+    setLoading(true);
+    try {
+      const res  = await fetch(`${APPS_SCRIPT_URL}?feedbackId=${feedbackId}`);
+      const json = await res.json();
+      if (json.ok) {
+        repliesCache[feedbackId] = json.data || [];
+        setReplies(repliesCache[feedbackId]);
+      }
+    } catch { /* silent */ }
+    setLoading(false);
+  };
+
+  const toggle = () => {
+    if (!open && !repliesCache[feedbackId]) fetchReplies();
+    setOpen(o => !o);
+  };
+
+  const submitReply = async () => {
+    if (!replyMsg.trim()) return;
+    setSending(true);
+    const name = replyName.trim() || "Anonymous";
+    const msg  = replyMsg.trim();
+    // optimistic append — no re-fetch needed
+    const optimistic = { ReplyId: `tmp-${Date.now()}`, FeedbackId: feedbackId, Name: name, Message: msg, Timestamp: new Date().toISOString() };
+    const updated = [...(repliesCache[feedbackId] || []), optimistic];
+    repliesCache[feedbackId] = updated;
+    setReplies(updated);
+    setReplyMsg(""); setReplyName(""); setShowForm(false);
+    showToast("✓ REPLY POSTED!");
+    try {
+      const res  = await fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify({ action: "reply", feedbackId, name, message: msg }),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error();
+      // patch temp id with real one
+      if (json.replyId) {
+        const patched = repliesCache[feedbackId].map(r => r.ReplyId === optimistic.ReplyId ? { ...r, ReplyId: json.replyId } : r);
+        repliesCache[feedbackId] = patched;
+        setReplies(patched);
+      }
+    } catch { showToast("✗ FAILED. CHECK CONNECTION."); }
+    setSending(false);
+  };
+
+  return (
+    <div style={{ marginTop: 8, borderTop: "1px solid #e0ddd6", paddingTop: 6 }}>
+      <button onClick={() => { playClick(); toggle(); }}
+        style={{ fontFamily: F, fontSize: 9, background: "none", border: "none", cursor: "pointer", color: MUTED, letterSpacing: 2, padding: 0 }}>
+        {open ? "▾ HIDE REPLIES" : `▸ REPLIES${replies.length ? ` (${replies.length})` : ""}`}
+      </button>
+
+      {open && (
+        <div style={{ marginTop: 6 }}>
+          {loading ? (
+            <div style={{ fontSize: 9, color: MUTED, letterSpacing: 2 }}>LOADING...</div>
+          ) : replies.length === 0 ? (
+            <div style={{ fontSize: 9, color: MUTED, letterSpacing: 2 }}>NO REPLIES YET.</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {replies.map((r, i) => (
+                <div key={r.ReplyId || i} style={{ background: "#edeae2", padding: "7px 10px", fontSize: 10, lineHeight: 1.5 }}>
+                  <span style={{ fontWeight: "bold", letterSpacing: 1, marginRight: 6 }}>{r.Name || "Anonymous"}</span>
+                  <span style={{ color: MUTED, fontSize: 8, marginRight: 8 }}>{fmtDate(r.Timestamp)}</span>
+                  <div style={{ marginTop: 2, wordBreak: "break-word" }}>{r.Message}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!showForm ? (
+            <button onClick={() => { playClick(); setShowForm(true); }}
+              style={{ fontFamily: F, fontSize: 9, background: "none", border: "none", cursor: "pointer", color: "#2266cc", letterSpacing: 2, padding: "6px 0 0", display: "block" }}>
+              + ADD REPLY
+            </button>
+          ) : (
+            <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+              <input value={replyName} onChange={e => setReplyName(e.target.value.slice(0, 30))} placeholder="Name (optional)"
+                style={{ fontFamily: F, fontSize: 10, padding: "5px 8px", border: `1px solid ${BORDER}`, background: BG, color: DARK, letterSpacing: 1 }} />
+              <textarea value={replyMsg} onChange={e => setReplyMsg(e.target.value.slice(0, 300))} placeholder="Write a reply..." rows={2} maxLength={300}
+                style={{ fontFamily: F, fontSize: 10, padding: "5px 8px", border: `1px solid ${BORDER}`, background: BG, color: DARK, resize: "vertical", letterSpacing: 1 }} />
+              <div style={{ display: "flex", gap: 6 }}>
+                <button onClick={() => { playClick(); setShowForm(false); setReplyMsg(""); setReplyName(""); }}
+                  style={{ fontFamily: F, fontSize: 9, padding: "4px 10px", border: `1px solid ${BORDER}`, background: BG, color: DARK, cursor: "pointer", letterSpacing: 2 }}>CANCEL</button>
+                <button onClick={() => { playClick(); submitReply(); }}
+                  disabled={!replyMsg.trim() || sending}
+                  style={{ fontFamily: F, fontSize: 9, padding: "4px 10px", border: `1px solid ${BORDER}`, background: DARK, color: BG, cursor: "pointer", letterSpacing: 2, opacity: (!replyMsg.trim() || sending) ? 0.5 : 1 }}>
+                  {sending ? "SENDING..." : "REPLY"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function sortFeedbacks(list) {
   return [...list].sort((a, b) => {
     const na = (Number(a.Upvotes) || 0) - (Number(a.Downvotes) || 0);
@@ -211,6 +325,7 @@ export default function FeedbackScreen({ onBack, showNotif }) {
                             <span style={{ fontSize: 8, color: MUTED, marginLeft: "auto" }}>{fmtDate(fb.Timestamp)}</span>
                           </div>
                           <div style={{ fontSize: 11, color: DARK, lineHeight: 1.6, wordBreak: "break-word" }}>{fb.Message}</div>
+                          <ReplySection feedbackId={id} showToast={showToast} />
                         </div>
                       </div>
                     );

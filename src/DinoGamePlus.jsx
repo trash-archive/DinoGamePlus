@@ -8,7 +8,7 @@ import { GRAVITY, JUMP_FORCE, JUMP_HOLD_FORCE, JUMP_HOLD_FRAMES, GROUND_Y, DINO_
 import { lerp, clamp, drawFossilDiamond } from "./utils/helpers";
 import { getSceneryColors, getHudColors } from "./utils/scenery";
 import { getObstacleHitbox, rectsOverlap } from "./utils/collision";
-import { drawDino, drawHeart, drawPassiveEffect, drawShieldOutline, drawSpeedRushOutline, drawPterodacFlyOutline } from "./rendering/drawDino";
+import { drawDino, drawHeart, drawPassiveEffect, drawShieldOutline, drawSpeedRushOutline, drawPterodacFlyOutline, drawPachyHeadbuttOutline } from "./rendering/drawDino";
 import { drawStego } from "./dinos/stego";
 import { drawAnky }  from "./dinos/anky";
 import { drawTri }   from "./dinos/tri";
@@ -58,6 +58,16 @@ export default function DinoIncremental() {
   const [bestDist,       setBestDist]       = useLocalStorage("dino_bestDist", 0);
   const [totalRuns,      setTotalRuns]      = useLocalStorage("dino_totalRuns", 0);
   const [upgradeLevels,  setUpgradeLevels]  = useLocalStorage("dino_upgradeLevels", {});
+  // Sanitize: clamp any stored level that exceeds its maxLevel (fixes corrupted saves)
+  useEffect(() => {
+    const clamped = { ...upgradeLevels };
+    let dirty = false;
+    UPGRADES.forEach(u => {
+      if ((clamped[u.id] || 0) > u.maxLevel) { clamped[u.id] = u.maxLevel; dirty = true; }
+    });
+    if (dirty) setUpgradeLevels(clamped);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [ownedSkins,     setOwnedSkins]     = useLocalStorage("dino_ownedSkins", ["classic"]);
   const [equippedSkin,   setEquippedSkin]   = useLocalStorage("dino_equippedSkin", "classic");
   const [ownedDesigns,   setOwnedDesigns]   = useLocalStorage("dino_ownedDesigns", ["raptor"]);
@@ -86,10 +96,9 @@ export default function DinoIncremental() {
   const [bossKey,          setBossKey]           = useState(0);
   const [playerMenuRank,   setPlayerMenuRank]    = useState(null);
   const [touchButtonOpacity, setTouchButtonOpacity] = useLocalStorage("dino_touchButtonOpacity", 0.88);
-  const [touchButtons,     setTouchButtons]     = useLocalStorage("dino_touchButtons_v2", () => {
-    // Default ON for touch/mobile devices only
-    return window.matchMedia("(pointer: coarse)").matches;
-  });
+  const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
+  const [touchButtons,     setTouchButtons]     = useLocalStorage("dino_touchButtons_v2", isTouchDevice);
+  const [controlsToastSeen, setControlsToastSeen] = useLocalStorage("dino_controlsToastSeen", false);
 
 
   const getStats = useCallback((levels) => {
@@ -300,7 +309,7 @@ export default function DinoIncremental() {
       triHornTimer:0,                                   // horn burst every 30s
       triHorns:[],                                       // flying horn projectiles
       pachyHeadbuttTimer:0, pachyHeadbuttActive:0,      // headbutt 5s/30s
-      dilophoPhaseTimer:0, dilophoPhaseActive:0,        // phase 5s/30s
+      dilophoPhaseTimer:0, dilophoPhaseActive:0,        // phase 7s/30s
       // Tri: first obstacle destroyed (legacy)
       triFirstDestroyed:false,
       // Spino: night bonus tracked in render
@@ -645,10 +654,10 @@ export default function DinoIncremental() {
         if(designId==="pachy"){
           if(gs.pachyHeadbuttActive>0){
             gs.pachyHeadbuttActive-=dt;
-            // Destroy obstacles/bullets in front (within 120px ahead)
+            // Destroy obstacles/bullets in front (within 160px ahead)
             gs.obstacles=gs.obstacles.filter(o=>{
               const hb=getObstacleHitbox(o);
-              if(hb.x>gs.dino.x-10&&hb.x<gs.dino.x+120){
+              if(hb.x>gs.dino.x-10&&hb.x<gs.dino.x+160){
                 if(o.bullets) o.bullets=[];
                 return false;
               }
@@ -660,7 +669,7 @@ export default function DinoIncremental() {
               gs.pachyHeadbuttTimer=0;
               gs.pachyHeadbuttActive=5*FPS60;
               addFloat(gs,"HEADBUTT!",gs.dino.x-10,gs.dino.y-28,"#ffcc00");
-              addPassiveEffect(gs,"headbutt",gs.dino.x,gs.dino.y);
+              gs.passiveEffects.push({type:"headbutt",x:gs.dino.x,y:gs.dino.y,life:0,maxLife:5*FPS60});
             }
           }
         }
@@ -671,7 +680,7 @@ export default function DinoIncremental() {
             gs.dilophoPhaseTimer=(gs.dilophoPhaseTimer||0)+dt;
             if(gs.dilophoPhaseTimer>=30*FPS60){
               gs.dilophoPhaseTimer=0;
-              gs.dilophoPhaseActive=5*FPS60;
+              gs.dilophoPhaseActive=7*FPS60;
               addFloat(gs,"PHASE SHIFT!",gs.dino.x-10,gs.dino.y-28,"#66dd22");
               addPassiveEffect(gs,"phaseShift",gs.dino.x,gs.dino.y);
             }
@@ -705,10 +714,16 @@ export default function DinoIncremental() {
           if(isNightNow) gs.nightCycleCount++;
           const baseB=25+Math.floor(gs.distance/80)*4;
           // Spino passive: +30% night bonus
-          const spinoMult = designId==="spino" && isNightNow ? 1.30 : 1;
+          const spinoMult = designId==="spino" && isNightNow ? 1.50 : 1;
           const bonus=Math.floor(baseB*(1+gs.stats.transBonus)*spinoMult);
           gs.fossilsEarned+=bonus;
           addFloat(gs,`+${bonus} ${isNightNow?"DUSK BONUS":"DAWN BONUS"}`,CANVAS_W/2-50,70,isNightNow?"#aaaaff":"#ffdd44");
+          // Spino passive: bonus fossils for surviving a full night cycle
+          if(!isNightNow && designId==="spino"){
+            const spinoCycleBonus = Math.floor(15 + gs.distance * 0.04);
+            gs.fossilsEarned += spinoCycleBonus;
+            addFloat(gs,`+${spinoCycleBonus} SAIL CYCLE!`,CANVAS_W/2-50,90,"#88aaff");
+          }
           if(!isNightNow){ gs.moonAlpha=0; }
         }
 
@@ -885,7 +900,18 @@ export default function DinoIncremental() {
           const heartSpawnChance = 0.02 + gs.stats.heartChance + gs.stats.rareDrop * 0.5;
           if(Math.random()<heartSpawnChance){
             const hdef=POWERUP_DEFS.find(d=>d.id==="heart_pw");
-            gs.powerupPickups.push({x:CANVAS_W+10,y:GROUND_Y-32-Math.random()*58,def:hdef,collected:false});
+            const spawnX=CANVAS_W+10;
+            const PW=22,PH=22;
+            let spawnY=null;
+            for(let attempt=0;attempt<8;attempt++){
+              const tryY=GROUND_Y-32-Math.random()*58;
+              const blocked=gs.obstacles.some(o=>{
+                const hb=getObstacleHitbox(o);
+                return rectsOverlap(spawnX,tryY,PW,PH,hb.x,hb.y,hb.w,hb.h);
+              });
+              if(!blocked){spawnY=tryY;break;}
+            }
+            if(spawnY!==null) gs.powerupPickups.push({x:spawnX,y:spawnY,def:hdef,collected:false});
           }
         }
         const spawnThresh=Math.max(300,900-gs.stats.rareDrop*1200);
@@ -894,7 +920,18 @@ export default function DinoIncremental() {
           gs.lastPowerupFrame=gs.frame;
           if(eligible.length>0){
             const def=eligible[Math.floor(Math.random()*eligible.length)];
-            gs.powerupPickups.push({x:CANVAS_W+10,y:GROUND_Y-32-Math.random()*58,def,collected:false});
+            const spawnX=CANVAS_W+10;
+            const PW=22,PH=22;
+            let spawnY=null;
+            for(let attempt=0;attempt<8;attempt++){
+              const tryY=GROUND_Y-32-Math.random()*58;
+              const blocked=gs.obstacles.some(o=>{
+                const hb=getObstacleHitbox(o);
+                return rectsOverlap(spawnX,tryY,PW,PH,hb.x,hb.y,hb.w,hb.h);
+              });
+              if(!blocked){spawnY=tryY;break;}
+            }
+            if(spawnY!==null) gs.powerupPickups.push({x:spawnX,y:spawnY,def,collected:false});
           }
         }
 
@@ -1111,8 +1148,8 @@ export default function DinoIncremental() {
         });
 
         const magnetRange=gs.activePowerups.magnet_pw?(180+gs.stats.magnetRngBonus):(gs.stats.magnetLevel>0?55+gs.stats.magnetLevel*28:0);
-        // Brachio passive: +120px magnet range
-        const brachioMagnet = designId==="brachio" ? 60 : 0;
+        // Brachio passive: +120px collection range
+        const brachioMagnet = designId==="brachio" ? 120 : 0;
         const effectiveMagnet = magnetRange + brachioMagnet;
 
         gs.pickups=gs.pickups.filter(p=>{
@@ -1139,7 +1176,7 @@ export default function DinoIncremental() {
 
         // ── Per-frame passive multipliers (needed by collision + collect) ────
         const raptorM = designId==="raptor" ? 1+(gs.raptorSpeedBonus*0.005) : 1;
-        const spinoPickupM = (designId==="spino" && gs.nightBlend > 0.5) ? 1.30 : 1;
+        const spinoPickupM = (designId==="spino" && gs.nightBlend > 0.5) ? 1.50 : 1;
         const stegoShieldBonus = designId==="stego" ? 0.20 + gs.stats.shieldChance * 0.5 : 0;
 
         // ── Bullet collision (separate from obstacle body) ───────────────────
@@ -1237,7 +1274,7 @@ export default function DinoIncremental() {
             if(designId==="para"){ gs.comboTimer=150; if(gs.combo>20) gs.combo=20; }
             // Pterodac passive: airborne pickups worth 1.5x
             const pteroM = (designId==="pterodac"&&!gs.dino.onGround) ? 1.5 : 1;
-            const comboM = 1 + gs.combo * (0.08 + gs.stats.comboBonus);
+            const comboM = Math.min(2.5, 1 + gs.combo * (0.08 + gs.stats.comboBonus));
             const earned = gs.stats.fossilValue * gs.stats.fossilSenseMult * gs.stats.fossilPickupMult * comboM * nightM * frenzyM * doubM * raptorM * pteroM * spinoPickupM;
             gs.fossilsEarned+=earned;
             if(earned>1) addFloat(gs,`+${Math.floor(earned)}`,p.x,p.y-10,"#ffdd44");
@@ -1276,7 +1313,12 @@ export default function DinoIncremental() {
 
         if(gs.stats.runDripRate>0) gs.fossilsEarned+=gs.speed*gs.stats.runDripRate*(1+gs.stats.speedBonusMult)*frenzyM*doubM*dt;
         gs.floatingTexts=gs.floatingTexts.filter(t=>{t.y+=t.vy*dt;t.life-=dt;return t.life>0;});
-        gs.passiveEffects=gs.passiveEffects.filter(e=>{e.life+=dt;return e.life<e.maxLife;});
+        gs.passiveEffects=gs.passiveEffects.filter(e=>{
+          e.life+=dt;
+          // Headbutt effect tracks the dino position for the full duration
+          if(e.type==="headbutt") { e.x=gs.dino.x; e.y=gs.dino.y; }
+          return e.life<e.maxLife;
+        });
 
         // ── Entity silhouette update ─────────────────────────────────────────
         const ent = gs.entity;
@@ -1444,13 +1486,17 @@ export default function DinoIncremental() {
       if(designId==="pterodac" && gs.pterodacFlyTimer > 0)
         drawPterodacFlyOutline(ctx, gs.dino.x, gs.dino.y, gs.frame, gs.dino.ducking, hasGiantR, hasTinyR);
 
+      // Pachy headbutt: yellow pulsing outline + forward streaks for full 5s duration
+      if(designId==="pachy" && gs.pachyHeadbuttActive > 0)
+        drawPachyHeadbuttOutline(ctx, gs.dino.x, gs.dino.y, gs.frame, gs.dino.ducking, gs.pachyHeadbuttActive, hasGiantR, hasTinyR);
+
       // Raptor speed rush: green outline only while timer is active
       if(designId==="raptor" && gs.raptorOutlineTimer > 0)
         drawSpeedRushOutline(ctx, gs.dino.x, gs.dino.y, gs.frame, gs.dino.ducking, gs.raptorOutlineTimer, hasGiantR, hasTinyR);
 
       // Draw dino  Epass onGround so legs freeze mid-air
       drawDino(ctx,gs.dino.x,gs.dino.y,gs.frame,gs.dino.dead,
-        gs.skin,gs.design,hasGiantR,gs.dino.ducking,hasTinyR,hasGhostR,
+        gs.skin,gs.design,hasGiantR,gs.dino.ducking,hasTinyR,hasGhostR||(designId==="dilopho"&&gs.dilophoPhaseActive>0),
         gs.dino.invTimer, gs.dino.onGround, gs.deathAnim);
 
       // Meteor rain rendering
@@ -1567,6 +1613,32 @@ export default function DinoIncremental() {
         ctx.fillText(frac>=1?"PULSE READY":"PULSE WAVE",12,74);
       }
 
+      // Pachy headbutt cooldown bar
+      if(designId2==="pachy") {
+        const isActive = gs.pachyHeadbuttActive > 0;
+        const frac = isActive
+          ? gs.pachyHeadbuttActive / (5*60)
+          : Math.min(1, (gs.pachyHeadbuttTimer||0) / (30*60));
+        const barCol = isActive ? "#ffee00" : "#ccaa00";
+        ctx.fillStyle="rgba(0,0,0,0.22)"; ctx.fillRect(12,60,80,5);
+        ctx.fillStyle=barCol;             ctx.fillRect(12,60,Math.floor(80*frac),5);
+        ctx.fillStyle=HUD.hud; ctx.font="8px 'Courier New'";
+        ctx.fillText(isActive?"HEADBUTTING":frac>=1?"HEADBUTT READY":"HEADBUTT",12,74);
+      }
+
+      // Dilopho phase shift cooldown bar
+      if(designId2==="dilopho") {
+        const isPhasing = gs.dilophoPhaseActive > 0;
+        const frac = isPhasing
+          ? gs.dilophoPhaseActive / (7*60)
+          : Math.min(1, (gs.dilophoPhaseTimer||0) / (30*60));
+        const barCol = isPhasing ? "#66ff22" : "#338811";
+        ctx.fillStyle="rgba(0,0,0,0.22)"; ctx.fillRect(12,60,80,5);
+        ctx.fillStyle=barCol;             ctx.fillRect(12,60,Math.floor(80*frac),5);
+        ctx.fillStyle=HUD.hud; ctx.font="8px 'Courier New'";
+        ctx.fillText(isPhasing?"PHASING":frac>=1?"PHASE READY":"PHASE SHIFT",12,74);
+      }
+
       // Pterodac fly mode timer bar
       if(designId2==="pterodac") {
         const isFly = gs.pterodacFlyTimer > 0;
@@ -1610,7 +1682,11 @@ export default function DinoIncremental() {
     const cost=getUpgradeCost(up,level);
     if(fossils<cost){showNotif(`Not enough fossils — need ${cost - Math.floor(fossils)} more.`);return;}
     setFossils(cur=>+(cur-cost).toFixed(1));
-    setUpgradeLevels(prev=>({...prev,[up.id]:(prev[up.id]||0)+1}));
+    setUpgradeLevels(prev=>{
+      const cur = prev[up.id]||0;
+      if(cur >= up.maxLevel) return prev;
+      return {...prev,[up.id]:cur+1};
+    });
     setAchievStats(prev=>{
       const nu=prev.totalUpgrades+1;
       const mvIds=["jump","dblJump","dash","backdash","fastdrop","duck","dashCd"];
@@ -1711,6 +1787,8 @@ export default function DinoIncremental() {
       abyssUnlocked={abyssUnlocked} startBossFight={startBossFight}
       touchButtons={touchButtons} setTouchButtons={setTouchButtons}
       touchButtonOpacity={touchButtonOpacity} setTouchButtonOpacity={setTouchButtonOpacity}
+      controlsToastSeen={controlsToastSeen} setControlsToastSeen={setControlsToastSeen}
+      isTouchDevice={isTouchDevice}
       claimableAch={claimableAch}
       F={F} BG={BG} DARK={DARK} BORDER={BORDER} MUTED={MUTED}
     />
@@ -1718,6 +1796,19 @@ export default function DinoIncremental() {
 
   if(screen==="game"||screen==="gameover") return (
     <div style={{...outer,justifyContent:"center",padding:0}}>
+      {screen==="game" && !controlsToastSeen && (
+        <div
+          onTouchStart={(e)=>e.stopPropagation()}
+          onTouchEnd={(e)=>e.stopPropagation()}
+          onMouseDown={(e)=>e.stopPropagation()}
+          onMouseUp={(e)=>e.stopPropagation()}
+          style={{position:"fixed",top:12,left:"50%",transform:"translateX(-50%)",background:"rgba(26,26,26,0.92)",color:BG,padding:"8px 14px",fontSize:"clamp(9px,2.5vw,11px)",letterSpacing:1,zIndex:2000,border:"1px solid #555",display:"flex",alignItems:"center",gap:10,width:"calc(100vw - 24px)",maxWidth:480,boxSizing:"border-box",touchAction:"auto"}}>
+          <span style={{flex:1,lineHeight:1.5}}>
+            {isTouchDevice ? "TIP: Use swipe gestures instead of buttons — toggle in SETTINGS" : "TIP: Enable on-screen button controls in SETTINGS"}
+          </span>
+          <button onClick={()=>setControlsToastSeen(true)} style={{background:"transparent",color:BG,border:"1px solid #888",padding:"3px 8px",fontSize:"clamp(9px,2.5vw,11px)",fontFamily:F,cursor:"pointer",letterSpacing:1,fontWeight:"bold",flexShrink:0,touchAction:"auto",minWidth:32,minHeight:32}}>✕</button>
+        </div>
+      )}
       <div style={{width:"100%",maxWidth:CANVAS_W,display:"flex",flexDirection:"column",alignItems:"center"}}>
         <div style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 4px",boxSizing:"border-box",fontFamily:F,fontSize:11,color:MUTED}}>
           <span style={{letterSpacing:3,fontSize:10}}>DINO REIMAGINED</span>

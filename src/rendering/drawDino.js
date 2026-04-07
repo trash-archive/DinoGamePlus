@@ -134,6 +134,32 @@ export function drawSpeedRushOutline(ctx, x, y, frame, isDucking, timer, isGiant
   ctx.restore();
 }
 
+// ─── PACHY HEADBUTT ACTIVE OUTLINE ───────────────────────────────────────────
+export function drawPachyHeadbuttOutline(ctx, x, y, frame, isDucking, activeTimer, isGiant, isTiny) {
+  const pulse = 0.6 + Math.sin(frame * 0.25) * 0.4;
+  const col = `rgba(255,220,0,${pulse})`;
+  const f = Math.floor(frame/5)%2;
+  const scale = isGiant ? 1.9 : isTiny ? 0.6 : 1;
+  ctx.save();
+  if(scale !== 1) {
+    const bx = x + DINO_W/2, by = y + DINO_H;
+    ctx.translate(bx,by); ctx.scale(scale,scale); ctx.translate(-bx,-by);
+  }
+  // Yellow pulsing outline
+  for(const [ox,oy] of [[-3,0],[3,0],[0,-3],[0,3]])
+    drawPachy(ctx, x+ox, y+oy, false, col, col, col, col, isDucking, f);
+  // Forward speed streaks from the head
+  const streakAlpha = 0.5 + Math.sin(frame * 0.3) * 0.3;
+  ctx.globalAlpha = streakAlpha;
+  for(let i = 0; i < 5; i++) {
+    const lx = x + 38 + i * 12 + (frame % 8) * 2;
+    const ly = y + 6 + i * 5;
+    ctx.fillStyle = i % 2 === 0 ? "#ffee44" : "#ffaa00";
+    ctx.fillRect(lx, ly, 16 - i * 2, 3);
+  }
+  ctx.restore();
+}
+
 // ─── HEART ────────────────────────────────────────────────────────────────────
 export function drawHeart(ctx, x, y, size = 12, color = "#dd2244") {
   ctx.fillStyle = color;
@@ -154,28 +180,14 @@ export function drawPassiveEffect(ctx, type, x, y, frame, progress) {
   ctx.save();
 
   if(type === "phaseShift") {
-    // Expanding ghost rings + full-body shimmer
-    for(let i = 0; i < 4; i++) {
-      const r = 20 + i * 22 + progress * 120;
-      const a = Math.max(0, fade * (0.9 - i * 0.18));
+    // Subtle fade-in ripple — just 2 soft expanding rings
+    for(let i = 0; i < 2; i++) {
+      const r = 14 + i * 16 + progress * 60;
+      const a = Math.max(0, fade * (0.35 - i * 0.12));
       ctx.globalAlpha = a;
-      ctx.strokeStyle = i % 2 === 0 ? "#66ff22" : "#aaffaa";
-      ctx.lineWidth = 3 - i * 0.5;
+      ctx.strokeStyle = "#88ff88";
+      ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
-    }
-    // Dashed bounding box flicker
-    ctx.globalAlpha = fade * 0.7;
-    ctx.strokeStyle = "#66ff22"; ctx.lineWidth = 2;
-    ctx.setLineDash([5, 3]);
-    ctx.strokeRect(x - 6, y - 8, 52, 62);
-    ctx.setLineDash([]);
-    // Green particle sparks
-    for(let i = 0; i < 8; i++) {
-      const angle = (i / 8) * Math.PI * 2 + progress * 3;
-      const r = 30 + progress * 60;
-      ctx.globalAlpha = fade * 0.8;
-      ctx.fillStyle = "#88ff44";
-      ctx.fillRect(cx + Math.cos(angle)*r - 2, cy + Math.sin(angle)*r - 2, 4, 4);
     }
 
   } else if(type === "thermalLift") {
@@ -250,32 +262,35 @@ export function drawPassiveEffect(ctx, type, x, y, frame, progress) {
     }
 
   } else if(type === "headbutt") {
+    // Loop the blast animation every ~45 frames for the full duration
+    const loopProgress = (progress * (300/45)) % 1;
+    const loopFade = Math.min(1, (1 - loopProgress) * 2);
     // Forward shockwave — big horizontal blast to the right
     for(let i = 0; i < 5; i++) {
-      const lx = x + 36 + i * 24 + progress * 140;
+      const lx = x + 36 + i * 24 + loopProgress * 140;
       const h  = 28 - i * 4;
-      ctx.globalAlpha = fade * (0.8 - i * 0.13);
+      ctx.globalAlpha = loopFade * (0.8 - i * 0.13);
       ctx.fillStyle = i % 2 === 0 ? "#ffcc00" : "#ff8800";
       ctx.fillRect(lx, cy - h/2, 18 - i*2, h);
     }
     // Impact flash at head
-    if(progress < 0.2) {
-      ctx.globalAlpha = fade * (1 - progress * 5);
+    if(loopProgress < 0.2) {
+      ctx.globalAlpha = loopFade * (1 - loopProgress * 5);
       ctx.fillStyle = "#ffee44";
       ctx.fillRect(x + 20, y - 4, 36, 36);
     }
     // Shockwave ring forward
-    const rw = progress * 180;
-    ctx.globalAlpha = fade * Math.max(0, 0.7 - progress);
+    const rw = loopProgress * 180;
+    ctx.globalAlpha = loopFade * Math.max(0, 0.7 - loopProgress);
     ctx.strokeStyle = "#ffaa00"; ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.ellipse(x + 40 + progress * 60, cy, rw * 0.3, rw * 0.6, 0, 0, Math.PI * 2);
+    ctx.ellipse(x + 40 + loopProgress * 60, cy, rw * 0.3, rw * 0.6, 0, 0, Math.PI * 2);
     ctx.stroke();
     // Debris chunks
     for(let i = 0; i < 6; i++) {
-      const dx = x + 40 + i * 20 + progress * 100;
-      const dy = cy - 20 + i * 8 - progress * 30;
-      ctx.globalAlpha = fade * 0.8;
+      const dx = x + 40 + i * 20 + loopProgress * 100;
+      const dy = cy - 20 + i * 8 - loopProgress * 30;
+      ctx.globalAlpha = loopFade * 0.8;
       ctx.fillStyle = i % 2 === 0 ? "#ffcc00" : "#cc6600";
       ctx.fillRect(dx, dy, 8, 8);
     }

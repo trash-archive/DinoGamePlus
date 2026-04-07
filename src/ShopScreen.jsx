@@ -86,7 +86,7 @@ export default function ShopScreen({
         {shopTab !== "powerups" && (
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:14 }}>
             {catUpgrades.filter(up => !up.abyssOnly || abyssUnlocked).map(up => {
-              const level     = upgradeLevels[up.id] || 0;
+              const level     = Math.min(upgradeLevels[up.id] || 0, up.maxLevel);
               const maxed     = level >= up.maxLevel;
               const locked    = isLocked(up);
               const cost      = maxed ? 0 : getUpgradeCost(up, level);

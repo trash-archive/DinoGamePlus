@@ -67,11 +67,11 @@ export const DINO_PASSIVES = {
   pterodac:  { label:"Thermal Lift",    desc:"Every 30s, enters fly mode for 10s. Use Up/Down to fly freely anywhere on screen. Bones picked up while airborne are worth 1.5x." },
   anky:      { label:"Pulse Wave",      desc:"Every 15s, the club tail slams the ground and destroys all nearby obstacles and bullets." },
   tri:       { label:"Horn Burst",      desc:"Every 20s, fires 5 horns that fly across the screen and destroys every obstacle and bullet." },
-  brachio:   { label:"Long Reach",      desc:"Permanent +60px bone collection range. The long neck scoops up nearby bones." },
-  spino:     { label:"Sail Power",      desc:"+30% bones earned during night only. The sail thrives in moonlight." },
-  pachy:     { label:"Headbutt",        desc:"Every 30s headbutts forward for 5s, destroying front obstacles & projectiles." },
+  brachio:   { label:"Long Reach",      desc:"Permanent +120px bone collection range. The long neck scoops up nearby bones from far away." },
+  spino:     { label:"Sail Power",      desc:"+50% bones earned during night. Surviving a full night cycle awards bonus fossils. The sail thrives in moonlight." },
+  pachy:     { label:"Headbutt",        desc:"Every 30s headbutts forward for 5s, destroying front obstacles & projectiles within 160px." },
   para:      { label:"Resonance",       desc:"Combo timer lasts 25% longer, capped at 20 combo. The crest sustains momentum." },
-  dilopho:   { label:"Phase Shift",     desc:"Every 30s phases through everything for 5s. Untouchable!" },
+  dilopho:   { label:"Phase Shift",     desc:"Every 30s phases through everything for 7s. Untouchable!" },
   hasim:     { label:"Nothing",          desc:"Does absolutely nothing. He's just happy to be here." },
 };
 

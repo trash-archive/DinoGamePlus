@@ -477,6 +477,32 @@ function drawIconResearch(ctx, x, y, col) {
   ctx.fillRect(x+8,  y+3,  2, 3);
 }
 
+function drawIconBite(ctx, x, y, col) {
+  // Open jaws: top jaw + bottom jaw with sharp teeth, blood-red accent
+  ctx.fillStyle = col;
+  // Top jaw
+  ctx.fillRect(x+2,  y+2,  18, 4);
+  ctx.fillRect(x+2,  y+6,  18, 3);
+  // Top teeth (4 fangs pointing down)
+  ctx.fillRect(x+3,  y+9,  3,  4);
+  ctx.fillRect(x+8,  y+9,  3,  5);
+  ctx.fillRect(x+13, y+9,  3,  5);
+  ctx.fillRect(x+17, y+9,  3,  4);
+  // Bottom jaw
+  ctx.fillRect(x+2,  y+16, 18, 4);
+  // Bottom teeth (3 fangs pointing up)
+  ctx.fillRect(x+5,  y+13, 3,  3);
+  ctx.fillRect(x+10, y+12, 3,  4);
+  ctx.fillRect(x+15, y+13, 3,  3);
+  // Shine on top jaw
+  ctx.fillStyle = "rgba(255,255,255,0.4)";
+  ctx.fillRect(x+3,  y+3,  14, 2);
+  // Red accent on longest fangs
+  ctx.fillStyle = "#cc0000";
+  ctx.fillRect(x+9,  y+13, 1,  1);
+  ctx.fillRect(x+14, y+13, 1,  1);
+}
+
 // ─── DISPATCH ─────────────────────────────────────────────────────────────────
 
 function drawIconLock(ctx, x, y, col) {
@@ -506,6 +532,7 @@ export function drawUpgradeIcon(ctx, id, x, y, col) {
     case "fastdrop":   drawIconFastDrop(ctx, x, y, col);     break;
     case "duck":       drawIconDuck(ctx, x, y, col);         break;
     case "dashCd":     drawIconDashCooldown(ctx, x, y, col); break;
+    case "bite":       drawIconBite(ctx, x, y, col);         break;
     // Income
     case "fossil":      drawIconFossil(ctx, x, y, col);           break;
     case "fossilValue": drawIconFossilWorth(ctx, x, y, col);      break;
