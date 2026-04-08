@@ -25,19 +25,29 @@ export function playClick() {
   });
 }
 
+let _sharedCtx = null;
+function getCtx() {
+  if (!_sharedCtx || _sharedCtx.state === "closed") {
+    _sharedCtx = new AudioContext();
+  }
+  return _sharedCtx;
+}
+
 function synth(fn) {
   if (_soundMuted) return;
   try {
-    const ctx  = new AudioContext();
-    const osc  = ctx.createOscillator();
-    const gain = ctx.createGain();
-    const vol  = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(vol);
-    vol.connect(ctx.destination);
-    vol.gain.value = _sfxVolume;
-    fn(osc, gain, ctx);
-    osc.onended = () => ctx.close();
+    const ctx  = getCtx();
+    const resume = ctx.state === "suspended" ? ctx.resume() : Promise.resolve();
+    resume.then(() => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const vol  = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(vol);
+      vol.connect(ctx.destination);
+      vol.gain.value = _sfxVolume;
+      fn(osc, gain, ctx);
+    });
   } catch(_) {}
 }
 

@@ -12,7 +12,7 @@ const MUTED  = "#888";
 
 // Each powerup maps to its own dedicated upgrade id
 const PW_UPGRADE_MAP = {
-  shield_pw:    ["pwShieldDur"],
+  shield_pw:    ["pwShieldChance"],
   giant_pw:     ["pwGiantDur"],
   magnet_pw:    ["pwMagnetRng"],
   frenzy_pw:    ["pwFrenzyDur"],
@@ -253,7 +253,7 @@ export default function ShopScreen({
                   stats.shieldChance > 0   && ["Block%",  `${(stats.shieldChance*100).toFixed(0)}%`],
                   stats.invFramesBonus > 0 && ["I-Frames",`+${stats.invFramesBonus}`],
                   stats.extraLives > 0     && ["+Lives",  `${stats.extraLives}`],
-                  stats.shieldHits > 1     && ["Shield",  `${stats.shieldHits} hits`],
+                  stats.shieldSpawnChance > 0 && ["Shield%", `+${(stats.shieldSpawnChance*100).toFixed(0)}%`],
                   stats.rareDrop > 0       && ["PwLuck",  `+${(stats.rareDrop*100).toFixed(0)}%`],
                   stats.heartChance > 0    && ["Heart%",  `+${(stats.heartChance*100).toFixed(0)}%`],
                   stats.magnetLevel > 0    && ["Magnet",  `${55+stats.magnetLevel*28}px`],

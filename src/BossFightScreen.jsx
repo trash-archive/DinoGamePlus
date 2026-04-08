@@ -4,6 +4,7 @@ import { initBossState, WIN_REWARD }  from "./boss/bossConstants";
 import { tickBoss }                   from "./boss/bossTick";
 import { renderBoss, CrackOverlay }   from "./boss/bossRender.jsx";
 import { playClick } from "./hooks/useSoundEffects";
+import TouchButtons from "./TouchButtons";
 
 const F      = "'Courier New', monospace";
 const DARK   = "#1a1a1a";
@@ -27,6 +28,7 @@ export default function BossFightScreen({
   onWin, onDeath, onMenu,
   fossils,
   notification, achivNotif,
+  touchButtons, touchButtonOpacity,
 }) {
   const canvasRef   = useRef(null);
   const gsRef       = useRef(null);
@@ -35,6 +37,8 @@ export default function BossFightScreen({
   const keysRef     = useRef({});
   const prevKeysRef = useRef({});
   const [overlay, setOverlay] = useState(null);
+  const lastTapRef = useRef(0);
+  const touchStartRef = useRef(null);
 
   const triggerOverlay = (val) => { setOverlay(val); };
 
@@ -49,6 +53,59 @@ export default function BossFightScreen({
     window.addEventListener("keyup",   onUp);
     return () => { window.removeEventListener("keydown", onDown); window.removeEventListener("keyup", onUp); };
   }, []);
+
+  // Touch gestures: double-tap = bite (KeyF), swipe = movement
+  // Skip if on-screen buttons are enabled — they handle all input
+  useEffect(() => {
+    if(touchButtons) return;
+    const DOUBLE_TAP_MS = 300;
+    const onTouchStart = e => {
+      if(e.cancelable) e.preventDefault();
+      touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      keysRef.current["Space"] = true;
+    };
+    const onTouchEnd = e => {
+      if(e.cancelable) e.preventDefault();
+      if(!touchStartRef.current) return;
+      const dx = e.changedTouches[0].clientX - touchStartRef.current.x;
+      const dy = e.changedTouches[0].clientY - touchStartRef.current.y;
+      const now = Date.now();
+      const absDx = Math.abs(dx), absDy = Math.abs(dy);
+      touchStartRef.current = null;
+
+      // Tap (no significant movement)
+      if(absDx < 18 && absDy < 18) {
+        keysRef.current["Space"] = false;
+        if(now - lastTapRef.current < DOUBLE_TAP_MS) {
+          // Double-tap = bite
+          lastTapRef.current = 0;
+          keysRef.current["KeyF"] = true;
+          setTimeout(() => { keysRef.current["KeyF"] = false; }, 80);
+        } else {
+          // Single tap = jump
+          lastTapRef.current = now;
+          keysRef.current["Space"] = true;
+          setTimeout(() => { keysRef.current["Space"] = false; }, 80);
+        }
+        return;
+      }
+      // Swipe gestures
+      keysRef.current["Space"] = false;
+      if(absDy > absDx) {
+        if(dy < 0) { keysRef.current["Space"] = true; setTimeout(() => { keysRef.current["Space"] = false; }, 80); }
+        else { keysRef.current["ArrowDown"] = true; setTimeout(() => { keysRef.current["ArrowDown"] = false; }, 120); }
+      } else {
+        if(dx > 0) { keysRef.current["ArrowRight"] = true; setTimeout(() => { keysRef.current["ArrowRight"] = false; }, 80); }
+        else       { keysRef.current["ArrowLeft"]  = true; setTimeout(() => { keysRef.current["ArrowLeft"]  = false; }, 80); }
+      }
+    };
+    window.addEventListener("touchstart", onTouchStart, { passive: false });
+    window.addEventListener("touchend",   onTouchEnd,   { passive: false });
+    return () => {
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchend",   onTouchEnd);
+    };
+  }, [touchButtons]);
 
   useEffect(() => {
     gsRef.current       = initBossState(stats, skin, design, lives);
@@ -124,6 +181,9 @@ export default function BossFightScreen({
             </div>
           )}
         </div>
+        {touchButtons && (
+          <TouchButtons keysRef={keysRef} stats={stats} visible={true} canvasRef={canvasRef} opacity={touchButtonOpacity ?? 0.88} />
+        )}
       </div>
       {notification && <div style={notifStyle}>{notification}</div>}
       {achivNotif   && <div style={achivStyle}>{achivNotif}</div>}

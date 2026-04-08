@@ -4,7 +4,7 @@
 
 export const POWERUP_UPGRADES = [
   { id:"powerupLuck",  label:"Powerup Luck",     desc:"All powerups spawn more frequently per level", baseCost:120, maxLevel:8, costMult:1.9, cat:"powerups", color:"#ddaa00" },
-  { id:"pwShieldDur",   label:"Shield Durability", desc:"+1 hit absorbed by shield per level",          baseCost:150, maxLevel:4, costMult:1.8, cat:"powerups", color:"#4488dd" },
+  { id:"pwShieldChance", label:"Shield Drop",       desc:"+3% chance for a shield to spawn per level",  baseCost:200, maxLevel:6, costMult:1.8, cat:"powerups", color:"#4488dd" },
   { id:"pwGiantDur",    label:"Giant Duration",     desc:"+1 second of giant time per level",           baseCost:130, maxLevel:6, costMult:1.8, cat:"powerups", color:"#cc4400" },
   { id:"pwMagnetRng",   label:"Magnet Range",       desc:"+80px fossil attraction range per level",     baseCost:100, maxLevel:6, costMult:1.8, cat:"powerups", color:"#9944cc" },
   { id:"pwFrenzyDur",   label:"Frenzy Duration",    desc:"+1 second of frenzy time per level",          baseCost:150, maxLevel:6, costMult:1.8, cat:"powerups", color:"#dd2266" },

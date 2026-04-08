@@ -69,10 +69,83 @@ export function drawGround(ctx, offset, scenery, nightBlend) {
     const gravelCol = nightBlend > 0.5 ? "#555566" : "#bbbbbb";
     ctx.fillStyle = groundCol; ctx.fillRect(0, GROUND_Y+2, CANVAS_W, 3);
     ctx.fillStyle = gravelCol;
-    for(let i=0;i<22;i++){
-      const rx=((i*76-(offset%76))+CANVAS_W*4)%CANVAS_W;
+    const GRAV_STRIDE = 76, GRAV_COUNT = 22, GRAV_PERIOD = GRAV_STRIDE * GRAV_COUNT;
+    const gOff = offset % GRAV_PERIOD;
+    for(let i=0;i<GRAV_COUNT;i++){
+      const rx = ((i*GRAV_STRIDE - gOff) % GRAV_PERIOD + GRAV_PERIOD) % GRAV_PERIOD;
+      if(rx > CANVAS_W) continue;
       ctx.fillRect(rx, GROUND_Y+7, 18+(i%3)*7, 2);
       ctx.fillRect(rx+4, GROUND_Y+11, 9, 2);
+    }
+    return;
+  }
+  if(s.id === "plains") {
+    // Grass top strip
+    const grassCol  = nightBlend > 0.5 ? "#2a5a18" : "#3a8a20";
+    const grassHi   = nightBlend > 0.5 ? "#3a7a28" : "#55aa38";
+    const soilCol   = nightBlend > 0.5 ? "#2a1a08" : "#5a3a18";
+    const soilDark  = nightBlend > 0.5 ? "#1a0e04" : "#3a2010";
+    ctx.fillStyle = grassCol; ctx.fillRect(0, GROUND_Y, CANVAS_W, 5);
+    ctx.fillStyle = grassHi;  ctx.fillRect(0, GROUND_Y, CANVAS_W, 2);
+    ctx.fillStyle = soilCol;  ctx.fillRect(0, GROUND_Y+5, CANVAS_W, CANVAS_H-GROUND_Y-5);
+    // Soil texture streaks
+    ctx.fillStyle = soilDark;
+    const SOIL_STRIDE = 88, SOIL_COUNT = 18, SOIL_PERIOD = SOIL_STRIDE * SOIL_COUNT;
+    const soilOff = offset % SOIL_PERIOD;
+    for(let i=0;i<SOIL_COUNT;i++){
+      const rx = ((i*SOIL_STRIDE - soilOff) % SOIL_PERIOD + SOIL_PERIOD) % SOIL_PERIOD;
+      if(rx > CANVAS_W) continue;
+      ctx.fillRect(rx, GROUND_Y+8,  22+(i%3)*8, 2);
+      ctx.fillRect(rx+6, GROUND_Y+13, 12, 2);
+    }
+    // Embedded stones and fossil fragments — scroll with the ground
+    const stoneCol  = nightBlend > 0.5 ? "#3a3a32" : "#7a7060";
+    const stoneHi   = nightBlend > 0.5 ? "#4a4a40" : "#9a9080";
+    const fossilCol = nightBlend > 0.5 ? "#5a4a28" : "#aa8840";
+    // Stones
+    const STONE_STRIDE = 113, STONE_COUNT = 14, STONE_PERIOD = STONE_STRIDE * STONE_COUNT;
+    const stoneOff = offset % STONE_PERIOD;
+    for(let i=0;i<STONE_COUNT;i++){
+      const rx = ((i*STONE_STRIDE - stoneOff) % STONE_PERIOD + STONE_PERIOD) % STONE_PERIOD;
+      if(rx > CANVAS_W) continue;
+      const ry = GROUND_Y + 10 + (i%4)*8;
+      const sw = 8+(i%3)*5;
+      ctx.fillStyle = stoneCol; ctx.fillRect(rx,ry,sw,sw*0.6|0);
+      ctx.fillStyle = stoneHi;  ctx.fillRect(rx+1,ry,sw-2,2);
+    }
+    // Small pebbles
+    const PEB_STRIDE = 67, PEB_COUNT = 20, PEB_PERIOD = PEB_STRIDE * PEB_COUNT;
+    const pebOff = offset % PEB_PERIOD;
+    for(let i=0;i<PEB_COUNT;i++){
+      const rx = ((i*PEB_STRIDE - pebOff) % PEB_PERIOD + PEB_PERIOD) % PEB_PERIOD;
+      if(rx > CANVAS_W) continue;
+      const ry = GROUND_Y + 7 + (i%5)*6;
+      ctx.fillStyle = stoneCol; ctx.fillRect(rx,ry,4,3);
+    }
+    // Fossil fragments
+    const FOSS_STRIDE = 157, FOSS_COUNT = 8, FOSS_PERIOD = FOSS_STRIDE * FOSS_COUNT;
+    const fossOff = offset % FOSS_PERIOD;
+    for(let i=0;i<FOSS_COUNT;i++){
+      const rx = ((i*FOSS_STRIDE - fossOff) % FOSS_PERIOD + FOSS_PERIOD) % FOSS_PERIOD;
+      if(rx > CANVAS_W) continue;
+      const ry = GROUND_Y + 12 + (i%3)*9;
+      ctx.fillStyle = fossilCol;
+      ctx.fillRect(rx,ry,8,2);
+      ctx.fillRect(rx,ry-2,3,2); ctx.fillRect(rx+5,ry-2,3,2);
+    }
+    // Grass tufts along the top edge — pseudo-random spacing, no wrap duplication
+    ctx.fillStyle = grassCol;
+    const TUFT_PERIOD = CANVAS_W + 60;
+    for(let i=0;i<22;i++){
+      // Seeded spacing: base every ~52px with ±18px jitter per slot
+      const seed = i * 1.618;
+      const jitter = ((seed % 1) * 36) | 0;
+      const base = i * 52 + jitter;
+      const rx = ((base - offset % TUFT_PERIOD) + TUFT_PERIOD * 2) % TUFT_PERIOD;
+      if(rx > CANVAS_W) continue;
+      ctx.fillRect(rx,   GROUND_Y-4, 2, 4);
+      ctx.fillRect(rx+4, GROUND_Y-4, 2, 4);
+      ctx.fillRect(rx+8, GROUND_Y-4, 2, 4);
     }
     return;
   }
@@ -81,8 +154,11 @@ export function drawGround(ctx, offset, scenery, nightBlend) {
   ctx.fillStyle = s.groundColor;
   ctx.fillRect(0, GROUND_Y+4, CANVAS_W, CANVAS_H-GROUND_Y-4);
   ctx.fillStyle = s.groundTop + "88";
-  for(let i=0;i<22;i++){
-    const rx=((i*76-(offset%76))+CANVAS_W*4)%CANVAS_W;
+  const GEN_STRIDE = 76, GEN_COUNT = 22, GEN_PERIOD = GEN_STRIDE * GEN_COUNT;
+  const genOff = offset % GEN_PERIOD;
+  for(let i=0;i<GEN_COUNT;i++){
+    const rx = ((i*GEN_STRIDE - genOff) % GEN_PERIOD + GEN_PERIOD) % GEN_PERIOD;
+    if(rx > CANVAS_W) continue;
     ctx.fillRect(rx,GROUND_Y+6,16+(i%3)*6,2);
   }
 }

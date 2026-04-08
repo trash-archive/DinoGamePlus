@@ -97,6 +97,7 @@ export default function TouchButtons({ keysRef, stats, visible, canvasRef, opaci
   const hasDown  = stats?.hasDuck || stats?.hasFastDrop;
   const hasLeft  = stats?.hasBackDash;
   const hasRight = stats?.hasDash;
+  const hasBite  = stats?.hasBite;
 
   const dpad = (
     <>
@@ -104,6 +105,8 @@ export default function TouchButtons({ keysRef, stats, visible, canvasRef, opaci
         onPress={() => press("Space")} onRelease={() => release("Space")} />
       {hasLeft  && <Btn label="◀" col={1} row={2} opacity={opacity}
         onPress={() => press("ArrowLeft")}  onRelease={() => release("ArrowLeft")} />}
+      {hasBite  && <Btn label="🦷" col={2} row={2} opacity={opacity}
+        onPress={() => press("KeyF")}   onRelease={() => release("KeyF")} />}
       {hasRight && <Btn label="▶" col={3} row={2} opacity={opacity}
         onPress={() => press("ArrowRight")} onRelease={() => release("ArrowRight")} />}
       {hasDown  && <Btn label="▼" col={2} row={3} opacity={opacity}

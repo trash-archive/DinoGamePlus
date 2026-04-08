@@ -4,17 +4,27 @@ import { GROUND_Y } from "../constants";
 export function getObstacleHitbox(o) {
   const g = GROUND_Y;
   if(o.otype==="bird")          return{x:o.x+4,  y:o.y+2,              w:30, h:14};
-  if(o.otype==="rock")          return{x:o.x+4,  y:g-22,               w:32, h:22};
+  if(o.otype==="hawk")          return{x:o.x+4,  y:o.y+4,              w:36, h:16};
+  if(o.otype==="rock")          return{x:o.x+2,  y:g-22,               w:32, h:22};
   if(o.otype==="spike")         return{x:o.x+2,  y:g-26,               w:38, h:26};
-  if(o.otype==="turret")        return{x:o.x+4,  y:g-32,               w:32, h:32};
-  if(o.otype==="wall")          return{x:o.x,    y:g-28,               w:18, h:28};
-  if(o.otype==="log")           return{x:o.x+2,  y:g-18,               w:40, h:18};
-  if(o.otype==="spike_cluster") return{x:o.x+2,  y:g-30,               w:58, h:30};
+  if(o.otype==="thornbush")     return{x:o.x+4,  y:g-34,               w:34, h:34};
+  if(o.otype==="stump")         return{x:o.x+2,  y:g-20,               w:40, h:20};
+  if(o.otype==="bush")          return{x:o.x+2,  y:g-26,               w:44, h:26};
+  if(o.otype==="turret")        return{x:o.x+4,  y:g-36,               w:38, h:36};
+  if(o.otype==="wall")          return{x:o.x,    y:g-56,               w:22, h:56};
+  if(o.otype==="tree") {
+    const t = o.type||0;
+    if(t===0) return{x:o.x+2,  y:g-62,  w:32, h:62};  // full canopy top to ground
+    if(t===1) return{x:o.x,    y:g-74,  w:38, h:74};  // full canopy top to ground
+    return          {x:o.x+2,  y:g-40,  w:32, h:40};  // dead tree trunk+branches
+  }
+  if(o.otype==="log")           return{x:o.x+2,  y:g-32,               w:42, h:32};
+  if(o.otype==="spike_cluster") return{x:o.x,    y:g-30,               w:60, h:30};
   if(o.otype==="dune")          return{x:o.x+4,  y:g-22,               w:48, h:22};
-  if(o.otype==="tumbleweed")    return{x:o.x+4,  y:g-26,               w:28, h:22};
+  if(o.otype==="tumbleweed")    return{x:o.x+4,  y:g-30,               w:28, h:26};
   if(o.otype==="vulture")       return{x:o.x+4,  y:o.y+4,              w:32, h:14};
-  if(o.otype==="bonepile")      return{x:o.x+2,  y:g-14,               w:44, h:14};
-  if(o.otype==="dust_devil")    return{x:o.x+2,  y:g-72,               w:44, h:72};
+  if(o.otype==="dust_devil")    return{x:o.x+4,  y:g-72,               w:40, h:72};
+  if(o.otype==="skull")         return{x:o.x,    y:g-18,               w:36, h:18};
   if(o.otype==="sandworm")      return{x:o.x+8,  y:g-(o._wormH||0),    w:24, h:o._wormH||0};
   if(o.otype==="scorpion")      return{x:o.x+2,  y:g-20,               w:40, h:20};
   if(o.otype==="icewall")       return{x:o.x,    y:g-34,               w:16, h:34};
@@ -42,7 +52,7 @@ export function getObstacleHitbox(o) {
   if(o.otype==="crystalGolem")  return{x:o.x+4,  y:g-60,               w:34, h:60};
   if(o.otype==="voidPortal")    return{x:o.x+6,  y:g-64,               w:28, h:64};
   if(o.otype==="crystalMine")   return{x:o.x+2,  y:o.y-6,              w:20, h:28};
-  const heights=[44,62,40,36,34], widths=[28,22,28,44,38];
+  const heights=[44,62,52,36,34], widths=[28,22,44,44,38];
   return{x:o.x+4, y:g-(heights[o.type||0]||44), w:widths[o.type||0]||28, h:heights[o.type||0]||44};
 }
 

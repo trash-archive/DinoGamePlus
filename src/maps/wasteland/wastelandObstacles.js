@@ -11,12 +11,18 @@ export function drawWastelandObstacle(ctx, o, frame) {
     ctx.fillRect(o.x+4,g-18,28,18); ctx.fillRect(o.x+2,g-12,32,12); ctx.fillRect(o.x+8,g-22,18,6);
 
   } else if (o.otype === "spike") {
-    ctx.fillStyle = col;
-    for(let i=0;i<3;i++){const bx=o.x+i*14;ctx.beginPath();ctx.moveTo(bx+2,g);ctx.lineTo(bx+7,g-26);ctx.lineTo(bx+12,g);ctx.fill();}
+    const sp2 = o._nightBlend > 0.5 ? "#dddddd" : "#222222";
+    ctx.fillStyle = sp2;
+    for(const [bx,h] of [[2,22],[15,30],[28,20]]) {
+      ctx.beginPath(); ctx.moveTo(o.x+bx,g); ctx.lineTo(o.x+bx+7,g-h); ctx.lineTo(o.x+bx+14,g); ctx.fill();
+    }
 
   } else if (o.otype === "spike_cluster") {
-    ctx.fillStyle = col;
-    for(let i=0;i<5;i++){const bx=o.x+i*12;ctx.beginPath();ctx.moveTo(bx,g);ctx.lineTo(bx+6,g-30);ctx.lineTo(bx+12,g);ctx.fill();}
+    const sp2 = o._nightBlend > 0.5 ? "#dddddd" : "#222222";
+    ctx.fillStyle = sp2;
+    for(const [bx,h] of [[0,20],[11,30],[22,34],[33,28],[46,18]]) {
+      ctx.beginPath(); ctx.moveTo(o.x+bx,g); ctx.lineTo(o.x+bx+7,g-h); ctx.lineTo(o.x+bx+14,g); ctx.fill();
+    }
 
   } else if (o.otype === "turret") {
     const tc = o._nightBlend > 0.5 ? "#aaaaaa" : "#444444";
@@ -30,10 +36,25 @@ export function drawWastelandObstacle(ctx, o, frame) {
     for(const b of (o.bullets||[])) ctx.fillRect(b.x,b.y,8,4);
 
   } else if (o.otype === "wall") {
-    ctx.fillStyle = o._nightBlend > 0.5 ? "#999999" : "#333333";
-    ctx.fillRect(o.x,g-28,18,28);
-    ctx.fillStyle = o._nightBlend > 0.5 ? "#bbbbbb" : "#555555";
-    for(let r=0;r<3;r++) ctx.fillRect(o.x+2,g-28+r*10,14,2);
+    const wc1 = o._nightBlend > 0.5 ? "#aaaaaa" : "#2a2a2a";
+    const wc2 = o._nightBlend > 0.5 ? "#cccccc" : "#484848";
+    const wc3 = o._nightBlend > 0.5 ? "#888888" : "#111111";
+    const wx = o.x;
+    ctx.fillStyle = wc1;
+    // Main wall body
+    ctx.fillRect(wx,    g-48, 22, 48);
+    // Two crenellations on top
+    ctx.fillRect(wx,    g-56,  8,  8);
+    ctx.fillRect(wx+14, g-56,  8,  8);
+    // Left edge highlight
+    ctx.fillStyle = wc2;
+    ctx.fillRect(wx, g-48, 2, 48);
+    ctx.fillRect(wx, g-56, 2,  8);
+    ctx.fillRect(wx+14, g-56, 2, 8);
+    // Single horizontal crack line for detail
+    ctx.fillStyle = wc3;
+    ctx.fillRect(wx+2, g-24, 18, 2);
+    ctx.fillRect(wx+2, g-38, 18, 2);
 
   } else if (o.otype === "tumbleweed") {
     // Spinning tumbleweed — black/white, rotates based on frame
@@ -87,40 +108,32 @@ export function drawWastelandObstacle(ctx, o, frame) {
     ctx.fillRect(o.x+14, o.y+14,  4,  4);
     ctx.restore();
 
-  } else if (o.otype === "bonepile") {
-    // Wide low obstacle — black/white bones
-    const bc  = col;
-    const bc2 = o._nightBlend > 0.5 ? "#ffffff" : "#555555";
-    // Ground mound
-    ctx.fillStyle = bc2;
-    ctx.fillRect(o.x+2,  g-8,  44, 8);
-    ctx.fillRect(o.x+8,  g-12, 32, 5);
-    // Bone 1 — horizontal long bone (left)
-    ctx.fillStyle = bc;
-    ctx.fillRect(o.x+4,  g-18,  3,  3); // left knob top
-    ctx.fillRect(o.x+4,  g-22,  3,  3); // left knob bottom
-    ctx.fillRect(o.x+7,  g-20, 10,  2); // shaft
-    ctx.fillRect(o.x+17, g-18,  3,  3); // right knob top
-    ctx.fillRect(o.x+17, g-22,  3,  3); // right knob bottom
-    // Bone 2 — diagonal (mid), drawn as two offset rects
-    ctx.fillRect(o.x+20, g-24,  3,  3);
-    ctx.fillRect(o.x+20, g-20,  3,  3);
-    ctx.fillRect(o.x+23, g-22, 10,  2);
-    ctx.fillRect(o.x+33, g-24,  3,  3);
-    ctx.fillRect(o.x+33, g-20,  3,  3);
-    // Bone 3 — vertical bone (right)
-    ctx.fillRect(o.x+38, g-26,  2,  3); // top knob
-    ctx.fillRect(o.x+37, g-26,  4,  2);
-    ctx.fillRect(o.x+38, g-23,  2, 10); // shaft
-    ctx.fillRect(o.x+38, g-13,  2,  3); // bottom knob
-    ctx.fillRect(o.x+37, g-13,  4,  2);
-    // Skull hint (circle-ish)
-    ctx.fillRect(o.x+10, g-28,  8,  6); // skull top
-    ctx.fillRect(o.x+8,  g-24,  4,  4); // left
-    ctx.fillRect(o.x+16, g-24,  4,  4); // right
-    ctx.fillStyle = bc2;
-    ctx.fillRect(o.x+11, g-27,  2,  2); // eye socket L
-    ctx.fillRect(o.x+15, g-27,  2,  2); // eye socket R
+  } else if (o.otype === "skull") {
+    const sc  = o._nightBlend > 0.5 ? "#dddddd" : "#2e2e2e";
+    const sc2 = o._nightBlend > 0.5 ? "#aaaaaa" : "#111111";
+    const sc3 = o._nightBlend > 0.5 ? "#ffffff" : "#555555";
+    ctx.fillStyle = sc;
+    // Cranium
+    ctx.fillRect(o.x+2,  g-16, 14, 16);
+    ctx.fillRect(o.x+4,  g-18, 10,  4);
+    ctx.fillRect(o.x,    g-12, 18,  6);
+    // Brow + upper snout
+    ctx.fillRect(o.x+14, g-14,  6,  3);
+    ctx.fillRect(o.x+18, g-12, 16,  5);
+    // Lower jaw
+    ctx.fillRect(o.x+20, g-7,  12,  7);
+    // Snout tip
+    ctx.fillRect(o.x+32, g-12,  4, 12);
+    // Eye socket
+    ctx.fillStyle = sc2;
+    ctx.fillRect(o.x+4,  g-14,  6,  6);
+    // Jaw gap
+    ctx.fillRect(o.x+20, g-7,  12,  2);
+    // Teeth
+    ctx.fillStyle = sc3;
+    ctx.fillRect(o.x+21, g-5,   2,  3);
+    ctx.fillRect(o.x+25, g-5,   2,  3);
+    ctx.fillRect(o.x+29, g-5,   2,  3);
 
   } else if (o.otype === "dust_devil") {
     // Wide spinning dust funnel — black/white, orbiting debris
@@ -158,13 +171,33 @@ export function drawWastelandObstacle(ctx, o, frame) {
     }
 
   } else {
-    // cactus variants (type 0–4)
-    const t=o.type||0; ctx.fillStyle=col;
+    // cactus variants (type 0–4), with optional horizontal mirror
+    const t = o.type || 0;
+    ctx.fillStyle = col;
+    if (o._flipped) {
+      const cx = o.x + 22;
+      ctx.save();
+      ctx.translate(cx * 2, 0); ctx.scale(-1, 1);
+    }
     if(t===0){ctx.fillRect(o.x+10,g-44,10,44);ctx.fillRect(o.x+2,g-28,28,8);ctx.fillRect(o.x+2,g-36,10,12);ctx.fillRect(o.x+22,g-34,10,10);}
     else if(t===1){ctx.fillRect(o.x+8,g-62,10,62);ctx.fillRect(o.x,g-42,26,8);ctx.fillRect(o.x,g-54,10,15);ctx.fillRect(o.x+20,g-50,10,13);ctx.fillRect(o.x+20,g-60,14,10);}
-    else if(t===2){ctx.fillRect(o.x+4,g-40,9,40);ctx.fillRect(o.x+20,g-40,9,40);ctx.fillRect(o.x+4,g-52,9,14);ctx.fillRect(o.x+18,g-52,12,9);ctx.fillRect(o.x,g-26,32,8);}
+    else if(t===2){
+      // Main trunk (tall, center-left)
+      ctx.fillRect(o.x+10, g-52, 10, 52);
+      // Left arm: horizontal stub then upward tip
+      ctx.fillRect(o.x,    g-38,  12, 8);  // horizontal
+      ctx.fillRect(o.x,    g-50,   8, 14); // upward tip
+      // Right arm: horizontal stub at a different height then upward tip
+      ctx.fillRect(o.x+20, g-28,  14, 8);  // horizontal
+      ctx.fillRect(o.x+26, g-42,   8, 16); // upward tip
+      // Small side trunk (shorter, right) with its own right arm
+      ctx.fillRect(o.x+28, g-18,   8, 18);
+      ctx.fillRect(o.x+36, g-14,   8, 6);  // right arm stub (connected to side trunk)
+      ctx.fillRect(o.x+38, g-22,   6, 10); // upward tip of side arm
+    }
     else if(t===3){for(let i=0;i<3;i++){ctx.fillRect(o.x+i*16+4,g-36,8,36);ctx.fillRect(o.x+i*16,g-24,16,7);}}
     else{ctx.fillRect(o.x+14,g-34,12,34);ctx.fillRect(o.x,g-20,40,8);ctx.fillRect(o.x,g-28,14,10);ctx.fillRect(o.x+28,g-30,14,12);ctx.fillRect(o.x,g-34,14,8);ctx.fillRect(o.x+28,g-36,14,8);}
+    if (o._flipped) ctx.restore();
   }
 }
 
@@ -176,7 +209,8 @@ export function spawnWastelandObstacle(r, tier) {
   if (tier === 0) {
     if (r < 0.60) { otype = "cactus"; type = 0; }
     else          { otype = "bird"; oy = GROUND_Y - 88 - Math.random() * 48; }
-    return { otype, type, oy, bullets };
+    const flipped0 = otype === "cactus" && Math.random() < 0.5;
+    return { otype, type, oy, bullets, _flipped: flipped0 };
   }
 
   // Tier 1+: introduce rock, wall, tumbleweed
@@ -193,13 +227,14 @@ export function spawnWastelandObstacle(r, tier) {
   else if (r < 0.48 && tier>=1) { otype="vulture"; oy=GROUND_Y-88-Math.random()*30; }
   else if (r < 0.56) { otype="rock"; }
   else if (r < 0.63 && tier>=2) { otype="spike"; }
-  else if (r < 0.70 && tier>=2) { otype="spike_cluster"; }
-  else if (r < 0.76 && tier>=2) { otype="bonepile"; }
+  else if (r < 0.76 && tier>=2) { otype="spike_cluster"; }
   else if (r < 0.82 && tier>=1) { otype="tumbleweed"; }
-  else if (r < 0.88 && tier>=3) { otype="turret"; bullets=[]; }
-  else if (r < 0.93 && tier>=3) { otype="dust_devil"; }
+  else if (r < 0.88 && tier>=1) { otype="skull"; }
+  else if (r < 0.92 && tier>=3) { otype="turret"; bullets=[]; }
+  else if (r < 0.96 && tier>=3) { otype="dust_devil"; }
   else if (tier>=1)              { otype="wall"; }
   else                           { otype="cactus"; type=0; }
 
-  return { otype, type, oy, bullets };
+  const flipped = otype === "cactus" && Math.random() < 0.5;
+  return { otype, type, oy, bullets, _flipped: flipped };
 }

@@ -126,7 +126,7 @@ export default function DinoIncremental() {
       fossilPickupMult: 1+(ul.fossilMult||0),
       runDripRate:    (ul.runDrip||0)*0.0003,
       passiveFossils: (ul.miner||0)*0.15+(ul.camp||0)*0.5+(ul.research||0)*1.5,
-      shieldHits:     1+Math.min(ul.pwShieldDur||0, 4),
+      shieldSpawnChance: (ul.pwShieldChance||0)*0.03,
       giantDurBonus:    (ul.pwGiantDur||0)*60,
       magnetRngBonus:   (ul.pwMagnetRng||0)*80,
       frenzyDurBonus:   (ul.pwFrenzyDur||0)*60,
@@ -293,7 +293,7 @@ export default function DinoIncremental() {
       alive:true, nightBlend:0, inNight:false,
       lastCycleNight:false, nightCycleCount:0,
       shieldHitsLeft:0,
-      sunX:CANVAS_W+20, sunY:30, moonX:CANVAS_W+200, moonY:28,
+      sunX:CANVAS_W+60, sunY:36, moonX:CANVAS_W+80, moonY:36,
       sunAlpha:1, moonAlpha:0,
       skin:currentSkin, design, scenery,
       maxComboThisRun:0, giantCrushes:0, usedDash:false, hitTaken:false,
@@ -699,13 +699,15 @@ export default function DinoIncremental() {
         targetBlend=clamp(targetBlend,0,1);
         gs.nightBlend=lerp(gs.nightBlend,targetBlend,0.018*dt);
 
-        gs.sunX -= 0.18*dt;
-        if(gs.sunX < -50) gs.sunX = CANVAS_W+50;
-        gs.sunAlpha = clamp(1-gs.nightBlend*2.2,0,1);
+        // Sun travels right→left across the day half (cyclePos 0..DAY_CYCLE)
+        const sunT = clamp(cyclePos / DAY_CYCLE, 0, 1);
+        gs.sunX = CANVAS_W + 60 - sunT * (CANVAS_W + 120);
+        gs.sunAlpha = clamp(1 - gs.nightBlend * 2.2, 0, 1);
 
-        if(gs.nightBlend > 0.35 && gs.moonX > CANVAS_W+30) gs.moonX = CANVAS_W+30;
-        if(gs.moonX <= CANVAS_W+30){ gs.moonX -= 0.12*dt; if(gs.moonX < -50) gs.moonX = CANVAS_W+80; }
-        gs.moonAlpha = clamp((gs.nightBlend-0.3)*3.5,0,1);
+        // Moon travels right→left across the night half (cyclePos DAY_CYCLE..cycleLen)
+        const moonT = cyclePos >= DAY_CYCLE ? clamp((cyclePos - DAY_CYCLE) / DAY_CYCLE, 0, 1) : 0;
+        gs.moonX = cyclePos >= DAY_CYCLE ? CANVAS_W + 60 - moonT * (CANVAS_W + 120) : CANVAS_W + 80;
+        gs.moonAlpha = clamp((gs.nightBlend - 0.3) * 3.5, 0, 1);
         gs.sunY=36; gs.moonY=36;
 
         const isNightNow=targetBlend>0.5;
@@ -845,7 +847,7 @@ export default function DinoIncremental() {
 
         let effSpeed=gs.speed;
         if(hasSlowPw) effSpeed*=0.38;
-        gs.groundOffset=(gs.groundOffset+effSpeed*dt)%(CANVAS_W*4);
+        gs.groundOffset+=effSpeed*dt;
 
         // ── Spawn obstacles ──────────────────────────────────────────────────
         if(gs.comboTimer>0){ gs.comboTimer-=dt; if(gs.comboTimer<=0) gs.combo=0; }
@@ -878,7 +880,7 @@ export default function DinoIncremental() {
             _spikeTimer: otype==="spiketrap" ? Math.max(30,50-tier*2.5) : undefined,
           });
           // Cluster: ground static obstacles sometimes spawn 1-2 more of the same type close together
-          const clusterTypes=["cactus","rock","spike","spike_cluster","wall","log","dune","icewall","lavarock","pillar","boulder","crystalSpire","crystalCluster","bonepile","tumbleweed","frostspike"];
+          const clusterTypes=["cactus","tree","stump","bush","rock","spike","spike_cluster","wall","dune","icewall","lavarock","pillar","boulder","crystalSpire","crystalCluster","tumbleweed","frostspike"];
           if(clusterTypes.includes(otype)&&tier>=1){
             const clusterChance=0.28+tier*0.02; // ~28-48% chance of a cluster
             const count=Math.random()<clusterChance?(Math.random()<0.3?2:1):0;
@@ -896,6 +898,25 @@ export default function DinoIncremental() {
         if(gs.frame-gs.lastPickupFrame>90){
           if(Math.random()<0.38) gs.pickups.push({x:CANVAS_W+10,y:GROUND_Y-30-Math.random()*90,collected:false});
           gs.lastPickupFrame=gs.frame;
+        }
+        // Shield: separate low-chance spawn check every ~120 frames
+        if(gs.unlockedPowerups.includes("shield_pw")&&gs.frame%120===0){
+          const shieldSpawnChance = 0.02 + gs.stats.shieldSpawnChance + gs.stats.rareDrop * 0.5;
+          if(Math.random()<shieldSpawnChance){
+            const sdef=POWERUP_DEFS.find(d=>d.id==="shield_pw");
+            const spawnX=CANVAS_W+10;
+            const PW=22,PH=22;
+            let spawnY=null;
+            for(let attempt=0;attempt<8;attempt++){
+              const tryY=GROUND_Y-32-Math.random()*58;
+              const blocked=gs.obstacles.some(o=>{
+                const hb=getObstacleHitbox(o);
+                return rectsOverlap(spawnX,tryY,PW,PH,hb.x,hb.y,hb.w,hb.h);
+              });
+              if(!blocked){spawnY=tryY;break;}
+            }
+            if(spawnY!==null) gs.powerupPickups.push({x:spawnX,y:spawnY,def:sdef,collected:false});
+          }
         }
         // Heart: separate low-chance spawn check every ~120 frames
         if(gs.unlockedPowerups.includes("heart_pw")&&gs.frame%120===0){
@@ -918,7 +939,7 @@ export default function DinoIncremental() {
         }
         const spawnThresh=Math.max(300,900-gs.stats.rareDrop*1200);
         if(gs.frame-gs.lastPowerupFrame>spawnThresh){
-          const eligible=POWERUP_DEFS.filter(d=>d.id!=="heart_pw"&&(d.id!=="meteor_pw"||tier>=4)&&gs.unlockedPowerups.includes(d.id));
+          const eligible=POWERUP_DEFS.filter(d=>d.id!=="heart_pw"&&d.id!=="shield_pw"&&(d.id!=="meteor_pw"||tier>=4)&&gs.unlockedPowerups.includes(d.id));
           gs.lastPowerupFrame=gs.frame;
           if(eligible.length>0){
             const def=eligible[Math.floor(Math.random()*eligible.length)];
@@ -951,7 +972,11 @@ export default function DinoIncremental() {
             if(o._shootTimer>=shootInterval){
               o._shootTimer=0;
               const bSpd=effSpeed/gs.baseSpeed;
-              o.bullets.push({x:o.x+4,y:GROUND_Y-32,vx:(-7-tier*0.3)*bSpd,vy:0});
+              // Grasslands scarecrow: shoot at mid-height so player can duck under
+              // Slow base speed like wasteland turret — scales with game speed naturally
+              const bY = gs.scenery?.id==="plains" ? GROUND_Y-44 : GROUND_Y-32;
+              const bBaseSpd = gs.scenery?.id==="plains" ? (-3.5-tier*0.25) : (-7-tier*0.3);
+              o.bullets.push({x:o.x+4,y:bY,vx:bBaseSpd*bSpd,vy:0});
             }
             o.bullets=o.bullets.filter(b=>{b.x+=b.vx*dt;return b.x>-20;});
           }
@@ -1040,15 +1065,17 @@ export default function DinoIncremental() {
             });
           }
           // Vulture: dive toward dino when close, then pull back up
-          if(o.otype==="vulture"){
+          if(o.otype==="vulture"||o.otype==="hawk"){
             const dist=Math.abs(o.x-gs.dino.x);
             if(o._vultureState===undefined){ o._vultureState=0; o._vultureBaseY=o.y; }
             if(o._vultureState===0&&dist<200){
-              o._vultureState=1; // diving
+              // Lock onto dino Y at dive commit — hawk swoops to that fixed point, not continuously
+              o._vultureTargetY = o.otype==="hawk" ? gs.dino.y+8 : GROUND_Y-52;
+              o._vultureState=1;
             }
             if(o._vultureState===1){
-              o.y=Math.min(GROUND_Y-52, o.y+3.5*dt);
-              if(o.y>=GROUND_Y-52) o._vultureState=2; // pull back up
+              o.y=Math.min(o._vultureTargetY, o.y+3.5*dt);
+              if(o.y>=o._vultureTargetY) o._vultureState=2;
             } else if(o._vultureState===2){
               o.y=Math.max(o._vultureBaseY, o.y-2.5*dt);
               if(o.y<=o._vultureBaseY) o._vultureState=0;
@@ -1312,7 +1339,11 @@ export default function DinoIncremental() {
           if(!p.collected&&rectsOverlap(DX,DY,DW,DH,p.x,p.y,22,22)){
             p.collected=true;
             const def=p.def;
-            if(def.id==="shield_pw"){gs.activePowerups.shield_pw={timer:Infinity,duration:0};gs.shieldHitsLeft=gs.stats.shieldHits;}
+            if(def.id==="shield_pw"){
+              gs.shieldHitsLeft = Math.min(4, (gs.shieldHitsLeft||0) + 1);
+              gs.activePowerups.shield_pw={timer:Infinity,duration:0};
+              addFloat(gs,`SHIELD x${gs.shieldHitsLeft}`,gs.dino.x-10,gs.dino.y-28,"#4488dd");
+            }
             else if(def.id==="heart_pw"){
               const baseLives = gs.design?.id==="trex" ? 2 : 1;
               const maxLives = baseLives + gs.stats.extraLives;
@@ -1331,7 +1362,7 @@ export default function DinoIncremental() {
                 :0;
               gs.activePowerups[def.id]={timer:def.duration+dBonus,duration:def.duration+dBonus};
             }
-            if(def.id!=="heart_pw") addFloat(gs,def.label+"!",CANVAS_W/2-28,96,def.color);
+            if(def.id!=="heart_pw"&&def.id!=="shield_pw") addFloat(gs,def.label+"!",CANVAS_W/2-28,96,def.color);
             // Track powerup use
             gs.powerupUseLog = gs.powerupUseLog || {};
             gs.powerupUseLog[def.id] = (gs.powerupUseLog[def.id]||0)+1;
@@ -1351,8 +1382,8 @@ export default function DinoIncremental() {
         // ── Entity silhouette update ─────────────────────────────────────────
         const ent = gs.entity;
         if(!ent.visible) {
-          // 1% chance per ~60 frames (once per second check)
-          if(gs.frame % 60 === 0 && Math.random() < 0.01) {
+          // 0.02% chance per ~60 frames (once per ~83 min of play)
+          if(gs.frame % 60 === 0 && Math.random() < 0.0002) {
             ent.visible = true;
             ent.fadeDir = 1;
             ent.x = CANVAS_W * (0.5 + Math.random() * 0.35);
@@ -1615,7 +1646,7 @@ export default function DinoIncremental() {
           ctx.fillStyle=HUD.hud;ctx.font="9px 'Courier New'";
           ctx.fillText(def.label,CANVAS_W-88,barY+17);barY+=20;
         } else if(def.duration===0){
-          const frac=gs.shieldHitsLeft/gs.stats.shieldHits;
+          const frac=gs.shieldHitsLeft/4;
           ctx.fillStyle="rgba(0,0,0,0.22)";ctx.fillRect(CANVAS_W-88,barY,76,6);
           ctx.fillStyle=def.color;ctx.fillRect(CANVAS_W-88,barY,Math.floor(76*frac),6);
           ctx.fillStyle=HUD.hud;ctx.font="9px 'Courier New'";
@@ -1934,6 +1965,8 @@ export default function DinoIncremental() {
       stats={{ ...stats, hasBite: hasBiteSkill }}
       lives={(equippedDesign==="trex"?2:1)+stats.extraLives}
       fossils={fossils}
+      touchButtons={touchButtons}
+      touchButtonOpacity={touchButtonOpacity}
       onWin={()=>{
         setFossils(f => f + 5000);
         setTotalFossils(f => f + 5000);

@@ -16,7 +16,7 @@ export function getSceneryColors(scenery, nightBlend) {
 // ─── HUD PALETTES ─────────────────────────────────────────────────────────────
 const SCENERY_HUD = {
   classic: { hud:["#222222","#dddddd"], fossil:["#888888","#ccccaa"], heart:["#dd2244","#ff4466"], bonePick:["#888888","#cccc99"] },
-  plains:  { hud:["#2a4a10","#aaddaa"], fossil:["#5a8a30","#88cc55"], heart:["#cc3322","#ff5544"], bonePick:["#6a9a40","#aadd66"] },
+  plains:  { hud:["#222222","#dddddd"], fossil:["#888888","#ccccaa"], heart:["#dd2244","#ff4466"], bonePick:["#888888","#cccc99"] },
   desert:  { hud:["#7a3a00","#ffcc66"], fossil:["#cc7700","#ffaa22"], heart:["#cc4400","#ff6622"], bonePick:["#cc8820","#ffcc44"] },
   arctic:  { hud:["#224466","#aaddff"], fossil:["#4488bb","#88ccff"], heart:["#2255aa","#44aaff"], bonePick:["#5599cc","#aaddff"] },
   volcano: { hud:["#ff6600","#ffaa44"], fossil:["#ff4400","#ff8844"], heart:["#ff2200","#ff6600"], bonePick:["#ff5500","#ffaa22"] },
