@@ -50,9 +50,9 @@ export default function MenuScreen({
   const [importErr,  setImportErr]       = useState("");
   const [showSaveSection, setShowSaveSection] = useState(true);
 
-  const outer = { minHeight:"100vh", background:BG, fontFamily:F, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", userSelect:"none", boxSizing:"border-box", width:"100%", overflowX:"hidden" };
-  const card  = { background:"#faf8f4", border:`2px solid ${BORDER}`, padding:"28px", paddingBottom:"28px", boxSizing:"border-box", width:"100%", position:"relative", overflow:"visible" };
-  const btn   = (primary=false) => ({ background:primary?DARK:BG, color:primary?BG:DARK, border:`2px solid ${BORDER}`, padding:primary?"13px 0":"10px 2px", fontSize:primary?14:12, fontFamily:F, cursor:"pointer", letterSpacing:primary?4:0, fontWeight:"bold", boxSizing:"border-box", transition:"opacity 0.1s" });
+  const outer = { height:"100svh", background:BG, fontFamily:F, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", userSelect:"none", boxSizing:"border-box", width:"100%", overflowX:"hidden", overflowY:"hidden", padding:"clamp(8px,2svh,20px) 16px" };
+  const card  = { background:"#faf8f4", border:`2px solid ${BORDER}`, padding:"clamp(14px,3svh,28px) clamp(14px,4vw,28px)", paddingBottom:"clamp(14px,3svh,28px)", boxSizing:"border-box", width:"100%", position:"relative", overflow:"visible" };
+  const btn   = (primary=false) => ({ background:primary?DARK:BG, color:primary?BG:DARK, border:`2px solid ${BORDER}`, padding:primary?`clamp(8px,1.8svh,13px) 0`:`clamp(6px,1.4svh,10px) 2px`, fontSize:primary?"clamp(11px,2svh,14px)":"clamp(9px,1.8svh,12px)", fontFamily:F, cursor:"pointer", letterSpacing:primary?4:0, fontWeight:"bold", boxSizing:"border-box", transition:"opacity 0.1s" });
   const notifBox      = { position:"fixed", bottom:24, left:"50%", transform:"translateX(-50%)", background:DARK, color:BG, padding:"9px 22px", fontSize:11, letterSpacing:2, zIndex:999, whiteSpace:"nowrap", border:"1px solid #555" };
   const achivNotifBox = { position:"fixed", top:24,    left:"50%", transform:"translateX(-50%)", background:"#1a1a2a", color:"#ffdd44", padding:"10px 24px", fontSize:11, letterSpacing:2, zIndex:999, whiteSpace:"nowrap", border:"1px solid #ffdd44" };
 
@@ -320,10 +320,10 @@ export default function MenuScreen({
           >SETTINGS</div>
 
           {/* Header */}
-          <div style={{ textAlign:"center", marginBottom:24 }}>
-            <div style={{ fontSize:36, fontWeight:"bold", letterSpacing:4, marginBottom:2 }}>DINO</div>
-            <div style={{ fontSize:14, letterSpacing:6, marginBottom:16, color:MUTED }}>REIMAGINED</div>
-            <div style={{ position:"relative", display:"inline-block", margin:"0 auto 16px" }}>
+          <div style={{ textAlign:"center", marginBottom:"clamp(8px,2svh,24px)" }}>
+            <div style={{ fontSize:"clamp(22px,5svh,36px)", fontWeight:"bold", letterSpacing:4, marginBottom:2 }}>DINO</div>
+            <div style={{ fontSize:"clamp(10px,2svh,14px)", letterSpacing:6, marginBottom:"clamp(8px,2svh,16px)", color:MUTED }}>REIMAGINED</div>
+            <div style={{ position:"relative", display:"inline-block", margin:`0 auto clamp(6px,1.5svh,16px)` }}>
               {hasAllCollection && (
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
                   style={{ position:"absolute", top:-30, left:"50%", transform:"translateX(-50%)", pointerEvents:"none" }}>
@@ -332,7 +332,7 @@ export default function MenuScreen({
                   <path fillRule="evenodd" clipRule="evenodd" d="M12.0001 3C12.3334 3 12.6449 3.16613 12.8306 3.443L16.6106 9.07917L21.2523 3.85213C21.5515 3.51525 22.039 3.42002 22.4429 3.61953C22.8469 3.81904 23.0675 4.26404 22.9818 4.70634L20.2956 18.5706C20.0223 19.9812 18.7872 21 17.3504 21H6.64977C5.21293 21 3.97784 19.9812 3.70454 18.5706L1.01833 4.70634C0.932635 4.26404 1.15329 3.81904 1.55723 3.61953C1.96117 3.42002 2.44865 3.51525 2.74781 3.85213L7.38953 9.07917L11.1696 3.443C11.3553 3.16613 11.6667 3 12.0001 3ZM12.0001 5.79533L8.33059 11.2667C8.1582 11.5237 7.8765 11.6865 7.56772 11.7074C7.25893 11.7283 6.95785 11.6051 6.75234 11.3737L3.67615 7.90958L5.66802 18.1902C5.75913 18.6604 6.17082 19 6.64977 19H17.3504C17.8293 19 18.241 18.6604 18.3321 18.1902L20.324 7.90958L17.2478 11.3737C17.0423 11.6051 16.7412 11.7283 16.4324 11.7074C16.1236 11.6865 15.842 11.5237 15.6696 11.2667L12.0001 5.79533Z" fill={DARK}/>
                 </svg>
               )}
-              <canvas ref={menuCanvasRef} width={80} height={70} style={{ display:"block", cursor:"pointer" }}
+              <canvas ref={menuCanvasRef} width={80} height={70} style={{ display:"block", cursor:"pointer", width:"clamp(48px,8svh,80px)", height:"clamp(42px,7svh,70px)" }}
                 onClick={() => {
                   const next = menuDinoClicks + 1;
                   setMenuDinoClicks(next);
@@ -344,23 +344,23 @@ export default function MenuScreen({
                 </div>
               )}
             </div>
-            <p style={{ fontSize:11, color:MUTED, marginBottom:22, lineHeight:2, letterSpacing:1 }}>
+            <p style={{ fontSize:"clamp(9px,1.8svh,11px)", color:MUTED, marginBottom:"clamp(8px,2svh,22px)", lineHeight:2, letterSpacing:1 }}>
               Run. Collect fossils. Upgrade. Survive.<br/>Outlast the digital extinction.
             </p>
           </div>
 
           {/* Buttons */}
-          <div style={{ marginBottom:8 }}>
+          <div style={{ marginBottom:"clamp(4px,1svh,8px)" }}>
             {activeScenery === "abyss" && abyssUnlocked
               ? <button style={{ ...btn(true), width:"100%", background:"#b52d2d", color:"#ffffff", border:"2px solid #b52d2d" }} onClick={() => { playClick(); startBossFight(); }}>[ BATTLE ]</button>
               : <button style={{ ...btn(true), width:"100%" }} onClick={() => { playClick(); startGame(); }}>[ RUN ]</button>
             }
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"clamp(4px,1svh,8px)", marginBottom:"clamp(4px,1svh,8px)" }}>
             <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => { playClick(); setScreen("shop"); }}>[ UPGRADES ]</button>
             <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)" }} onClick={() => { playClick(); setScreen("skins"); }}>[ COLLECTION ]</button>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"clamp(4px,1svh,8px)", marginBottom:"clamp(6px,1.5svh,12px)" }}>
             <button style={{ ...btn(false), width:"100%", fontSize:"clamp(9px,2.5vw,12px)", position:"relative", overflow:"visible" }} onClick={() => { playClick(); setScreen("achievements"); }}>
               [ ACHIEVEMENTS ]
               {claimableAch?.length > 0 && (
@@ -372,7 +372,7 @@ export default function MenuScreen({
 
           {/* Stats */}
           {totalRuns > 0 && (
-            <div style={{ marginTop:20, paddingTop:16, borderTop:"1px solid #ddd", fontSize:11, color:MUTED, textAlign:"center" }}>
+            <div style={{ marginTop:"clamp(8px,1.5svh,20px)", paddingTop:"clamp(8px,1.5svh,16px)", borderTop:"1px solid #ddd", fontSize:"clamp(9px,1.8svh,11px)", color:MUTED, textAlign:"center" }}>
               <div style={{ lineHeight:2 }}>BEST <b style={{ color:DARK }}>{bestDist}m</b> &nbsp;|&nbsp; RUNS <b style={{ color:DARK }}>{totalRuns}</b></div>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, lineHeight:1, marginBottom:8 }}>
                 <span style={{ fontSize:16, color:DARK }}>◈</span>
