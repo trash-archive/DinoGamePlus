@@ -60,16 +60,20 @@ export default function TouchButtons({ keysRef, stats, visible, canvasRef, opaci
       if (!el) { setTopPx(null); return; }
       const rect = el.getBoundingClientRect();
       const canvasBottom = rect.bottom;
-      const viewBottom   = window.innerHeight;
-      // Centre of the gap below the canvas
+      // Use visualViewport on iOS Safari to get the true visible area
+      const viewBottom = window.visualViewport ? window.visualViewport.height : window.innerHeight;
       setTopPx(canvasBottom + (viewBottom - canvasBottom) / 2);
     };
-    measure();
+    // Delay first measure so the canvas is fully laid out
+    const t = setTimeout(measure, 80);
     window.addEventListener("resize", measure);
     window.addEventListener("orientationchange", measure);
+    if (window.visualViewport) window.visualViewport.addEventListener("resize", measure);
     return () => {
+      clearTimeout(t);
       window.removeEventListener("resize", measure);
       window.removeEventListener("orientationchange", measure);
+      if (window.visualViewport) window.visualViewport.removeEventListener("resize", measure);
     };
   }, [canvasRef]);
 

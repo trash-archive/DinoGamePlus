@@ -160,6 +160,18 @@ export function drawPachyHeadbuttOutline(ctx, x, y, frame, isDucking, activeTime
   ctx.restore();
 }
 
+// ─── SHIELD ICON ─────────────────────────────────────────────────────────────
+export function drawShieldIcon(ctx, x, y, size = 12, color = "#4488dd") {
+  ctx.fillStyle = color;
+  ctx.fillRect(x + size*0.15, y,            size*0.7,  size*0.12); // top bar
+  ctx.fillRect(x,             y + size*0.1, size,      size*0.45); // wide middle
+  ctx.fillRect(x + size*0.08, y + size*0.55,size*0.84, size*0.22); // lower taper
+  ctx.fillRect(x + size*0.22, y + size*0.75,size*0.55, size*0.16); // narrow lower
+  ctx.fillRect(x + size*0.38, y + size*0.88,size*0.25, size*0.12); // tip
+  ctx.fillStyle = "rgba(255,255,255,0.35)";
+  ctx.fillRect(x + size*0.2,  y + size*0.15,size*0.2,  size*0.25); // highlight
+}
+
 // ─── HEART ────────────────────────────────────────────────────────────────────
 export function drawHeart(ctx, x, y, size = 12, color = "#dd2244") {
   ctx.fillStyle = color;

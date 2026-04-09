@@ -52,6 +52,7 @@
 
 body {
   margin: 0;
+  touch-action: manipulation;
 }
 
 #root {
@@ -117,4 +118,11 @@ button:focus, button:focus-visible, button:active {
 
 * {
   -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input, textarea, [contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
 }

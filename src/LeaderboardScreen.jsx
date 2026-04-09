@@ -40,6 +40,10 @@ export default function LeaderboardScreen({ lbData, setLbData, lbLoading, setLbL
   const saveName = (name) => {
     const t = name.trim();
     if (!t) return;
+    // If the name hasn't changed from what's already saved, just close without re-checking
+    if (t.toUpperCase() === getSavedName().toUpperCase()) {
+      setLbRenaming(false); setLbNameError(""); return;
+    }
     isNameTaken(t).then(taken => {
       if (taken) { setLbNameError("Name already taken!"); }
       else { savePlayerName(t); showNotif("Name updated!"); setLbRenaming(false); setLbNameError(""); }

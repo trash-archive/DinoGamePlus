@@ -1,6 +1,31 @@
 import { useState } from "react";
 import { playClick, getSoundMuted, setSoundMuted, getSfxVolume, setSfxVolume } from "./hooks/useSoundEffects";
 
+const SAVE_KEYS = [
+  "dino_player_id", "dino_player_name",
+  "dino_fossils", "dino_totalFossils", "dino_bestDist", "dino_totalRuns",
+  "dino_upgradeLevels", "dino_ownedSkins", "dino_equippedSkin",
+  "dino_ownedDesigns", "dino_equippedDesign",
+  "dino_ownedSceneries", "dino_activeScenery",
+  "dino_achievStats", "dino_unlockedAch", "dino_claimableAch",
+  "dino_unlockedPowerups", "dino_touchButtons_v2", "dino_touchButtonOpacity",
+  "dino_controlsToastSeen", "dino_votes_v2",
+];
+
+function exportSave() {
+  const data = {};
+  SAVE_KEYS.forEach(k => { const v = localStorage.getItem(k); if (v !== null) data[k] = v; });
+  return btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+}
+
+function importSave(code) {
+  try {
+    const data = JSON.parse(decodeURIComponent(escape(atob(code.trim()))));
+    SAVE_KEYS.forEach(k => { if (data[k] !== undefined) localStorage.setItem(k, data[k]); });
+    return true;
+  } catch { return false; }
+}
+
 export default function MenuScreen({
   menuCanvasRef, menuDinoClicks, setMenuDinoClicks, showCredit, setShowCredit,
   startGame, setScreen, totalRuns, bestDist, fossils, passiveRate,
@@ -20,6 +45,10 @@ export default function MenuScreen({
   const [showTrapMenu, setShowTrapMenu] = useState(false);
   const [soundMuted, setSoundMutedState] = useState(() => getSoundMuted());
   const [sfxVolume,  setSfxVolumeState]  = useState(() => getSfxVolume());
+  const [saveCode,   setSaveCode]        = useState("");
+  const [importCode, setImportCode]      = useState("");
+  const [importErr,  setImportErr]       = useState("");
+  const [showSaveSection, setShowSaveSection] = useState(true);
 
   const outer = { minHeight:"100vh", background:BG, fontFamily:F, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", userSelect:"none", boxSizing:"border-box", width:"100%", overflowX:"hidden" };
   const card  = { background:"#faf8f4", border:`2px solid ${BORDER}`, padding:"28px", paddingBottom:"28px", boxSizing:"border-box", width:"100%", position:"relative", overflow:"visible" };
@@ -145,6 +174,54 @@ export default function MenuScreen({
                       <span style={{ fontSize:10, color:DARK, fontWeight:"bold", letterSpacing:1, textAlign:"right" }}>{key}</span>
                     </div>
                   ))}
+                </>
+              )}
+            </div>
+
+            {/* Save Code */}
+            <div style={{ borderTop:`1px solid #ddd`, paddingTop:16, marginBottom:10 }}>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+                <div style={{ fontSize:10, fontWeight:"bold", letterSpacing:3, color:DARK }}>SAVE CODE</div>
+                <button onClick={() => { playClick(); setShowSaveSection(v => !v); setImportCode(""); setImportErr(""); setSaveCode(""); }}
+                  style={{ background:"none", border:"none", fontSize:10, color:MUTED, cursor:"pointer", fontFamily:F, letterSpacing:1 }}>
+                  {showSaveSection ? "▲ HIDE" : "▼ SHOW"}
+                </button>
+              </div>
+              {showSaveSection && (
+                <>
+                  <div style={{ fontSize:9, color:MUTED, letterSpacing:1, lineHeight:1.6, marginBottom:10 }}>
+                    Backup your progress (fossils, upgrades, collection, achievements) into a code you can save anywhere. Use it to restore your game after clearing browser data or switching devices.
+                  </div>
+                  {/* Export */}
+                  <button onClick={() => { playClick(); setSaveCode(exportSave()); }}
+                    style={{ background:DARK, color:BG, border:`2px solid ${BORDER}`, padding:"6px 0", fontSize:10, fontFamily:F, cursor:"pointer", letterSpacing:2, fontWeight:"bold", width:"100%", marginBottom:6 }}>
+                    [ GENERATE SAVE CODE ]
+                  </button>
+                  {saveCode && (
+                    <>
+                      <div style={{ fontSize:9, color:MUTED, letterSpacing:1, marginBottom:4 }}>Tap the box below to select all, then copy it and keep it somewhere safe:</div>
+                      <textarea readOnly value={saveCode} rows={3}
+                        onClick={e => e.target.select()}
+                        style={{ width:"100%", fontFamily:"monospace", fontSize:9, padding:"6px 8px", border:`1px solid ${BORDER}`, background:"#eeeae4", color:DARK, boxSizing:"border-box", resize:"none", letterSpacing:0, marginBottom:8, wordBreak:"break-all" }}
+                      />
+                    </>
+                  )}
+                  {/* Import */}
+                  <div style={{ fontSize:9, color:MUTED, letterSpacing:1, marginBottom:4 }}>RESTORE FROM A SAVED CODE:</div>
+                  <textarea value={importCode} onChange={e => { setImportCode(e.target.value); setImportErr(""); }} rows={3} placeholder="Paste your save code here to restore progress..."
+                    style={{ width:"100%", fontFamily:"monospace", fontSize:9, padding:"6px 8px", border:`1px solid ${importErr ? "#cc2200" : BORDER}`, background:BG, color:DARK, boxSizing:"border-box", resize:"none", letterSpacing:0, marginBottom:6 }}
+                  />
+                  {importErr && <div style={{ fontSize:9, color:"#cc2200", letterSpacing:1, marginBottom:6 }}>{importErr}</div>}
+                  <button onClick={() => {
+                    playClick();
+                    if (!importCode.trim()) return;
+                    const ok = importSave(importCode);
+                    if (ok) { window.location.reload(); }
+                    else { setImportErr("Invalid code — make sure you copied the full code and try again."); }
+                  }}
+                    style={{ background:importCode.trim()?DARK:"#bbb", color:BG, border:`2px solid ${importCode.trim()?BORDER:"#bbb"}`, padding:"6px 0", fontSize:10, fontFamily:F, cursor:importCode.trim()?"pointer":"not-allowed", letterSpacing:2, fontWeight:"bold", width:"100%" }}>
+                    [ RESTORE & RELOAD ]
+                  </button>
                 </>
               )}
             </div>

@@ -8,7 +8,7 @@ import { GRAVITY, JUMP_FORCE, JUMP_HOLD_FORCE, JUMP_HOLD_FRAMES, GROUND_Y, DINO_
 import { lerp, clamp, drawFossilDiamond } from "./utils/helpers";
 import { getSceneryColors, getHudColors } from "./utils/scenery";
 import { getObstacleHitbox, rectsOverlap } from "./utils/collision";
-import { drawDino, drawHeart, drawPassiveEffect, drawShieldOutline, drawSpeedRushOutline, drawPterodacFlyOutline, drawPachyHeadbuttOutline } from "./rendering/drawDino";
+import { drawDino, drawHeart, drawShieldIcon, drawPassiveEffect, drawShieldOutline, drawSpeedRushOutline, drawPterodacFlyOutline, drawPachyHeadbuttOutline } from "./rendering/drawDino";
 import { drawStego } from "./dinos/stego";
 import { drawAnky }  from "./dinos/anky";
 import { drawTri }   from "./dinos/tri";
@@ -518,6 +518,9 @@ export default function DinoIncremental() {
       const k=keysRef.current, pk=prevKeysRef.current;
       const hasSpdPw   = false; // speed_pw removed — not in shop
       const hasSlowPw  = !!gs.activePowerups.slowmo_pw;
+      // Ease back from slow-mo: ramp effSpeed multiplier from 0.38 → 1 over 90 frames
+      if(!hasSlowPw && (gs.slowmoEaseTimer||0) > 0) gs.slowmoEaseTimer -= dt;
+      if(hasSlowPw) gs.slowmoEaseTimer = 120;
       const hasGiant   = !!gs.activePowerups.giant_pw;
       const hasGhost   = !!gs.activePowerups.ghost_pw;
       const hasTiny    = !!gs.activePowerups.tiny_pw;
@@ -847,6 +850,10 @@ export default function DinoIncremental() {
 
         let effSpeed=gs.speed;
         if(hasSlowPw) effSpeed*=0.38;
+        else if((gs.slowmoEaseTimer||0)>0){
+          const t = gs.slowmoEaseTimer/120;
+          effSpeed *= 0.38 + (1-0.38)*(1-t);
+        }
         gs.groundOffset+=effSpeed*dt;
 
         // ── Spawn obstacles ──────────────────────────────────────────────────
@@ -1424,10 +1431,14 @@ export default function DinoIncremental() {
 
       for(const p of gs.powerupPickups){
         if(!p.collected){
-          const pulse=0.8+Math.sin(gs.frame*0.14)*0.2;
-          ctx.save(); ctx.globalAlpha=pulse;
-          drawPowerupIcon(ctx,p.def.id,p.x,p.y,p.def.color);
-          ctx.restore();
+          if(p.def.id==="heart_pw"||p.def.id==="shield_pw"){
+            drawPowerupIcon(ctx,p.def.id,p.x,p.y,p.def.color);
+          } else {
+            const pulse=0.8+Math.sin(gs.frame*0.14)*0.2;
+            ctx.save(); ctx.globalAlpha=pulse;
+            drawPowerupIcon(ctx,p.def.id,p.x,p.y,p.def.color);
+            ctx.restore();
+          }
         }
       }
 
@@ -1447,7 +1458,19 @@ export default function DinoIncremental() {
       }
       if(hasSpdPwR){const sc2=gs.skin?.color||"#2a2a2a";for(let i=1;i<=4;i++){ctx.fillStyle=sc2;ctx.globalAlpha=0.1;ctx.fillRect(gs.dino.x-i*14,gs.dino.y+4,DINO_W,DINO_H-8);}ctx.globalAlpha=1;}
       for(const e of gs.passiveEffects) drawPassiveEffect(ctx,e.type,e.x,e.y,gs.frame,e.life/e.maxLife);
-      if(hasSlowPwR){ctx.fillStyle="rgba(34,187,170,0.06)";ctx.fillRect(0,0,CANVAS_W,CANVAS_H);}
+      if(hasSlowPwR){ctx.fillStyle="rgba(34,187,170,0.06)";ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
+        // Warning flash when about to expire (last 2 seconds = 120 frames)
+        if(gs.activePowerups.slowmo_pw && gs.activePowerups.slowmo_pw.timer<=120){
+          const warn=Math.sin(gs.frame*0.35)*0.5+0.5;
+          ctx.fillStyle=`rgba(34,187,170,${warn*0.18})`;
+          ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
+          ctx.fillStyle=`rgba(34,187,170,${warn*0.9})`;
+          ctx.font="bold 10px 'Courier New'";
+          ctx.textAlign="center";
+          ctx.fillText("SLOW ENDING!",CANVAS_W/2,CANVAS_H-28);
+          ctx.textAlign="left";
+        }
+      }
       if(hasGiantR){ctx.fillStyle="rgba(200,68,0,0.07)";ctx.fillRect(0,0,CANVAS_W,CANVAS_H);}
       if(hasGhostR){ctx.fillStyle="rgba(136,136,200,0.07)";ctx.fillRect(0,0,CANVAS_W,CANVAS_H);}
       if(hasFrenzyR){ctx.fillStyle=`rgba(220,30,100,${0.04+Math.sin(gs.frame*0.18)*0.03})`;ctx.fillRect(0,0,CANVAS_W,CANVAS_H);}
@@ -1602,6 +1625,14 @@ export default function DinoIncremental() {
         for(let i=0;i<gs.lives;i++) drawHeart(ctx,startX+i*(heartSize+heartGap),heartY,heartSize,HUD.heart);
       }
 
+      // Shield HUD icons (above hearts)
+      if(gs.shieldHitsLeft>0){
+        const shieldSize=14,shieldGap=4;
+        const totalW=gs.shieldHitsLeft*(shieldSize+shieldGap)-shieldGap;
+        const startX=CANVAS_W-totalW-8,shieldY=CANVAS_H-shieldSize*2-14;
+        for(let i=0;i<gs.shieldHitsLeft;i++) drawShieldIcon(ctx,startX+i*(shieldSize+shieldGap),shieldY,shieldSize,"#4488dd");
+      }
+
       // Combo
       if(gs.combo>1){
         ctx.fillStyle=HUD.hud;ctx.font="11px 'Courier New'";
@@ -1645,12 +1676,6 @@ export default function DinoIncremental() {
           ctx.fillStyle=def.color;ctx.fillRect(CANVAS_W-88,barY,Math.floor(76*frac),6);
           ctx.fillStyle=HUD.hud;ctx.font="9px 'Courier New'";
           ctx.fillText(def.label,CANVAS_W-88,barY+17);barY+=20;
-        } else if(def.duration===0){
-          const frac=gs.shieldHitsLeft/4;
-          ctx.fillStyle="rgba(0,0,0,0.22)";ctx.fillRect(CANVAS_W-88,barY,76,6);
-          ctx.fillStyle=def.color;ctx.fillRect(CANVAS_W-88,barY,Math.floor(76*frac),6);
-          ctx.fillStyle=HUD.hud;ctx.font="9px 'Courier New'";
-          ctx.fillText(`${def.label} x${gs.shieldHitsLeft}`,CANVAS_W-88,barY+17);barY+=20;
         }
       }
 

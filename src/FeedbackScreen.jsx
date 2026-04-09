@@ -268,7 +268,7 @@ export default function FeedbackScreen({ onBack, showNotif }) {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: BG, fontFamily: F, display: "flex", flexDirection: "column", alignItems: "center", boxSizing: "border-box", width: "100%", overflowX: "hidden", paddingBottom: 32 }}>
+    <div style={{ minHeight: "100svh", background: BG, fontFamily: F, display: "flex", flexDirection: "column", alignItems: "center", boxSizing: "border-box", width: "100%", overflowX: "hidden", overflowY: "auto", paddingBottom: 32 }}>
       <div style={{ width: "100%", maxWidth: 520, padding: "24px 16px 0", boxSizing: "border-box" }}>
 
         {/* Wall card */}
