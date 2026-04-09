@@ -8,7 +8,7 @@ function UpdatePrompt() {
   if (!needRefresh) return null;
   return (
     <div style={{
-      position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+      position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)',
       background: '#1a1a1a', color: '#f0ede6', padding: '10px 18px',
       fontSize: 11, letterSpacing: 2, zIndex: 9999,
       border: '1px solid #555', display: 'flex', alignItems: 'center', gap: 12,
