@@ -108,19 +108,22 @@ export default function MenuScreen({
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
                 <div>
                   <div style={{ fontSize:10, fontWeight:"bold", letterSpacing:3, color:DARK, marginBottom:3 }}>ON-SCREEN BUTTONS</div>
-                  <div style={{ fontSize:9, color:MUTED, letterSpacing:1 }}>Default ON on touch/tablet, OFF on desktop</div>
+                  <div style={{ fontSize:9, color:MUTED, letterSpacing:1 }}>Tap buttons to control the dino while playing</div>
                 </div>
                 <button onClick={() => { playClick(); setTouchButtons(!touchButtons); }}
                   style={{ background:touchButtons?DARK:BG, color:touchButtons?BG:MUTED, border:`2px solid ${BORDER}`, padding:"4px 14px", fontSize:10, fontFamily:F, cursor:"pointer", letterSpacing:2, fontWeight:"bold", flexShrink:0 }}
                 >{touchButtons ? "ON" : "OFF"}</button>
               </div>
-              <div style={{ fontSize:9, color:MUTED, letterSpacing:1, lineHeight:1.6 }}>Shows ▲▼◀▶ D-pad during gameplay. Only unlocked moves appear.</div>
+              <div style={{ fontSize:9, color:MUTED, letterSpacing:1, lineHeight:1.8 }}>
+                Shows a ▲▼◀▶ button pad on screen during a run so you can jump, dash, and drop without needing a keyboard. Only buttons for moves you've unlocked will appear.
+              </div>
             </div>
             <div style={{ marginBottom:14 }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
                 <span style={{ fontSize:10, letterSpacing:2, color:DARK }}>BUTTON OPACITY</span>
                 <span style={{ fontSize:10, color:MUTED, fontFamily:"monospace" }}>{Math.round(touchButtonOpacity*100)}%</span>
               </div>
+              <div style={{ fontSize:9, color:MUTED, letterSpacing:1, marginBottom:6 }}>Adjust how see-through the buttons appear on screen.</div>
               <input type="range" min="0.1" max="1" step="0.05" value={touchButtonOpacity} disabled={!touchButtons}
                 onChange={e => setTouchButtonOpacity(parseFloat(e.target.value))}
                 style={{ width:"100%", accentColor:DARK, opacity:touchButtons?1:0.3 }}
@@ -176,6 +179,49 @@ export default function MenuScreen({
                   ))}
                 </>
               )}
+            </div>
+
+            {/* Offline & Install Guide */}
+            <div style={{ borderTop:`1px solid #ddd`, paddingTop:16, marginBottom:10 }}>
+              <div style={{ fontSize:10, fontWeight:"bold", letterSpacing:3, color:DARK, marginBottom:10 }}>PLAY OFFLINE</div>
+              <div style={{ fontSize:9, color:MUTED, letterSpacing:1, lineHeight:1.8, marginBottom:10 }}>
+                This game works offline after your first visit. The game is automatically saved to your device in the background — no setup needed.
+              </div>
+              <div style={{ fontSize:9, fontWeight:"bold", letterSpacing:2, color:DARK, marginBottom:6 }}>INSTALL TO HOME SCREEN</div>
+              <div style={{ fontSize:9, color:MUTED, letterSpacing:1, lineHeight:1.8, marginBottom:4 }}>
+                Installing lets you open the game like a normal app — no browser bar, faster launch.
+              </div>
+              <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                <div style={{ background:"#f0ede6", border:"1px solid #ddd", padding:"10px 12px" }}>
+                  <div style={{ fontSize:9, fontWeight:"bold", letterSpacing:2, color:DARK, marginBottom:4 }}>📱 iPHONE / iPAD (SAFARI)</div>
+                  <div style={{ fontSize:9, color:MUTED, letterSpacing:1, lineHeight:1.8 }}>
+                    1. Open the game in Safari<br/>
+                    2. Tap the <b style={{color:DARK}}>Share</b> button (box with arrow at the bottom)<br/>
+                    3. Scroll down and tap <b style={{color:DARK}}>Add to Home Screen</b><br/>
+                    4. Tap <b style={{color:DARK}}>Add</b> — done!
+                  </div>
+                </div>
+                <div style={{ background:"#f0ede6", border:"1px solid #ddd", padding:"10px 12px" }}>
+                  <div style={{ fontSize:9, fontWeight:"bold", letterSpacing:2, color:DARK, marginBottom:4 }}>🤖 ANDROID (CHROME)</div>
+                  <div style={{ fontSize:9, color:MUTED, letterSpacing:1, lineHeight:1.8 }}>
+                    1. Open the game in Chrome<br/>
+                    2. Tap the <b style={{color:DARK}}>3-dot menu</b> (top right)<br/>
+                    3. Tap <b style={{color:DARK}}>Add to Home Screen</b> or <b style={{color:DARK}}>Install App</b><br/>
+                    4. Tap <b style={{color:DARK}}>Install</b> — done!
+                  </div>
+                </div>
+                <div style={{ background:"#f0ede6", border:"1px solid #ddd", padding:"10px 12px" }}>
+                  <div style={{ fontSize:9, fontWeight:"bold", letterSpacing:2, color:DARK, marginBottom:4 }}>💻 DESKTOP (CHROME / EDGE)</div>
+                  <div style={{ fontSize:9, color:MUTED, letterSpacing:1, lineHeight:1.8 }}>
+                    1. Open the game in Chrome or Edge<br/>
+                    2. Look for the <b style={{color:DARK}}>install icon</b> in the address bar (right side)<br/>
+                    3. Click it and select <b style={{color:DARK}}>Install</b>
+                  </div>
+                </div>
+              </div>
+              <div style={{ fontSize:9, color:MUTED, letterSpacing:1, lineHeight:1.8, marginTop:10 }}>
+                <b style={{color:DARK}}>Note:</b> Leaderboard and Community Wall still need internet. Everything else — running, upgrades, collection, achievements — works fully offline.
+              </div>
             </div>
 
             {/* Save Code */}

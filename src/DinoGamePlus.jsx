@@ -1230,7 +1230,9 @@ export default function DinoIncremental() {
         const effH=gs.dino.ducking?DUCK_H:DINO_H;
         const sc=hasGiant?1.9:hasTiny?0.6:1;
         const DW=(DINO_W-14)*sc, DH=effH*0.82*sc;
-        const DX=gs.dino.x+DINO_W/2-DW/2, DY=gs.dino.y+DINO_H-effH*sc;
+        const DX=gs.dino.x+DINO_W/2-DW/2;
+        // Tiny: anchor hitbox to ground like ducking so low obstacles/projectiles are avoided
+        const DY=hasTiny ? (GROUND_Y - DH) : gs.dino.y+DINO_H-effH*sc;
 
         // Tri: horn burst handled by timed passive above
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { playClick } from "./hooks/useSoundEffects";
 
 const F      = "'Courier New', monospace";
@@ -52,7 +52,7 @@ function ReplySection({ feedbackId, showToast }) {
   };
 
   const submitReply = async () => {
-    if (!replyMsg.trim()) return;
+    if (!replyMsg.trim() || !navigator.onLine) return;
     setSending(true);
     const name = replyName.trim() || "Anonymous";
     const msg  = replyMsg.trim();
@@ -152,7 +152,16 @@ export default function FeedbackScreen({ onBack, showNotif }) {
   const [filter,    setFilter]    = useState("ALL");
   const [page,      setPage]      = useState(1);
   const [toast,     setToast]     = useState(null);
+  const [isOnline,  setIsOnline]  = useState(() => navigator.onLine);
   const PAGE_SIZE = 10;
+
+  useEffect(() => {
+    const on  = () => setIsOnline(true);
+    const off = () => setIsOnline(false);
+    window.addEventListener("online",  on);
+    window.addEventListener("offline", off);
+    return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
+  }, []);
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2200); };
 
@@ -163,6 +172,7 @@ export default function FeedbackScreen({ onBack, showNotif }) {
   const [status,  setStatus]  = useState(null);
 
   const fetchFeedbacks = async () => {
+    if (!navigator.onLine) { setFbLoading(false); return; }
     setFbLoading(true);
     try {
       const [fbRes, repRes] = await Promise.all([
@@ -190,6 +200,12 @@ export default function FeedbackScreen({ onBack, showNotif }) {
   };
 
   useEffect(() => { fetchFeedbacks(); }, []);
+  // Re-fetch automatically when connection is restored (not on initial mount)
+  const isOnlineRef = useRef(isOnline);
+  useEffect(() => {
+    if (isOnline && !isOnlineRef.current) fetchFeedbacks();
+    isOnlineRef.current = isOnline;
+  }, [isOnline]);
 
   const btn = (primary = false, small = false) => ({
     background: primary ? DARK : BG, color: primary ? BG : DARK,
@@ -199,7 +215,7 @@ export default function FeedbackScreen({ onBack, showNotif }) {
   });
 
   const submit = async () => {
-    if (!message.trim()) return;
+    if (!message.trim() || !navigator.onLine) return;
     setStatus("sending");
     try {
       const res  = await fetch(APPS_SCRIPT_URL, {
@@ -218,7 +234,7 @@ export default function FeedbackScreen({ onBack, showNotif }) {
   // direction: "up" | "down"
   const vote = async (fb, direction) => {
     const id = fb.FeedbackId;
-    if (!id) return;
+    if (!id || !navigator.onLine) return;
 
     // read fresh votes from ref to avoid stale closure
     const current = votesRef.current[id]; // "up" | "down" | undefined
@@ -274,6 +290,13 @@ export default function FeedbackScreen({ onBack, showNotif }) {
         {/* Wall card */}
         <div style={{ background: "#faf8f4", border: `2px solid ${BORDER}`, padding: "20px 20px 16px", boxSizing: "border-box" }}>
 
+          {/* Offline banner */}
+          {!isOnline && (
+            <div style={{ marginBottom: 12, padding: "10px 12px", background: "#fff3cd", border: "1px solid #e6c84a", fontSize: 10, letterSpacing: 1, color: "#7a5c00", lineHeight: 1.6 }}>
+              ⚠ YOU'RE OFFLINE — Community Wall is not available without an internet connection. Connect to load posts and submit feedback.
+            </div>
+          )}
+
           {/* Header row */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 14, gap: 8, flexWrap: "wrap" }}>
             <div>
@@ -281,8 +304,8 @@ export default function FeedbackScreen({ onBack, showNotif }) {
               <div style={{ fontSize: 20, fontWeight: "bold", letterSpacing: 2 }}>WALL</div>
             </div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              <button style={{ ...btn(false, true), fontSize: 9 }} onClick={() => { playClick(); fetchFeedbacks(); }}>[ REFRESH ]</button>
-              <button style={{ ...btn(true,  true), fontSize: 9 }} onClick={() => { playClick(); setShowForm(true); setStatus(null); }}>[ ADD ]</button>
+              <button style={{ ...btn(false, true), fontSize: 9, opacity: isOnline ? 1 : 0.4 }} disabled={!isOnline} onClick={() => { playClick(); fetchFeedbacks(); }}>[ REFRESH ]</button>
+              <button style={{ ...btn(true,  true), fontSize: 9, opacity: isOnline ? 1 : 0.4 }} disabled={!isOnline} onClick={() => { if (!isOnline) return; playClick(); setShowForm(true); setStatus(null); }}>[ ADD ]</button>
             </div>
           </div>
 
@@ -304,7 +327,11 @@ export default function FeedbackScreen({ onBack, showNotif }) {
           <div style={{ borderTop: `1px solid #ddd`, marginBottom: 12 }} />
 
           {/* Feed */}
-          {fbLoading ? (
+          {!isOnline ? (
+            <div style={{ textAlign: "center", padding: "32px 0", fontSize: 10, color: MUTED, letterSpacing: 2, lineHeight: 1.8 }}>
+              No internet connection.<br/>Posts will appear here once you're online.
+            </div>
+          ) : fbLoading ? (
             <div style={{ textAlign: "center", padding: "32px 0", fontSize: 10, color: MUTED, letterSpacing: 3 }}>LOADING...</div>
           ) : (() => {
             const filtered = filter === "ALL" ? feedbacks : feedbacks.filter(f => f.Type === filter);

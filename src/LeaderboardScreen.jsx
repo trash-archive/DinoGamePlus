@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { fetchLeaderboard, isNameTaken } from "./leaderboard";
 import { getSavedName, savePlayerName, getPlayerId } from "./supabase";
 import { playClick } from "./hooks/useSoundEffects";
@@ -15,6 +15,15 @@ export default function LeaderboardScreen({ lbData, setLbData, lbLoading, setLbL
   const [lbNewName,   setLbNewName]   = useState("");
   const [lbNameError, setLbNameError] = useState("");
   const [showDetails, setShowDetails] = useState(false);
+  const [isOnline,    setIsOnline]    = useState(() => navigator.onLine);
+
+  useEffect(() => {
+    const on  = () => setIsOnline(true);
+    const off = () => setIsOnline(false);
+    window.addEventListener("online",  on);
+    window.addEventListener("offline", off);
+    return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
+  }, []);
 
   const myId = getPlayerId();
   const top3 = lbData.slice(0, 3);
@@ -40,9 +49,14 @@ export default function LeaderboardScreen({ lbData, setLbData, lbLoading, setLbL
   const saveName = (name) => {
     const t = name.trim();
     if (!t) return;
-    // If the name hasn't changed from what's already saved, just close without re-checking
+    // Unchanged name — just close
     if (t.toUpperCase() === getSavedName().toUpperCase()) {
       setLbRenaming(false); setLbNameError(""); return;
+    }
+    // Offline — block rename entirely
+    if (!navigator.onLine) {
+      setLbNameError("Name changes require an internet connection.");
+      return;
     }
     isNameTaken(t).then(taken => {
       if (taken) { setLbNameError("Name already taken!"); }
@@ -65,13 +79,21 @@ export default function LeaderboardScreen({ lbData, setLbData, lbLoading, setLbL
             </button>
             <button style={{ ...btn(false,true), fontSize:9 }} onClick={async () => {
               playClick();
+              if (!isOnline) return;
               setLbLoading(true);
               const data = await fetchLeaderboard();
               setLbData(data);
               setLbLoading(false);
-            }}>[ REFRESH ]</button>
+            }} disabled={!isOnline} title={!isOnline ? "No internet connection" : ""}>[ REFRESH ]</button>
           </div>
         </div>
+
+        {/* Offline banner */}
+        {!isOnline && (
+          <div style={{ marginBottom: 14, padding: "10px 12px", background: "#fff3cd", border: "1px solid #e6c84a", fontSize: 10, letterSpacing: 1, color: "#7a5c00", lineHeight: 1.6 }}>
+            ⚠ YOU'RE OFFLINE — Leaderboard scores can't be loaded right now. Name changes are disabled until you reconnect.
+          </div>
+        )}
 
         {/* Rename */}
         <div style={{ marginBottom:14, padding:"10px 12px", background:"#f5f2ec", border:"1px solid #ddd" }}>
@@ -101,7 +123,11 @@ export default function LeaderboardScreen({ lbData, setLbData, lbLoading, setLbL
           {lbNameError && <div style={{ fontSize:10, color:"#cc2200", marginTop:6, letterSpacing:1 }}>{lbNameError}</div>}
         </div>
 
-        {lbLoading ? (
+        {!isOnline ? (
+          <div style={{ textAlign:"center", padding:40, fontSize:11, color:MUTED, letterSpacing:2, border:"1px solid #ddd", marginBottom:16, lineHeight:1.8 }}>
+            You're offline.<br/>Connect to the internet to view the leaderboard.
+          </div>
+        ) : lbLoading ? (
           <div style={{ textAlign:"center", padding:40, fontSize:11, color:MUTED, letterSpacing:3 }}>LOADING...</div>
         ) : lbData.length === 0 ? (
           <div style={{ textAlign:"center", padding:40, fontSize:11, color:MUTED, letterSpacing:2, border:"1px solid #ddd", marginBottom:16 }}>No scores yet. Be the first!</div>
