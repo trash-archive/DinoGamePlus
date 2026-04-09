@@ -11,7 +11,7 @@ export default defineConfig({
       includeAssets: ['favicon.svg', 'fossil-icon.png', 'icons.svg'],
       manifest: {
         name: 'Dino Reimagined',
-        short_name: 'Dino',
+        short_name: 'Dino Reimagined',
         description: 'Run, collect fossils, upgrade, and survive.',
         theme_color: '#1a1a1a',
         background_color: '#f0ede6',
