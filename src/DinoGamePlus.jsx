@@ -34,6 +34,7 @@ import { SCENERIES, SKINS, DINO_DESIGNS, DINO_PASSIVES, PASSIVE_ICONS, REGULAR_S
 import BossFightScreen from "./BossFightScreen";
 import FeedbackScreen from "./FeedbackScreen";
 import TouchButtons from "./TouchButtons";
+import useHistoryNav from "./hooks/useHistoryNav";
 
 
 
@@ -49,6 +50,7 @@ export default function DinoIncremental() {
   const touchStartRef = useRef(null);
 
   const [screen,         setScreen]         = useState("menu");
+  const { navigate, exitWarning } = useHistoryNav(screen, setScreen, ["menu", "game"]);
   const { muted: musicMuted, setMuted: setMusicMuted, volume: musicVolume, setVolume: setMusicVolume } = useCozyMusic(screen === "game" || screen === "gameover");
   const { playJump, playPoint, playDie } = useSoundEffects();
   const playJumpRef = useRef(playJump);
@@ -320,7 +322,7 @@ export default function DinoIncremental() {
     };
     keysRef.current={};
     prevKeysRef.current={};
-    setScreen("game");
+    navigate("game");
   },[upgradeLevels, getStats, equippedSkin, equippedDesign, activeScenery, currentSkin, currentDesign]);
 
   const doJump = useCallback(()=>{
@@ -1834,8 +1836,9 @@ export default function DinoIncremental() {
   const abyssUnlocked = REGULAR_SCENERY_IDS.every(id => ownedSceneries.includes(id));
 
   const startBossFight = useCallback(() => {
-    setScreen("bossfight");
-  }, []);
+    navigate("bossfight");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen]);
 
   // Bite skill derived from upgrades
   const hasBiteSkill = (upgradeLevels.bite || 0) >= 1;
@@ -1860,7 +1863,7 @@ export default function DinoIncremental() {
       menuCanvasRef={menuCanvasRef}
       menuDinoClicks={menuDinoClicks} setMenuDinoClicks={setMenuDinoClicks}
       showCredit={showCredit} setShowCredit={setShowCredit}
-      startGame={startGame} setScreen={setScreen}
+      startGame={startGame} setScreen={navigate}
       totalRuns={totalRuns} bestDist={bestDist} fossils={fossils} passiveRate={passiveRate}
       notification={notification} achivNotif={achivNotif}
       ownedSkins={ownedSkins} ownedDesigns={ownedDesigns} ownedSceneries={ownedSceneries}
@@ -1874,6 +1877,7 @@ export default function DinoIncremental() {
       controlsToastSeen={controlsToastSeen} setControlsToastSeen={setControlsToastSeen}
       isTouchDevice={isTouchDevice}
       claimableAch={claimableAch}
+      exitWarning={exitWarning}
       F={F} BG={BG} DARK={DARK} BORDER={BORDER} MUTED={MUTED}
     />
   );
@@ -1910,8 +1914,8 @@ export default function DinoIncremental() {
               lastRunRank={lastRunRank}
               getSavedName={getSavedName}
               onRunAgain={startGame}
-              onUpgrades={()=>setScreen("shop")}
-              onMenu={()=>setScreen("menu")}
+              onUpgrades={()=>navigate("shop")}
+              onMenu={()=>navigate("menu")}
             />
           )}
         </div>
@@ -1932,7 +1936,7 @@ export default function DinoIncremental() {
       unlockedPowerups={unlockedPowerups}
       buyUpgrade={buyUpgrade} unlockPowerup={unlockPowerup}
       stats={stats}
-      startGame={startGame} setScreen={setScreen}
+      startGame={startGame} setScreen={navigate}
       notification={notification} achivNotif={achivNotif}
       abyssUnlocked={abyssUnlocked}
       startBossFight={startBossFight}
@@ -1946,7 +1950,7 @@ export default function DinoIncremental() {
       ownedSkins={ownedSkins} ownedDesigns={ownedDesigns} ownedSceneries={ownedSceneries}
       equippedSkin={equippedSkin} equippedDesign={equippedDesign} activeScenery={activeScenery}
       buySkin={buySkin} buyDesign={buyDesign} buyScenery={buyScenery}
-      startGame={startGame} setScreen={setScreen}
+      startGame={startGame} setScreen={navigate}
       abyssUnlocked={abyssUnlocked} startBossFight={startBossFight}
       notification={notification} achivNotif={achivNotif}
     />
@@ -1964,7 +1968,7 @@ export default function DinoIncremental() {
         setTimeout(()=>setNotification(null),2200);
       }}
       notification={notification} achivNotif={achivNotif}
-      onBack={()=>setScreen("menu")}
+      onBack={()=>navigate("menu")}
       F={F} BG={BG} DARK={DARK} BORDER={BORDER} MUTED={MUTED}
     />
   );
@@ -1973,13 +1977,13 @@ export default function DinoIncremental() {
     <LeaderboardScreen
       lbData={lbData} setLbData={setLbData}
       lbLoading={lbLoading} setLbLoading={setLbLoading}
-      onBack={()=>setScreen("menu")}
+      onBack={()=>navigate("menu")}
       showNotif={showNotif}
     />
   );
 
   if(screen==="feedback") return (
-    <FeedbackScreen onBack={()=>setScreen("menu")} showNotif={showNotif} />
+    <FeedbackScreen onBack={()=>navigate("menu")} showNotif={showNotif} />
   );
 
   if(screen==="bossfight") return (
@@ -1996,10 +2000,10 @@ export default function DinoIncremental() {
         setFossils(f => f + 5000);
         setTotalFossils(f => f + 5000);
         showNotif("The Horror Entity is defeated! +5000 fossils!");
-        setScreen("menu");
+        navigate("menu");
       }}
       onDeath={()=>setBossKey(k => k + 1)}
-      onMenu={()=>setScreen("menu")}
+      onMenu={()=>navigate("menu")}
       notification={notification}
       achivNotif={achivNotif}
     />

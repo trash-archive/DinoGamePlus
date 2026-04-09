@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { playClick } from "./hooks/useSoundEffects";
+import useModalBack from "./hooks/useModalBack";
 
 const F      = "'Courier New', monospace";
 const BG     = "#f0ede6";
@@ -149,6 +150,8 @@ export default function FeedbackScreen({ onBack, showNotif }) {
   const votesRef = { current: votes };
   votesRef.current = votes;
   const [showForm,  setShowForm]  = useState(false);
+  const closeForm = useCallback(() => setShowForm(false), []);
+  useModalBack(showForm, closeForm);
   const [filter,    setFilter]    = useState("ALL");
   const [page,      setPage]      = useState(1);
   const [toast,     setToast]     = useState(null);

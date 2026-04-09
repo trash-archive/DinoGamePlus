@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { playClick, getSoundMuted, setSoundMuted, getSfxVolume, setSfxVolume } from "./hooks/useSoundEffects";
+import useModalBack from "./hooks/useModalBack";
 
 const SAVE_KEYS = [
   "dino_player_id", "dino_player_name",
@@ -38,9 +39,12 @@ export default function MenuScreen({
   touchButtons, setTouchButtons,
   touchButtonOpacity, setTouchButtonOpacity,
   claimableAch,
+  exitWarning,
   F, BG, DARK, BORDER, MUTED,
 }) {
   const [showSettings, setShowSettings] = useState(false);
+  const closeSettings = useCallback(() => setShowSettings(false), []);
+  useModalBack(showSettings, closeSettings);
   const [tabVisible, setTabVisible] = useState(false);
   const [showTrapMenu, setShowTrapMenu] = useState(false);
   const [soundMuted, setSoundMutedState] = useState(() => getSoundMuted());
@@ -424,6 +428,7 @@ export default function MenuScreen({
 
       {notification  && <div style={notifBox}>{notification}</div>}
       {achivNotif    && <div style={achivNotifBox}>{achivNotif}</div>}
+      {exitWarning   && <div style={notifBox}>PRESS BACK AGAIN TO EXIT</div>}
     </div>
   );
 }
