@@ -25,6 +25,10 @@ function UpdatePrompt() {
 
 function App() {
   useEffect(() => {
+    // Unlock screen orientation so landscape works on Android PWA
+    if (screen.orientation?.unlock) {
+      try { screen.orientation.unlock(); } catch {}
+    }
     // Flush any scores that were queued while offline
     flushPendingScores();
     window.addEventListener('online', flushPendingScores);
