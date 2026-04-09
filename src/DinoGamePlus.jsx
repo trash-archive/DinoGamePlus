@@ -518,9 +518,15 @@ export default function DinoIncremental() {
       const k=keysRef.current, pk=prevKeysRef.current;
       const hasSpdPw   = false; // speed_pw removed — not in shop
       const hasSlowPw  = !!gs.activePowerups.slowmo_pw;
-      // Ease back from slow-mo: ramp effSpeed multiplier from 0.38 → 1 over 90 frames
+      // Ease back from slow-mo: ramp effSpeed multiplier from 0.38 → 1 over 120 frames
       if(!hasSlowPw && (gs.slowmoEaseTimer||0) > 0) gs.slowmoEaseTimer -= dt;
       if(hasSlowPw) gs.slowmoEaseTimer = 120;
+
+      // Tick powerup timers first so all flags below reflect the current frame
+      for(const [pid,p] of Object.entries(gs.activePowerups)){
+        if(p.duration>0){p.timer-=dt; if(p.timer<=0) delete gs.activePowerups[pid];}
+      }
+
       const hasGiant   = !!gs.activePowerups.giant_pw;
       const hasGhost   = !!gs.activePowerups.ghost_pw;
       const hasTiny    = !!gs.activePowerups.tiny_pw;
@@ -733,9 +739,7 @@ export default function DinoIncremental() {
         }
 
         // ── Powerup ticks ────────────────────────────────────────────────────
-        for(const [pid,p] of Object.entries(gs.activePowerups)){
-          if(p.duration>0){p.timer-=dt; if(p.timer<=0) delete gs.activePowerups[pid];}
-        }
+        // (timers already ticked at top of loop before flag reads)
         if(hasWind){
           gs.coinManiaTimer-=dt;
           if(gs.coinManiaTimer<=0){
@@ -1231,8 +1235,8 @@ export default function DinoIncremental() {
         const sc=hasGiant?1.9:hasTiny?0.6:1;
         const DW=(DINO_W-14)*sc, DH=effH*0.82*sc;
         const DX=gs.dino.x+DINO_W/2-DW/2;
-        // Tiny: anchor hitbox to ground like ducking so low obstacles/projectiles are avoided
-        const DY=hasTiny ? (GROUND_Y - DH) : gs.dino.y+DINO_H-effH*sc;
+        // Anchor hitbox to dino feet — works correctly on ground and in air
+        const DY=(gs.dino.y+DINO_H)-DH;
 
         // Tri: horn burst handled by timed passive above
 
@@ -1484,12 +1488,10 @@ export default function DinoIncremental() {
         const pulse = 0.6 + Math.sin(gs.frame * 0.4) * 0.4;
         const col = `rgba(255,160,0,${fade * pulse})`;
         const f2 = gs.dino.onGround ? Math.floor(gs.frame/5)%2 : 0;
-        const scale = hasGiantR ? 1.9 : hasTinyR ? 0.6 : 1;
         ctx.save();
-        if(scale !== 1) {
-          const bx = gs.dino.x + DINO_W/2, by = gs.dino.y + DINO_H;
-          ctx.translate(bx,by); ctx.scale(scale,scale); ctx.translate(-bx,-by);
-        }
+        const bx = gs.dino.x + DINO_W/2, by = gs.dino.y + DINO_H;
+        const sc2 = hasGiantR ? 1.9 : hasTinyR ? 0.6 : 1;
+        if(sc2 !== 1){ ctx.translate(bx,by); ctx.scale(sc2,sc2); ctx.translate(-bx,-by); }
         for(const [ox,oy] of [[-3,0],[3,0],[0,-3],[0,3]])
           drawAnky(ctx, gs.dino.x+ox, gs.dino.y+oy, false, col, col, col, col, gs.dino.ducking, f2);
         ctx.restore();
@@ -1528,12 +1530,10 @@ export default function DinoIncremental() {
         const pulse = 0.6 + Math.sin(gs.frame * 0.4) * 0.4;
         const col = `rgba(220,150,0,${fade * pulse})`;
         const f2 = gs.dino.onGround ? Math.floor(gs.frame/5)%2 : 0;
-        const scale = hasGiantR ? 1.9 : hasTinyR ? 0.6 : 1;
         ctx.save();
-        if(scale !== 1) {
-          const bx = gs.dino.x + DINO_W/2, by = gs.dino.y + DINO_H;
-          ctx.translate(bx,by); ctx.scale(scale,scale); ctx.translate(-bx,-by);
-        }
+        const bx = gs.dino.x + DINO_W/2, by = gs.dino.y + DINO_H;
+        const sc2 = hasGiantR ? 1.9 : hasTinyR ? 0.6 : 1;
+        if(sc2 !== 1){ ctx.translate(bx,by); ctx.scale(sc2,sc2); ctx.translate(-bx,-by); }
         for(const [ox,oy] of [[-3,0],[3,0],[0,-3],[0,3]])
           drawTri(ctx, gs.dino.x+ox, gs.dino.y+oy, false, col, col, col, col, col, gs.dino.ducking, f2);
         ctx.restore();
@@ -1550,12 +1550,10 @@ export default function DinoIncremental() {
         const pulse = 0.6 + Math.sin(gs.frame * 0.4) * 0.4;
         const col = `rgba(255,200,50,${fade * pulse})`;
         const f2 = gs.dino.onGround ? Math.floor(gs.frame/5)%2 : 0;
-        const scale = hasGiantR ? 1.9 : hasTinyR ? 0.6 : 1;
         ctx.save();
-        if(scale !== 1) {
-          const bx = gs.dino.x + DINO_W/2, by = gs.dino.y + DINO_H;
-          ctx.translate(bx,by); ctx.scale(scale,scale); ctx.translate(-bx,-by);
-        }
+        const bx = gs.dino.x + DINO_W/2, by = gs.dino.y + DINO_H;
+        const sc2 = hasGiantR ? 1.9 : hasTinyR ? 0.6 : 1;
+        if(sc2 !== 1){ ctx.translate(bx,by); ctx.scale(sc2,sc2); ctx.translate(-bx,-by); }
         for(const [ox,oy] of [[-3,0],[3,0],[0,-3],[0,3]])
           drawStego(ctx, gs.dino.x+ox, gs.dino.y+oy, false, col, col, col, gs.dino.ducking, f2);
         ctx.restore();
