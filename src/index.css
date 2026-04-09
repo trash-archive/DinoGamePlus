@@ -55,6 +55,12 @@ body {
   touch-action: manipulation;
 }
 
+html, body {
+  width: 100%;
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
 #root {
   width: 100%;
   min-height: 100svh;

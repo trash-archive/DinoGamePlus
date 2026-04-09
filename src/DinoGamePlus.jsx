@@ -101,6 +101,7 @@ export default function DinoIncremental() {
   const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
   const [touchButtons,     setTouchButtons]     = useLocalStorage("dino_touchButtons_v2", isTouchDevice);
   const [controlsToastSeen, setControlsToastSeen] = useLocalStorage("dino_controlsToastSeen", false);
+  const [landscapeToastSeen, setLandscapeToastSeen] = useLocalStorage("dino_landscapeToastSeen", false);
 
 
   const getStats = useCallback((levels) => {
@@ -1884,17 +1885,27 @@ export default function DinoIncremental() {
 
   if(screen==="game"||screen==="gameover") return (
     <div style={{...outer,justifyContent:"center",padding:0}}>
-      {screen==="game" && !controlsToastSeen && (
+      {screen==="game" && (!controlsToastSeen || (isTouchDevice && !landscapeToastSeen)) && (
         <div
           onTouchStart={(e)=>e.stopPropagation()}
           onTouchEnd={(e)=>e.stopPropagation()}
           onMouseDown={(e)=>e.stopPropagation()}
           onMouseUp={(e)=>e.stopPropagation()}
-          style={{position:"fixed",top:12,left:"50%",transform:"translateX(-50%)",background:"rgba(26,26,26,0.92)",color:BG,padding:"8px 14px",fontSize:"clamp(9px,2.5vw,11px)",letterSpacing:1,zIndex:2000,border:"1px solid #555",display:"flex",alignItems:"center",gap:10,width:"calc(100vw - 24px)",maxWidth:480,boxSizing:"border-box",touchAction:"auto"}}>
-          <span style={{flex:1,lineHeight:1.5}}>
-            {isTouchDevice ? "TIP: Use swipe gestures instead of buttons — toggle in SETTINGS" : "TIP: Enable on-screen button controls in SETTINGS"}
-          </span>
-          <button onClick={()=>setControlsToastSeen(true)} style={{background:"transparent",color:BG,border:"1px solid #888",padding:"3px 8px",fontSize:"clamp(9px,2.5vw,11px)",fontFamily:F,cursor:"pointer",letterSpacing:1,fontWeight:"bold",flexShrink:0,touchAction:"auto",minWidth:32,minHeight:32}}>✕</button>
+          style={{position:"fixed",top:12,left:"50%",transform:"translateX(-50%)",zIndex:2000,display:"flex",flexDirection:"column",gap:6,width:"calc(100vw - 24px)",maxWidth:480,boxSizing:"border-box",touchAction:"auto"}}>
+          {!controlsToastSeen && (
+            <div style={{background:"rgba(26,26,26,0.92)",color:BG,padding:"8px 14px",fontSize:"clamp(9px,2.5vw,11px)",letterSpacing:1,border:"1px solid #555",display:"flex",alignItems:"center",gap:10}}>
+              <span style={{flex:1,lineHeight:1.5}}>
+                {isTouchDevice ? "TIP: Use swipe gestures instead of buttons — toggle in SETTINGS" : "TIP: Enable on-screen button controls in SETTINGS"}
+              </span>
+              <button onClick={()=>setControlsToastSeen(true)} style={{background:"transparent",color:BG,border:"1px solid #888",padding:"3px 8px",fontSize:"clamp(9px,2.5vw,11px)",fontFamily:F,cursor:"pointer",letterSpacing:1,fontWeight:"bold",flexShrink:0,touchAction:"auto",minWidth:32,minHeight:32}}>✕</button>
+            </div>
+          )}
+          {isTouchDevice && !landscapeToastSeen && (
+            <div style={{background:"rgba(26,26,26,0.92)",color:BG,padding:"8px 14px",fontSize:"clamp(9px,2.5vw,11px)",letterSpacing:1,border:"1px solid #555",display:"flex",alignItems:"center",gap:10}}>
+              <span style={{flex:1,lineHeight:1.5}}>TIP: Rotate your device to landscape for bigger gameplay area</span>
+              <button onClick={()=>setLandscapeToastSeen(true)} style={{background:"transparent",color:BG,border:"1px solid #888",padding:"3px 8px",fontSize:"clamp(9px,2.5vw,11px)",fontFamily:F,cursor:"pointer",letterSpacing:1,fontWeight:"bold",flexShrink:0,touchAction:"auto",minWidth:32,minHeight:32}}>✕</button>
+            </div>
+          )}
         </div>
       )}
       <div style={{width:"100%",maxWidth:CANVAS_W,display:"flex",flexDirection:"column",alignItems:"center"}}>

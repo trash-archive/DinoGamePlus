@@ -10,7 +10,7 @@ const SAVE_KEYS = [
   "dino_ownedSceneries", "dino_activeScenery",
   "dino_achievStats", "dino_unlockedAch", "dino_claimableAch",
   "dino_unlockedPowerups", "dino_touchButtons_v2", "dino_touchButtonOpacity",
-  "dino_controlsToastSeen", "dino_votes_v2",
+  "dino_controlsToastSeen", "dino_landscapeToastSeen", "dino_votes_v2",
 ];
 
 function exportSave() {
@@ -45,6 +45,7 @@ export default function MenuScreen({
   const [showSettings, setShowSettings] = useState(false);
   const closeSettings = useCallback(() => setShowSettings(false), []);
   useModalBack(showSettings, closeSettings);
+
   const [tabVisible, setTabVisible] = useState(false);
   const [showTrapMenu, setShowTrapMenu] = useState(false);
   const [soundMuted, setSoundMutedState] = useState(() => getSoundMuted());
@@ -54,7 +55,7 @@ export default function MenuScreen({
   const [importErr,  setImportErr]       = useState("");
   const [showSaveSection, setShowSaveSection] = useState(true);
 
-  const outer = { height:"100svh", background:BG, fontFamily:F, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", userSelect:"none", boxSizing:"border-box", width:"100%", overflowX:"hidden", overflowY:"hidden", padding:"clamp(8px,2svh,20px) 16px" };
+  const outer = { minHeight:"100svh", background:BG, fontFamily:F, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", userSelect:"none", boxSizing:"border-box", width:"100%", overflowX:"hidden", overflowY:"auto", padding:"clamp(8px,2svh,20px) 16px" };
   const card  = { background:"#faf8f4", border:`2px solid ${BORDER}`, padding:"clamp(14px,3svh,28px) clamp(14px,4vw,28px)", paddingBottom:"clamp(14px,3svh,28px)", boxSizing:"border-box", width:"100%", position:"relative", overflow:"visible" };
   const btn   = (primary=false) => ({ background:primary?DARK:BG, color:primary?BG:DARK, border:`2px solid ${BORDER}`, padding:primary?`clamp(8px,1.8svh,13px) 0`:`clamp(6px,1.4svh,10px) 2px`, fontSize:primary?"clamp(11px,2svh,14px)":"clamp(9px,1.8svh,12px)", fontFamily:F, cursor:"pointer", letterSpacing:primary?4:0, fontWeight:"bold", boxSizing:"border-box", transition:"opacity 0.1s" });
   const notifBox      = { position:"fixed", bottom:24, left:"50%", transform:"translateX(-50%)", background:DARK, color:BG, padding:"9px 22px", fontSize:11, letterSpacing:2, zIndex:999, whiteSpace:"nowrap", border:"1px solid #555" };

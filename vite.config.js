@@ -16,7 +16,7 @@ export default defineConfig({
         theme_color: '#1a1a1a',
         background_color: '#f0ede6',
         display: 'standalone',
-        orientation: 'portrait',
+        orientation: 'any',
         icons: [
           { src: '/fossil-icon.png', sizes: '192x192', type: 'image/png' },
           { src: '/fossil-icon.png', sizes: '512x512', type: 'image/png' },
