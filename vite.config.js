@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'prompt',
-      includeAssets: ['favicon.svg', 'fossil-icon.png', 'icons.svg'],
+      includeAssets: ['favicon.svg', 'logo.png', 'logo-192.png', 'logo-512.png', 'icons.svg'],
       manifest: {
         name: 'Dino Reimagined',
         short_name: 'Dino Reimagined',
@@ -18,8 +18,9 @@ export default defineConfig({
         display: 'standalone',
         orientation: 'any',
         icons: [
-          { src: '/fossil-icon.png', sizes: '192x192', type: 'image/png' },
-          { src: '/fossil-icon.png', sizes: '512x512', type: 'image/png' },
+          { src: '/logo-192.png', sizes: '192x192', type: 'image/png' },
+          { src: '/logo-512.png', sizes: '512x512', type: 'image/png' },
+          { src: '/logo-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
         ],
       },
       workbox: {
