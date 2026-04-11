@@ -19,7 +19,7 @@ const SCENERY_HUD = {
   plains:  { hud:["#222222","#dddddd"], fossil:["#888888","#ccccaa"], heart:["#dd2244","#ff4466"], bonePick:["#888888","#cccc99"] },
   desert:  { hud:["#222222","#dddddd"], fossil:["#888888","#ccccaa"], heart:["#dd2244","#ff4466"], bonePick:["#888888","#cccc99"] },
   arctic:  { hud:["#222222","#dddddd"], fossil:["#888888","#ccccaa"], heart:["#dd2244","#ff4466"], bonePick:["#888888","#cccc99"] },
-  volcano: { hud:["#ff6600","#ffaa44"], fossil:["#ff4400","#ff8844"], heart:["#ff2200","#ff6600"], bonePick:["#ff5500","#ffaa22"] },
+  volcano: { hud:["#222222","#dddddd"], fossil:["#888888","#ccccaa"], heart:["#dd2244","#ff4466"], bonePick:["#888888","#cccc99"] },
   jungle:  { hud:["#1a5a10","#88ff44"], fossil:["#2a8a10","#66dd22"], heart:["#228822","#44ff44"], bonePick:["#3a9a20","#88ee44"] },
   ruins:   { hud:["#5a4a28","#ddcc88"], fossil:["#8a6a30","#ccaa55"], heart:["#884422","#cc7744"], bonePick:["#9a7a40","#ccaa55"] },
   cave:    { hud:["#8844ff","#cc88ff"], fossil:["#aa44ff","#dd99ff"], heart:["#8822cc","#cc44ff"], bonePick:["#9933ee","#cc77ff"] },

@@ -86,6 +86,20 @@ export function drawClouds(ctx, clouds, scenery) {
       ctx.fillRect(c.x+50,  c.y+2,  4,  2);
       ctx.fillRect(c.x+68,  c.y+5,  3,  2);
       ctx.restore();
+    } else if(s.id==="volcano") {
+      // Ash plume clouds — dark billowing masses with ember glow edges
+      ctx.save();
+      ctx.globalAlpha = 0.55;
+      ctx.fillStyle = s.cloudColor; // dark ash grey
+      ctx.fillRect(c.x+8,  c.y+10, 44, 12);
+      ctx.fillRect(c.x+2,  c.y+6,  24, 16);
+      ctx.fillRect(c.x+22, c.y+2,  28, 18);
+      ctx.fillRect(c.x+46, c.y+8,  18, 12);
+      ctx.globalAlpha = 0.25;
+      ctx.fillStyle = "#ff4400"; // ember glow on underside
+      ctx.fillRect(c.x+6,  c.y+18, 48, 4);
+      ctx.fillRect(c.x+14, c.y+20, 32, 2);
+      ctx.restore();
     } else {
       ctx.fillStyle=s.cloudColor;
       ctx.fillRect(c.x+10,c.y+8,38,9);ctx.fillRect(c.x+4,c.y+3,18,14);
@@ -268,6 +282,53 @@ export function drawGround(ctx, offset, scenery, nightBlend) {
       ctx.fillRect(rx,      GROUND_Y-2, dw,   3);
       ctx.fillRect(rx+2,    GROUND_Y-4, dw-4, 2);
       ctx.fillRect(rx+4,    GROUND_Y-5, dw-8, 1);
+    }
+    return;
+  }
+  if(s.id === "volcano") {
+    const baseTop  = nightBlend > 0.5 ? "#5a2008" : "#8a3010";
+    const baseMid  = nightBlend > 0.5 ? "#3a1408" : "#6a2208";
+    const rockCol  = nightBlend > 0.5 ? "#2a1008" : "#3a1a08";
+    const crackGlow= nightBlend > 0.5 ? "#dd3300" : "#ff6600";
+    const crackHot = nightBlend > 0.5 ? "#ff5500" : "#ffaa00";
+    const ashCol   = nightBlend > 0.5 ? "#2a1808" : "#4a2a10";
+    // Base rock surface
+    ctx.fillStyle = baseTop;  ctx.fillRect(0, GROUND_Y,   CANVAS_W, 5);
+    ctx.fillStyle = baseMid;  ctx.fillRect(0, GROUND_Y+5, CANVAS_W, CANVAS_H-GROUND_Y-5);
+    // Glowing lava crack veins
+    const CRACK_STRIDE = 68, CRACK_COUNT = 22, CRACK_PERIOD = CRACK_STRIDE * CRACK_COUNT;
+    const crackOff = offset % CRACK_PERIOD;
+    for(let i=0;i<CRACK_COUNT;i++){
+      const rx = ((i*CRACK_STRIDE - crackOff) % CRACK_PERIOD + CRACK_PERIOD) % CRACK_PERIOD;
+      if(rx > CANVAS_W) continue;
+      const ry = GROUND_Y + 6 + (i%4)*7;
+      const rw = 10 + (i%3)*14;
+      ctx.fillStyle = crackGlow;
+      ctx.fillRect(rx,   ry,   rw,   2);
+      ctx.fillRect(rx+3, ry+3, rw-6, 1);
+      ctx.fillStyle = crackHot;
+      ctx.fillRect(rx+2, ry,   rw-4, 1);
+    }
+    // Dark rock chunks embedded in the surface
+    const ROCK_STRIDE = 107, ROCK_COUNT = 14, ROCK_PERIOD = ROCK_STRIDE * ROCK_COUNT;
+    const rockOff = offset % ROCK_PERIOD;
+    for(let i=0;i<ROCK_COUNT;i++){
+      const rx = ((i*ROCK_STRIDE - rockOff) % ROCK_PERIOD + ROCK_PERIOD) % ROCK_PERIOD;
+      if(rx > CANVAS_W) continue;
+      const ry = GROUND_Y + 8 + (i%4)*7;
+      const rw = 8+(i%3)*6;
+      ctx.fillStyle = rockCol; ctx.fillRect(rx, ry, rw, rw*0.5|0);
+      ctx.fillStyle = ashCol;  ctx.fillRect(rx+1, ry+1, rw-2, 2);
+    }
+    // Ash dust streaks
+    const ASH_STRIDE = 83, ASH_COUNT = 18, ASH_PERIOD = ASH_STRIDE * ASH_COUNT;
+    const ashOff = offset % ASH_PERIOD;
+    for(let i=0;i<ASH_COUNT;i++){
+      const rx = ((i*ASH_STRIDE - ashOff) % ASH_PERIOD + ASH_PERIOD) % ASH_PERIOD;
+      if(rx > CANVAS_W) continue;
+      const ry = GROUND_Y + 10 + (i%3)*9;
+      ctx.fillStyle = ashCol;
+      ctx.fillRect(rx, ry, 18+(i%4)*8, 1);
     }
     return;
   }
