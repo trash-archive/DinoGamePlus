@@ -20,8 +20,8 @@ const SCENERY_HUD = {
   desert:  { hud:["#222222","#dddddd"], fossil:["#888888","#ccccaa"], heart:["#dd2244","#ff4466"], bonePick:["#888888","#cccc99"] },
   arctic:  { hud:["#222222","#dddddd"], fossil:["#888888","#ccccaa"], heart:["#dd2244","#ff4466"], bonePick:["#888888","#cccc99"] },
   volcano: { hud:["#222222","#dddddd"], fossil:["#888888","#ccccaa"], heart:["#dd2244","#ff4466"], bonePick:["#888888","#cccc99"] },
-  jungle:  { hud:["#1a5a10","#88ff44"], fossil:["#2a8a10","#66dd22"], heart:["#228822","#44ff44"], bonePick:["#3a9a20","#88ee44"] },
-  ruins:   { hud:["#5a4a28","#ddcc88"], fossil:["#8a6a30","#ccaa55"], heart:["#884422","#cc7744"], bonePick:["#9a7a40","#ccaa55"] },
+  jungle:  { hud:["#222222","#dddddd"], fossil:["#888888","#ccccaa"], heart:["#dd2244","#ff4466"], bonePick:["#888888","#cccc99"] },
+  ruins:   { hud:["#222222","#dddddd"], fossil:["#222222","#dddddd"], heart:["#dd2244","#ff4466"], bonePick:["#888888","#cccc99"] },
   cave:    { hud:["#8844ff","#cc88ff"], fossil:["#aa44ff","#dd99ff"], heart:["#8822cc","#cc44ff"], bonePick:["#9933ee","#cc77ff"] },
   abyss:   { hud:["#cc88ff","#ee99ff"], fossil:["#aa44ff","#cc88ff"], heart:["#ff2244","#ff6688"], bonePick:["#9933ee","#cc77ff"] },
 };
@@ -29,9 +29,11 @@ const SCENERY_HUD = {
 export function getHudColors(scenery, nightBlend) {
   const p = SCENERY_HUD[scenery?.id] || SCENERY_HUD.classic;
   const t = Math.min(1, nightBlend * 2);
+  const fossil = t < 0.5 ? p.fossil[0] : p.fossil[1];
   return {
     hud:      t < 0.5 ? p.hud[0]     : p.hud[1],
-    fossil:   t < 0.5 ? p.fossil[0]  : p.fossil[1],
+    hudText:  fossil,
+    fossil,
     heart:    t < 0.5 ? p.heart[0]   : p.heart[1],
     bonePick: t < 0.5 ? p.bonePick[0]: p.bonePick[1],
   };

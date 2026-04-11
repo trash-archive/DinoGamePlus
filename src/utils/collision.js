@@ -51,10 +51,29 @@ export function getObstacleHitbox(o) {
   if(o.otype==="magmaGolem")    return{x:o.x+4,  y:g-70,               w:36, h:70};
   if(o.otype==="lavaBat")       return{x:o.x+8,  y:o.y+2,              w:26, h:18};
   if(o.otype==="volcanicVent")  return{x:o.x+10, y:g-10-(o._ventH||0), w:24, h:10+(o._ventH||0)};
-  if(o.otype==="vineTrap")      return{x:o.x+2,  y:g-60,               w:36, h:60};
+  if(o.otype==="jungleTree") {
+    const t = o.type||0;
+    if(t===0) return{x:o.x+2,  y:g-92, w:38, h:92};
+    if(t===1) return{x:o.x+4,  y:g-114,w:36, h:114};
+    return          {x:o.x+2,  y:g-90, w:38, h:90};
+  }
   if(o.otype==="giantMushroom") return{x:o.x+2,  y:g-50,               w:38, h:50};
   if(o.otype==="piranha")       return{x:o.x+6,  y:g-62,               w:28, h:26};
   if(o.otype==="gorilla")       return{x:o.x+6,  y:g-62,               w:32, h:62};
+  if(o.otype==="jungleSerpent") return{x:o.x+8,  y:g-56,               w:24, h:56};
+  if(o.otype==="fallingLog")    return{x:o.x+2,  y:o._logY!==undefined?o._logY:-30,  w:40, h:18};
+  if(o.otype==="poisonFrog")    return{x:o.x+4,  y:g-20-(o._hopY||0),  w:32, h:20};
+  if(o.otype==="jungleSpider")  return{x:o.x+8,  y:o._spiderY!==undefined?o._spiderY:-20, w:24, h:20};
+  if(o.otype==="pterosaur")     return{x:o.x+6,  y:o.y+2,              w:38, h:16};
+  if(o.otype==="thornWall")     return{x:o.x+2,  y:g-76,               w:32, h:76};
+  if(o.otype==="jungleBoar")    return{x:o.x+2,  y:g-28,               w:40, h:28};
+  if(o.otype==="scarab")        return{x:o.x+2,  y:g-18,               w:40, h:18};
+  if(o.otype==="wraith")        return{x:o.x+6,  y:o.y+2,              w:32, h:36};
+  if(o.otype==="fallingBlock")  return{x:o.x+2,  y:o._blockY!==undefined?o._blockY:-40, w:40, h:24};
+  if(o.otype==="cursedWall")    return{x:o.x,    y:0,                  w:26, h:g};
+  if(o.otype==="ankh")          return{x:o.x+6,  y:o.y-26,             w:28, h:54};
+  if(o.otype==="sandTrap")      return{x:o.x+2,  y:g-6,                w:56, h:6};
+  if(o.otype==="ruinsLaser")    return{x:o.x+1,  y:(o._laserState||0)===1?0:GROUND_Y, w:6, h:(o._laserState||0)===1?g:0};
   if(o.otype==="pillar")        return{x:o.x+6,  y:g-56,               w:24, h:56};
   if(o.otype==="statue")        return{x:o.x+4,  y:g-52,               w:28, h:52};
   if(o.otype==="spiketrap")     return{x:o.x+2,  y:g-(o._spikeH||0),   w:40, h:o._spikeH||0};

@@ -64,6 +64,7 @@ function drawBird(ctx, o, sid, fw) {
     ctx.fillStyle="#ff8800"; ctx.fillRect(o.x+30,o.y+2,14,6);
     ctx.fillStyle="#ffdd00"; ctx.fillRect(o.x+30,o.y+2,6,3);
     ctx.fillStyle="#ffffff"; ctx.fillRect(o.x+20,o.y+3,4,4);
+    ctx.fillStyle="#000000"; ctx.fillRect(o.x+21,o.y+4,2,2);
     ctx.fillStyle="#1a1a1a";
     if(fw===0){ ctx.fillRect(o.x-2,o.y-2,22,8); ctx.fillRect(o.x+26,o.y+14,14,6); }
     else       { ctx.fillRect(o.x+2,o.y+4,18,6); ctx.fillRect(o.x+26,o.y+16,12,5); }

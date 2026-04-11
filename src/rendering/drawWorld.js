@@ -100,6 +100,47 @@ export function drawClouds(ctx, clouds, scenery) {
       ctx.fillRect(c.x+6,  c.y+18, 48, 4);
       ctx.fillRect(c.x+14, c.y+20, 32, 2);
       ctx.restore();
+    } else if(s.id==="jungle") {
+      // Low canopy mist — thin layered wisps, semi-transparent
+      ctx.save();
+      ctx.globalAlpha = 0.22;
+      ctx.fillStyle = "#aaddbb";
+      ctx.fillRect(c.x,      c.y+8,  80, 6);
+      ctx.fillRect(c.x+10,   c.y+4,  60, 5);
+      ctx.fillRect(c.x+24,   c.y,    40, 4);
+      ctx.fillRect(c.x-12,   c.y+10, 24, 4);
+      ctx.fillRect(c.x+72,   c.y+10, 20, 3);
+      ctx.globalAlpha = 0.10;
+      ctx.fillRect(c.x+4,    c.y+6,  8,  3);
+      ctx.fillRect(c.x+36,   c.y+2,  6,  2);
+      ctx.fillRect(c.x+60,   c.y+6,  7,  2);
+      ctx.restore();
+    } else if(s.id==="ruins") {
+      // Drifting dust wisps mixed with faint ghostly mist tendrils
+      const swirl = Math.sin(c.x * 0.02 + c.y * 0.01) * 6;
+      ctx.save();
+      // Dust wisps — warm sandy tone
+      ctx.globalAlpha = 0.18;
+      ctx.fillStyle = "#c4b070";
+      ctx.fillRect(c.x,      c.y+6,  72, 4);
+      ctx.fillRect(c.x+10,   c.y+2,  52, 3);
+      ctx.fillRect(c.x+28,   c.y-1,  32, 3);
+      ctx.fillRect(c.x-8,    c.y+8,  20, 2);
+      ctx.fillRect(c.x+64,   c.y+8,  18, 2);
+      // Ghost mist tendrils — faint purple
+      ctx.globalAlpha = 0.10;
+      ctx.fillStyle = "#aa88cc";
+      ctx.fillRect(c.x+swirl,    c.y+4,  14, 3);
+      ctx.fillRect(c.x+swirl+22, c.y+1,  10, 2);
+      ctx.fillRect(c.x+swirl+44, c.y+5,  12, 2);
+      ctx.fillRect(c.x+swirl+62, c.y+3,   8, 2);
+      // Dust particle dots
+      ctx.globalAlpha = 0.14;
+      ctx.fillStyle = "#d4c080";
+      ctx.fillRect(c.x+6,    c.y+4,  4, 2);
+      ctx.fillRect(c.x+34,   c.y,    3, 2);
+      ctx.fillRect(c.x+56,   c.y+4,  4, 2);
+      ctx.restore();
     } else {
       ctx.fillStyle=s.cloudColor;
       ctx.fillRect(c.x+10,c.y+8,38,9);ctx.fillRect(c.x+4,c.y+3,18,14);
@@ -329,6 +370,119 @@ export function drawGround(ctx, offset, scenery, nightBlend) {
       const ry = GROUND_Y + 10 + (i%3)*9;
       ctx.fillStyle = ashCol;
       ctx.fillRect(rx, ry, 18+(i%4)*8, 1);
+    }
+    return;
+  }
+  if(s.id === "jungle") {
+    // Base colours stay true to the original palette
+    const groundTop  = nightBlend > 0.5 ? "#1a3a10" : "#2a5a18";
+    const groundBase = nightBlend > 0.5 ? "#0e2208" : "#1a3a10";
+    // Subtle darker shade for texture details
+    const rootCol  = nightBlend > 0.5 ? "#0e2a0a" : "#1e4a12";
+    const rootHi   = nightBlend > 0.5 ? "#2a5a18" : "#3a7a22";
+    const leafCol  = nightBlend > 0.5 ? "#122e0c" : "#224a14";
+    const puddleCol= nightBlend > 0.5 ? "#122a18" : "#1e4228";
+    const puddleHi = nightBlend > 0.5 ? "#1a3a22" : "#2a5a38";
+    ctx.fillStyle = groundTop;  ctx.fillRect(0, GROUND_Y,   CANVAS_W, 5);
+    ctx.fillStyle = groundBase; ctx.fillRect(0, GROUND_Y+5, CANVAS_W, CANVAS_H-GROUND_Y-5);
+    // Root veins — subtle, close to base colour
+    const ROOT_STRIDE = 94, ROOT_COUNT = 16, ROOT_PERIOD = ROOT_STRIDE * ROOT_COUNT;
+    const rootOff = offset % ROOT_PERIOD;
+    for(let i=0;i<ROOT_COUNT;i++){
+      const rx = ((i*ROOT_STRIDE - rootOff) % ROOT_PERIOD + ROOT_PERIOD) % ROOT_PERIOD;
+      if(rx > CANVAS_W) continue;
+      const ry = GROUND_Y + 7 + (i%4)*7;
+      const rw = 18 + (i%3)*14;
+      ctx.fillStyle = rootCol;
+      ctx.fillRect(rx,   ry,   rw, 2);
+      ctx.fillRect(rx+4, ry+3, rw-8, 1);
+      ctx.fillStyle = rootHi;
+      ctx.fillRect(rx+1, ry,   rw-4, 1);
+    }
+    // Leaf litter
+    const LEAF_STRIDE = 71, LEAF_COUNT = 20, LEAF_PERIOD = LEAF_STRIDE * LEAF_COUNT;
+    const leafOff = offset % LEAF_PERIOD;
+    for(let i=0;i<LEAF_COUNT;i++){
+      const rx = ((i*LEAF_STRIDE - leafOff) % LEAF_PERIOD + LEAF_PERIOD) % LEAF_PERIOD;
+      if(rx > CANVAS_W) continue;
+      const ry = GROUND_Y + 6 + (i%5)*5;
+      ctx.fillStyle = leafCol;
+      ctx.fillRect(rx,   ry,   6, 3);
+      ctx.fillRect(rx+2, ry-2, 2, 2);
+    }
+    // Puddles
+    const PUD_STRIDE = 137, PUD_COUNT = 10, PUD_PERIOD = PUD_STRIDE * PUD_COUNT;
+    const pudOff = offset % PUD_PERIOD;
+    for(let i=0;i<PUD_COUNT;i++){
+      const rx = ((i*PUD_STRIDE - pudOff) % PUD_PERIOD + PUD_PERIOD) % PUD_PERIOD;
+      if(rx > CANVAS_W) continue;
+      const pw = 10 + (i%3)*8;
+      ctx.fillStyle = puddleCol; ctx.fillRect(rx, GROUND_Y+2, pw, 3);
+      ctx.fillStyle = puddleHi;  ctx.fillRect(rx+2, GROUND_Y+2, pw-4, 1);
+    }
+    return;
+  }
+  if(s.id === "ruins") {
+    const stoneTop  = nightBlend > 0.5 ? "#5a5040" : "#8a7a5a";
+    const stoneBase = nightBlend > 0.5 ? "#3a3028" : "#6a5a40";
+    const crackCol  = nightBlend > 0.5 ? "#1a1410" : "#3a2e20";
+    const mossCol   = nightBlend > 0.5 ? "#1a2a10" : "#3a5a20";
+    const mossHi    = nightBlend > 0.5 ? "#243818" : "#4a7a28";
+    const shardCol  = nightBlend > 0.5 ? "#6a5a38" : "#aa9060";
+    const shardHi   = nightBlend > 0.5 ? "#7a6a48" : "#c4aa78";
+    const glyphCol  = nightBlend > 0.5 ? "#4a3a28" : "#7a6040";
+    // Base stone surface
+    ctx.fillStyle = stoneTop;  ctx.fillRect(0, GROUND_Y,   CANVAS_W, 5);
+    ctx.fillStyle = stoneBase; ctx.fillRect(0, GROUND_Y+5, CANVAS_W, CANVAS_H-GROUND_Y-5);
+    // Stone tile cracks — horizontal and short vertical lines
+    const CRACK_STRIDE = 64, CRACK_COUNT = 22, CRACK_PERIOD = CRACK_STRIDE * CRACK_COUNT;
+    const crackOff = offset % CRACK_PERIOD;
+    for(let i=0;i<CRACK_COUNT;i++){
+      const rx = ((i*CRACK_STRIDE - crackOff) % CRACK_PERIOD + CRACK_PERIOD) % CRACK_PERIOD;
+      if(rx > CANVAS_W) continue;
+      const ry = GROUND_Y + 6 + (i%4)*7;
+      const rw = 10 + (i%3)*12;
+      ctx.fillStyle = crackCol;
+      ctx.fillRect(rx,    ry,   rw, 1);
+      ctx.fillRect(rx+3,  ry+2, rw-6, 1);
+      // Short vertical crack branch
+      if(i%3===0) ctx.fillRect(rx+rw/2|0, ry, 1, 5);
+    }
+    // Moss patches growing in cracks
+    const MOSS_STRIDE = 109, MOSS_COUNT = 14, MOSS_PERIOD = MOSS_STRIDE * MOSS_COUNT;
+    const mossOff = offset % MOSS_PERIOD;
+    for(let i=0;i<MOSS_COUNT;i++){
+      const rx = ((i*MOSS_STRIDE - mossOff) % MOSS_PERIOD + MOSS_PERIOD) % MOSS_PERIOD;
+      if(rx > CANVAS_W) continue;
+      const ry = GROUND_Y + 5 + (i%3)*8;
+      const mw = 6 + (i%3)*5;
+      ctx.fillStyle = mossCol; ctx.fillRect(rx, ry, mw, 3);
+      ctx.fillStyle = mossHi;  ctx.fillRect(rx+1, ry, mw-2, 1);
+    }
+    // Broken pottery shards
+    const SHARD_STRIDE = 131, SHARD_COUNT = 12, SHARD_PERIOD = SHARD_STRIDE * SHARD_COUNT;
+    const shardOff = offset % SHARD_PERIOD;
+    for(let i=0;i<SHARD_COUNT;i++){
+      const rx = ((i*SHARD_STRIDE - shardOff) % SHARD_PERIOD + SHARD_PERIOD) % SHARD_PERIOD;
+      if(rx > CANVAS_W) continue;
+      const ry = GROUND_Y + 7 + (i%4)*6;
+      const sw = 5 + (i%3)*4;
+      ctx.fillStyle = shardCol; ctx.fillRect(rx, ry, sw, sw*0.5|0);
+      ctx.fillStyle = shardHi;  ctx.fillRect(rx+1, ry, sw-2, 1);
+      // Shard chip
+      ctx.fillStyle = crackCol; ctx.fillRect(rx+sw-2, ry, 2, 2);
+    }
+    // Carved hieroglyph fragments
+    const GLYPH_STRIDE = 173, GLYPH_COUNT = 8, GLYPH_PERIOD = GLYPH_STRIDE * GLYPH_COUNT;
+    const glyphOff = offset % GLYPH_PERIOD;
+    for(let i=0;i<GLYPH_COUNT;i++){
+      const rx = ((i*GLYPH_STRIDE - glyphOff) % GLYPH_PERIOD + GLYPH_PERIOD) % GLYPH_PERIOD;
+      if(rx > CANVAS_W) continue;
+      const ry = GROUND_Y + 10 + (i%3)*8;
+      ctx.fillStyle = glyphCol;
+      ctx.fillRect(rx,   ry,   8, 2);
+      ctx.fillRect(rx+2, ry-3, 2, 3);
+      ctx.fillRect(rx+6, ry-2, 2, 2);
     }
     return;
   }
