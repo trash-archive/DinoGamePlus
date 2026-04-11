@@ -9,6 +9,28 @@ const BORDER = "#2a2a2a";
 const MUTED  = "#888";
 
 const TYPES = ["FEEDBACK", "SUGGESTION", "BUG REPORT", "OTHER"];
+const MAX_IMG_BYTES = 4 * 1024 * 1024; // 4 MB
+
+function useScreenshot() {
+  const [preview, setPreview] = useState(null);
+  const [b64, setB64]         = useState(null);
+  const [mime, setMime]       = useState(null);
+  const pick = (file) => {
+    if (!file) return;
+    if (file.size > MAX_IMG_BYTES) return alert("Image must be under 4 MB.");
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const result = ev.target.result; // data:mime;base64,xxx
+      const [header, data] = result.split(",");
+      setMime(header.replace("data:", "").replace(";base64", ""));
+      setB64(data);
+      setPreview(result);
+    };
+    reader.readAsDataURL(file);
+  };
+  const clear = () => { setPreview(null); setB64(null); setMime(null); };
+  return { preview, b64, mime, pick, clear };
+}
 const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL;
 const TYPE_COLOR = { "FEEDBACK": "#448844", "SUGGESTION": "#2266cc", "BUG REPORT": "#cc2200", "OTHER": "#888" };
 
@@ -28,6 +50,7 @@ function ReplySection({ feedbackId, showToast }) {
   const [replyName,setReplyName]= useState("");
   const [sending,  setSending]  = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const replyShot = useScreenshot();
 
   const fmtDate = (ts) => ts ? new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "";
 
@@ -57,23 +80,24 @@ function ReplySection({ feedbackId, showToast }) {
     setSending(true);
     const name = replyName.trim() || "Anonymous";
     const msg  = replyMsg.trim();
-    // optimistic append — no re-fetch needed
-    const optimistic = { ReplyId: `tmp-${Date.now()}`, FeedbackId: feedbackId, Name: name, Message: msg, Timestamp: new Date().toISOString() };
+    // capture before clear
+    const shotB64     = replyShot.b64;
+    const shotMime    = replyShot.mime;
+    const shotPreview = replyShot.preview;
+    const optimistic = { ReplyId: `tmp-${Date.now()}`, FeedbackId: feedbackId, Name: name, Message: msg, Timestamp: new Date().toISOString(), ScreenshotUrl: shotPreview || "" };
     const updated = [...(repliesCache[feedbackId] || []), optimistic];
     repliesCache[feedbackId] = updated;
     setReplies(updated);
-    setReplyMsg(""); setReplyName(""); setShowForm(false);
+    setReplyMsg(""); setReplyName(""); setShowForm(false); replyShot.clear();
     showToast("✓ REPLY POSTED!");
     try {
-      const res  = await fetch(APPS_SCRIPT_URL, {
-        method: "POST",
-        body: JSON.stringify({ action: "reply", feedbackId, name, message: msg }),
-      });
+      const body = { action: "reply", feedbackId, name, message: msg };
+      if (shotB64) { body.screenshotBase64 = shotB64; body.screenshotMime = shotMime; }
+      const res  = await fetch(APPS_SCRIPT_URL, { method: "POST", body: JSON.stringify(body) });
       const json = await res.json();
       if (!json.ok) throw new Error();
-      // patch temp id with real one
       if (json.replyId) {
-        const patched = repliesCache[feedbackId].map(r => r.ReplyId === optimistic.ReplyId ? { ...r, ReplyId: json.replyId } : r);
+        const patched = repliesCache[feedbackId].map(r => r.ReplyId === optimistic.ReplyId ? { ...r, ReplyId: json.replyId, ScreenshotUrl: json.screenshotUrl || r.ScreenshotUrl } : r);
         repliesCache[feedbackId] = patched;
         setReplies(patched);
       }
@@ -101,6 +125,7 @@ function ReplySection({ feedbackId, showToast }) {
                   <span style={{ fontWeight: "bold", letterSpacing: 1, marginRight: 6 }}>{r.Name || "Anonymous"}</span>
                   <span style={{ color: MUTED, fontSize: 8, marginRight: 8 }}>{fmtDate(r.Timestamp)}</span>
                   <div style={{ marginTop: 2, wordBreak: "break-word" }}>{r.Message}</div>
+                  {r.ScreenshotUrl && <ScreenshotThumb url={r.ScreenshotUrl} />}
                 </div>
               ))}
             </div>
@@ -117,6 +142,7 @@ function ReplySection({ feedbackId, showToast }) {
                 style={{ fontFamily: F, fontSize: 10, padding: "5px 8px", border: `1px solid ${BORDER}`, background: BG, color: DARK, letterSpacing: 1 }} />
               <textarea value={replyMsg} onChange={e => setReplyMsg(e.target.value.slice(0, 300))} placeholder="Write a reply..." rows={2} maxLength={300}
                 style={{ fontFamily: F, fontSize: 10, padding: "5px 8px", border: `1px solid ${BORDER}`, background: BG, color: DARK, resize: "vertical", letterSpacing: 1 }} />
+              <ScreenshotPicker shot={replyShot} />
               <div style={{ display: "flex", gap: 6 }}>
                 <button onClick={() => { playClick(); setShowForm(false); setReplyMsg(""); setReplyName(""); }}
                   style={{ fontFamily: F, fontSize: 9, padding: "4px 10px", border: `1px solid ${BORDER}`, background: BG, color: DARK, cursor: "pointer", letterSpacing: 2 }}>CANCEL</button>
@@ -130,6 +156,53 @@ function ReplySection({ feedbackId, showToast }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function driveThumbUrl(url) {
+  if (!url) return null;
+  if (url.startsWith("data:")) return url; // local preview
+  const m = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  return m ? `https://drive.google.com/thumbnail?id=${m[1]}&sz=w400` : url;
+}
+
+function ScreenshotThumb({ url }) {
+  const [open, setOpen] = useState(false);
+  const thumb = driveThumbUrl(url);
+  return (
+    <>
+      <img src={thumb} alt="screenshot" onClick={() => setOpen(true)}
+        style={{ marginTop: 6, maxWidth: 160, maxHeight: 100, objectFit: "cover", cursor: "pointer", border: `1px solid #ccc`, display: "block" }} />
+      {open && (
+        <div onClick={() => setOpen(false)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <img src={thumb} alt="screenshot" style={{ maxWidth: "100%", maxHeight: "90vh", objectFit: "contain" }} />
+          <div style={{ position: "absolute", top: 16, right: 20, color: "#fff", fontSize: 22, cursor: "pointer", lineHeight: 1 }}>✕</div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function ScreenshotPicker({ shot }) {
+  const inputRef = useRef();
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <div style={{ fontSize: 9, letterSpacing: 2, color: MUTED }}>SCREENSHOT (OPTIONAL)</div>
+      {shot.preview
+        ? <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <img src={shot.preview} alt="preview" style={{ maxWidth: 100, maxHeight: 70, objectFit: "cover", border: `1px solid #ccc` }} />
+            <button onClick={() => { playClick(); shot.clear(); }}
+              style={{ fontFamily: F, fontSize: 9, background: "none", border: "none", cursor: "pointer", color: "#cc2200", letterSpacing: 2 }}>✕ REMOVE</button>
+          </div>
+        : <button onClick={() => { playClick(); inputRef.current.click(); }}
+            style={{ fontFamily: F, fontSize: 9, padding: "5px 10px", border: `1px solid ${BORDER}`, background: BG, color: DARK, cursor: "pointer", letterSpacing: 2, alignSelf: "flex-start" }}>
+            + ATTACH IMAGE
+          </button>
+      }
+      <input ref={inputRef} type="file" accept="image/*" style={{ display: "none" }}
+        onChange={e => { shot.pick(e.target.files[0]); e.target.value = ""; }} />
     </div>
   );
 }
@@ -173,6 +246,7 @@ export default function FeedbackScreen({ onBack, showNotif }) {
   const [message, setMessage] = useState("");
   const [name,    setName]    = useState("");
   const [status,  setStatus]  = useState(null);
+  const fbShot = useScreenshot();
 
   const fetchFeedbacks = async () => {
     if (!navigator.onLine) { setFbLoading(false); return; }
@@ -220,17 +294,24 @@ export default function FeedbackScreen({ onBack, showNotif }) {
   const submit = async () => {
     if (!message.trim() || !navigator.onLine) return;
     setStatus("sending");
+    // capture before clear
+    const shotB64     = fbShot.b64;
+    const shotMime    = fbShot.mime;
+    const localPreview = fbShot.preview;
     try {
-      const res  = await fetch(APPS_SCRIPT_URL, {
-        method: "POST",
-        body: JSON.stringify({ type, message: message.trim(), name: name.trim() || "Anonymous" }),
-      });
+      const body = { type, message: message.trim(), name: name.trim() || "Anonymous" };
+      if (shotB64) { body.screenshotBase64 = shotB64; body.screenshotMime = shotMime; }
+      const res  = await fetch(APPS_SCRIPT_URL, { method: "POST", body: JSON.stringify(body) });
       const json = await res.json();
       if (!json.ok) throw new Error();
-      setMessage(""); setName(""); setType("FEEDBACK"); setStatus(null);
+      setMessage(""); setName(""); setType("FEEDBACK"); setStatus(null); fbShot.clear();
       setShowForm(false);
       showToast("✓ SUBMITTED! THANK YOU.");
-      fetchFeedbacks();
+      if (json.feedbackId) {
+        const optimistic = { FeedbackId: json.feedbackId, Type: body.type, Message: body.message, Name: body.name, Upvotes: 0, Downvotes: 0, Timestamp: new Date().toISOString(), ScreenshotUrl: json.screenshotUrl || localPreview || "" };
+        setFeedbacks(prev => sortFeedbacks([...prev, optimistic]));
+      }
+      setTimeout(fetchFeedbacks, 3000);
     } catch { setStatus("err"); showToast("✗ FAILED. CHECK CONNECTION."); }
   };
 
@@ -370,6 +451,7 @@ export default function FeedbackScreen({ onBack, showNotif }) {
                             <span style={{ fontSize: 8, color: MUTED, marginLeft: "auto" }}>{fmtDate(fb.Timestamp)}</span>
                           </div>
                           <div style={{ fontSize: 11, color: DARK, lineHeight: 1.6, wordBreak: "break-word" }}>{fb.Message}</div>
+                          {fb.ScreenshotUrl && <ScreenshotThumb url={fb.ScreenshotUrl} />}
                           <ReplySection feedbackId={id} showToast={showToast} />
                         </div>
                       </div>
@@ -406,8 +488,8 @@ export default function FeedbackScreen({ onBack, showNotif }) {
       {/* Add feedback modal */}
       {showForm && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
-          onClick={() => setShowForm(false)}>
-          <div style={{ background: "#faf8f4", border: `2px solid ${BORDER}`, padding: "clamp(16px, 5vw, 28px)", width: "100%", maxWidth: 460, boxSizing: "border-box", fontFamily: F }}
+          onClick={() => { setShowForm(false); fbShot.clear(); }}>
+          <div style={{ background: "#faf8f4", border: `2px solid ${BORDER}`, padding: "clamp(16px, 5vw, 28px)", width: "100%", maxWidth: 460, overflowY: "auto", maxHeight: "90svh", boxSizing: "border-box", fontFamily: F }}
             onClick={e => e.stopPropagation()}>
 
             <div style={{ marginBottom: 18 }}>
@@ -451,10 +533,15 @@ export default function FeedbackScreen({ onBack, showNotif }) {
               <div style={{ fontSize: 9, color: MUTED, textAlign: "right" }}>{message.length}/500</div>
             </div>
 
+            {/* Screenshot */}
+            <div style={{ marginBottom: 14 }}>
+              <ScreenshotPicker shot={fbShot} />
+            </div>
+
             {status === "err" && <div style={{ fontSize: 10, color: "#cc2200", letterSpacing: 2, marginBottom: 10 }}>✗ FAILED. CHECK CONNECTION.</div>}
 
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              <button style={{ ...btn(false), flex: "1 1 120px", minWidth: 0 }} onClick={() => { playClick(); setShowForm(false); }}>[ CANCEL ]</button>
+              <button style={{ ...btn(false), flex: "1 1 120px", minWidth: 0 }} onClick={() => { playClick(); setShowForm(false); fbShot.clear(); }}>[ CANCEL ]</button>
               <button
                 style={{ ...btn(true), flex: "2 1 160px", minWidth: 0, opacity: (!message.trim() || status === "sending") ? 0.5 : 1 }}
                 onClick={() => { playClick(); submit(); }}

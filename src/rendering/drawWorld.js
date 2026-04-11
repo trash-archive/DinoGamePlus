@@ -53,6 +53,39 @@ export function drawClouds(ctx, clouds, scenery) {
       ctx.fillStyle="#dddddd";
       ctx.fillRect(c.x+10,c.y+8,38,9);ctx.fillRect(c.x+4,c.y+3,18,14);
       ctx.fillRect(c.x+20,c.y,22,18); ctx.fillRect(c.x+42,c.y+5,16,12);
+    } else if(s.id==="desert") {
+      // Heat haze wisps — flat, wide, semi-transparent streaks
+      ctx.save();
+      ctx.globalAlpha = 0.28;
+      ctx.fillStyle = s.cloudColor;
+      ctx.fillRect(c.x,     c.y+6,  64, 4);
+      ctx.fillRect(c.x+8,   c.y+2,  48, 4);
+      ctx.fillRect(c.x+18,  c.y,    28, 3);
+      ctx.fillRect(c.x-10,  c.y+8,  18, 2);
+      ctx.fillRect(c.x+58,  c.y+8,  16, 2);
+      ctx.globalAlpha = 0.14;
+      ctx.fillRect(c.x+4,   c.y+4,  6,  2);
+      ctx.fillRect(c.x+22,  c.y+1,  4,  2);
+      ctx.fillRect(c.x+44,  c.y+4,  5,  2);
+      ctx.fillRect(c.x+60,  c.y+6,  4,  2);
+      ctx.restore();
+    } else if(s.id==="arctic") {
+      // Blizzard streaks — slightly lighter than the dark sky
+      ctx.save();
+      ctx.globalAlpha = 0.28;
+      ctx.fillStyle = s.cloudColor;
+      ctx.fillRect(c.x,     c.y+4,  80, 5);
+      ctx.fillRect(c.x+6,   c.y,    60, 4);
+      ctx.fillRect(c.x+16,  c.y-3,  40, 3);
+      ctx.fillRect(c.x-14,  c.y+6,  22, 3);
+      ctx.fillRect(c.x+72,  c.y+6,  18, 2);
+      ctx.fillRect(c.x+86,  c.y+8,  12, 2);
+      ctx.globalAlpha = 0.15;
+      ctx.fillRect(c.x+2,   c.y+2,  4,  2);
+      ctx.fillRect(c.x+24,  c.y-1,  3,  2);
+      ctx.fillRect(c.x+50,  c.y+2,  4,  2);
+      ctx.fillRect(c.x+68,  c.y+5,  3,  2);
+      ctx.restore();
     } else {
       ctx.fillStyle=s.cloudColor;
       ctx.fillRect(c.x+10,c.y+8,38,9);ctx.fillRect(c.x+4,c.y+3,18,14);
@@ -146,6 +179,95 @@ export function drawGround(ctx, offset, scenery, nightBlend) {
       ctx.fillRect(rx,   GROUND_Y-4, 2, 4);
       ctx.fillRect(rx+4, GROUND_Y-4, 2, 4);
       ctx.fillRect(rx+8, GROUND_Y-4, 2, 4);
+    }
+    return;
+  }
+  if(s.id === "desert") {
+    const sandTop  = nightBlend > 0.5 ? "#a06828" : "#e0a850";
+    const sandBase = nightBlend > 0.5 ? "#7a4a18" : "#c4883a";
+    const sandDark = nightBlend > 0.5 ? "#5a3410" : "#a86c28";
+    const rippleCol= nightBlend > 0.5 ? "#8a5820" : "#d4a050";
+    const pebbleCol= nightBlend > 0.5 ? "#4a2e0e" : "#8a5a22";
+    const pebbleHi = nightBlend > 0.5 ? "#6a4218" : "#b07a3a";
+    ctx.fillStyle = sandTop;  ctx.fillRect(0, GROUND_Y,   CANVAS_W, 4);
+    ctx.fillStyle = sandBase; ctx.fillRect(0, GROUND_Y+4, CANVAS_W, CANVAS_H-GROUND_Y-4);
+    const RIP_STRIDE = 58, RIP_COUNT = 24, RIP_PERIOD = RIP_STRIDE * RIP_COUNT;
+    const ripOff = offset % RIP_PERIOD;
+    for(let i=0;i<RIP_COUNT;i++){
+      const rx = ((i*RIP_STRIDE - ripOff) % RIP_PERIOD + RIP_PERIOD) % RIP_PERIOD;
+      if(rx > CANVAS_W) continue;
+      const depth = i % 4;
+      const ry = GROUND_Y + 6 + depth * 7;
+      const rw = 12 + (i%3)*10;
+      ctx.fillStyle = rippleCol;
+      ctx.fillRect(rx, ry, rw, 1);
+      ctx.fillRect(rx+4, ry+2, rw-6, 1);
+    }
+    const SHA_STRIDE = 94, SHA_COUNT = 14, SHA_PERIOD = SHA_STRIDE * SHA_COUNT;
+    const shaOff = offset % SHA_PERIOD;
+    for(let i=0;i<SHA_COUNT;i++){
+      const rx = ((i*SHA_STRIDE - shaOff) % SHA_PERIOD + SHA_PERIOD) % SHA_PERIOD;
+      if(rx > CANVAS_W) continue;
+      const ry = GROUND_Y + 9 + (i%3)*8;
+      ctx.fillStyle = sandDark;
+      ctx.fillRect(rx, ry, 20+(i%4)*8, 2);
+    }
+    const PEB_STRIDE = 103, PEB_COUNT = 16, PEB_PERIOD = PEB_STRIDE * PEB_COUNT;
+    const pebOff = offset % PEB_PERIOD;
+    for(let i=0;i<PEB_COUNT;i++){
+      const rx = ((i*PEB_STRIDE - pebOff) % PEB_PERIOD + PEB_PERIOD) % PEB_PERIOD;
+      if(rx > CANVAS_W) continue;
+      const ry = GROUND_Y + 8 + (i%5)*6;
+      const pw = 4+(i%3)*3;
+      ctx.fillStyle = pebbleCol; ctx.fillRect(rx, ry, pw, pw*0.6|0);
+      ctx.fillStyle = pebbleHi;  ctx.fillRect(rx+1, ry, pw-2, 1);
+    }
+    return;
+  }
+  if(s.id === "arctic") {
+    const snowTop  = nightBlend > 0.5 ? "#8ab8d8" : "#c8e8ff";
+    const snowBase = nightBlend > 0.5 ? "#3a5a70" : "#6a9ab8";
+    const iceVein  = nightBlend > 0.5 ? "#2a4055" : "#4a7a9a";
+    const icePatch = nightBlend > 0.5 ? "#5a8aaa" : "#a8d0e8";
+    const snowDrift= nightBlend > 0.5 ? "#6a9ab8" : "#b8daf0";
+    // Base snow surface
+    ctx.fillStyle = snowTop;  ctx.fillRect(0, GROUND_Y,   CANVAS_W, 5);
+    ctx.fillStyle = snowBase; ctx.fillRect(0, GROUND_Y+5, CANVAS_W, CANVAS_H-GROUND_Y-5);
+    // Frost crack lines — thin jagged horizontal veins
+    const CRACK_STRIDE = 72, CRACK_COUNT = 20, CRACK_PERIOD = CRACK_STRIDE * CRACK_COUNT;
+    const crackOff = offset % CRACK_PERIOD;
+    for(let i=0;i<CRACK_COUNT;i++){
+      const rx = ((i*CRACK_STRIDE - crackOff) % CRACK_PERIOD + CRACK_PERIOD) % CRACK_PERIOD;
+      if(rx > CANVAS_W) continue;
+      const ry = GROUND_Y + 7 + (i%4)*7;
+      const rw = 14 + (i%3)*12;
+      ctx.fillStyle = iceVein;
+      ctx.fillRect(rx,    ry,   rw,   1);
+      ctx.fillRect(rx+3,  ry+2, rw-6, 1);
+      ctx.fillRect(rx+rw-4, ry+1, 4, 1); // jagged end
+    }
+    // Ice patch highlights — bright reflective spots
+    const PATCH_STRIDE = 119, PATCH_COUNT = 12, PATCH_PERIOD = PATCH_STRIDE * PATCH_COUNT;
+    const patchOff = offset % PATCH_PERIOD;
+    for(let i=0;i<PATCH_COUNT;i++){
+      const rx = ((i*PATCH_STRIDE - patchOff) % PATCH_PERIOD + PATCH_PERIOD) % PATCH_PERIOD;
+      if(rx > CANVAS_W) continue;
+      const ry = GROUND_Y + 6 + (i%3)*9;
+      const pw = 6+(i%3)*5;
+      ctx.fillStyle = icePatch; ctx.fillRect(rx, ry, pw, 3);
+      ctx.fillStyle = snowTop;  ctx.fillRect(rx+1, ry, pw-2, 1); // bright top edge
+    }
+    // Small snow drift bumps along the surface edge
+    const DRIFT_STRIDE = 88, DRIFT_COUNT = 16, DRIFT_PERIOD = DRIFT_STRIDE * DRIFT_COUNT;
+    const driftOff = offset % DRIFT_PERIOD;
+    for(let i=0;i<DRIFT_COUNT;i++){
+      const rx = ((i*DRIFT_STRIDE - driftOff) % DRIFT_PERIOD + DRIFT_PERIOD) % DRIFT_PERIOD;
+      if(rx > CANVAS_W) continue;
+      const dw = 10 + (i%4)*6;
+      ctx.fillStyle = snowDrift;
+      ctx.fillRect(rx,      GROUND_Y-2, dw,   3);
+      ctx.fillRect(rx+2,    GROUND_Y-4, dw-4, 2);
+      ctx.fillRect(rx+4,    GROUND_Y-5, dw-8, 1);
     }
     return;
   }

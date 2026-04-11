@@ -31,6 +31,15 @@ export function getObstacleHitbox(o) {
   if(o.otype==="snowball")      return{x:o.x+2,  y:g-28,               w:28, h:24};
   if(o.otype==="frostspike")    return{x:o.x+2,  y:g-44,               w:40, h:44};
   if(o.otype==="icicle")        return{x:o.x+4,  y:o._icicleY||(-20),  w:10, h:28};
+  if(o.otype==="snowdrift")     return{x:o.x+6,  y:g-22,               w:52, h:22};
+  if(o.otype==="frozenTree")    return{x:o.x+10, y:g-58,               w:16, h:58};
+  if(o.otype==="arcticFox")     return{x:o.x+6,  y:g-18,               w:38, h:18};
+  if(o.otype==="frozenMammoth") return{x:o.x+2,  y:g-68,               w:64, h:68};
+  if(o.otype==="walrus")        return{x:o.x+4,  y:g-30,               w:48, h:30};
+  if(o.otype==="snowGolem")     return{x:o.x+6,  y:g-54,               w:28, h:54};
+  if(o.otype==="iceBat")        return{x:o.x+8,  y:o.y+2,              w:28, h:14};
+  if(o.otype==="blizzardWall")  return{x:o.x,    y:0,                  w:28, h:g};
+  if(o.otype==="polarBear")     return{x:o.x+4,  y:g-28,               w:44, h:28};
   if(o.otype==="yeti")          return{x:o.x+4,  y:g-52,               w:36, h:52};
   if(o.otype==="lavarock")      return{x:o.x+2,  y:g-26,               w:42, h:26};
   if(o.otype==="firePillar")    return{x:o.x+8,  y:g-48,               w:20, h:48};

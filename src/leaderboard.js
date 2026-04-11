@@ -9,8 +9,24 @@ function setPending(list) {
   localStorage.setItem(PENDING_KEY, JSON.stringify(list));
 }
 
-// Try to insert a single run into Supabase, returns true on success
-async function insertRun(player_id, playerName, dist, fossils, timestamp) {
+// Returns true if the run was inserted (qualifies for top 50 globally)
+async function tryInsertRun(player_id, playerName, dist, fossils, timestamp) {
+  // Fetch current top 50
+  const { data: top50 } = await supabase
+    .from("leaderboard")
+    .select("id, best_dist")
+    .order("best_dist", { ascending: false })
+    .limit(50);
+
+  if (!top50) return false;
+
+  const isFull = top50.length >= 50;
+  const worst = isFull ? top50[top50.length - 1] : null;
+
+  // If board is full and this run doesn't beat the worst, skip
+  if (isFull && dist <= worst.best_dist) return false;
+
+  // Insert the new run
   const { error } = await supabase.from("leaderboard").insert({
     player_id,
     name: playerName,
@@ -18,24 +34,17 @@ async function insertRun(player_id, playerName, dist, fossils, timestamp) {
     best_fossils: fossils,
     updated_at: timestamp,
   });
-  return !error;
-}
+  if (error) return false;
 
-// Prune player's runs in Supabase to keep only top 50
-async function pruneRuns(player_id) {
-  const { data: playerRuns } = await supabase
-    .from("leaderboard")
-    .select("id, best_dist")
-    .eq("player_id", player_id)
-    .order("best_dist", { ascending: false });
-  if (playerRuns && playerRuns.length > 50) {
-    const toDelete = playerRuns.slice(50).map(r => r.id);
-    await supabase.from("leaderboard").delete().in("id", toDelete);
+  // If board was full, delete the old worst entry
+  if (isFull) {
+    await supabase.from("leaderboard").delete().eq("id", worst.id);
   }
+
+  return true;
 }
 
-// Insert a new run row, then prune player's runs to keep only top 50.
-// If offline, queues the run in localStorage to submit later.
+// Submit a run — only stored if it qualifies for global top 50
 export async function submitScore(name, dist, fossils) {
   const player_id  = getPlayerId();
   const playerName = name.toUpperCase().slice(0, 20);
@@ -48,34 +57,29 @@ export async function submitScore(name, dist, fossils) {
     return false;
   }
 
-  const ok = await insertRun(player_id, playerName, dist, fossils, timestamp);
+  const ok = await tryInsertRun(player_id, playerName, dist, fossils, timestamp);
   if (!ok) {
-    // Network present but request failed — queue it anyway
     const pending = getPending();
     pending.push({ player_id, name: playerName, dist, fossils, timestamp });
     setPending(pending);
     return false;
   }
 
-  await pruneRuns(player_id);
   return true;
 }
 
-// Flush any queued offline scores — call this on app start when online
+// Flush queued offline scores
 export async function flushPendingScores() {
   if (!navigator.onLine) return;
   const pending = getPending();
   if (pending.length === 0) return;
 
   const failed = [];
-  const playerIds = new Set();
   for (const run of pending) {
-    const ok = await insertRun(run.player_id, run.name, run.dist, run.fossils, run.timestamp);
-    if (ok) playerIds.add(run.player_id);
-    else failed.push(run);
+    const ok = await tryInsertRun(run.player_id, run.name, run.dist, run.fossils, run.timestamp);
+    if (!ok) failed.push(run);
   }
   setPending(failed);
-  for (const pid of playerIds) await pruneRuns(pid);
 }
 
 // Check if a name is already taken by another player
@@ -90,7 +94,7 @@ export async function isNameTaken(name) {
   return data && data.length > 0;
 }
 
-// Fetch top 50 runs globally by distance (multiple runs per player allowed)
+// Fetch top 50 runs globally by distance
 export async function fetchLeaderboard() {
   const { data, error } = await supabase
     .from("leaderboard")

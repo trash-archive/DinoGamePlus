@@ -37,11 +37,12 @@ function drawBird(ctx, o, sid, fw) {
     if(fw===0){ ctx.fillRect(o.x-6,o.y+2,28,7); ctx.fillRect(o.x+28,o.y+2,20,7); }
     else       { ctx.fillRect(o.x-2,o.y+8,24,5); ctx.fillRect(o.x+28,o.y+8,16,5); }
   } else if(sid==="arctic") {
-    ctx.fillStyle="#ddeeff";
+    // Snowy owl — bright white body, reads clearly against the dark steel-blue sky
+    ctx.fillStyle = o._nightBlend > 0.5 ? "#aaccdd" : "#ddeeff";
     ctx.fillRect(o.x+6,o.y+4,26,14); ctx.fillRect(o.x+18,o.y,14,10);
     ctx.fillStyle="#ffdd44"; ctx.fillRect(o.x+20,o.y+2,4,4); ctx.fillRect(o.x+26,o.y+2,4,4);
-    ctx.fillStyle="#aabbcc"; ctx.fillRect(o.x+22,o.y+6,4,3);
-    ctx.fillStyle="#ddeeff";
+    ctx.fillStyle="#334455"; ctx.fillRect(o.x+22,o.y+6,4,3);
+    ctx.fillStyle = o._nightBlend > 0.5 ? "#aaccdd" : "#ddeeff";
     if(fw===0){ ctx.fillRect(o.x-2,o.y-2,20,8); ctx.fillRect(o.x+30,o.y-2,14,8); }
     else       { ctx.fillRect(o.x+2,o.y+6,16,6); ctx.fillRect(o.x+30,o.y+6,10,6); }
   } else if(sid==="volcano") {
@@ -156,6 +157,13 @@ export function drawObstacleForScenery(ctx, o, scenery, frame) {
 
   if(o.otype === "hawk") {
     drawHawk(ctx, o, frame);
+    return;
+  }
+
+  // Vulture uses per-scenery draw but needs early dispatch for dive-state wing logic
+  if(o.otype === "vulture") {
+    if(set==="desert") drawDesertObstacle(ctx, o, frame);
+    else drawWastelandObstacle(ctx, o, frame);
     return;
   }
 

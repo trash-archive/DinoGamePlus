@@ -894,7 +894,7 @@ export default function DinoIncremental() {
             _spikeTimer: otype==="spiketrap" ? Math.max(30,50-tier*2.5) : undefined,
           });
           // Cluster: ground static obstacles sometimes spawn 1-2 more of the same type close together
-          const clusterTypes=["cactus","tree","stump","bush","rock","spike","spike_cluster","wall","dune","icewall","lavarock","pillar","boulder","crystalSpire","crystalCluster","tumbleweed","frostspike"];
+          const clusterTypes=["cactus","tree","stump","bush","rock","spike","spike_cluster","wall","dune","icewall","snowdrift","frozenTree","arcticFox","lavarock","pillar","boulder","crystalSpire","crystalCluster","tumbleweed","frostspike"];
           if(clusterTypes.includes(otype)&&tier>=1){
             const clusterChance=0.28+tier*0.02; // ~28-48% chance of a cluster
             const count=Math.random()<clusterChance?(Math.random()<0.3?2:1):0;
@@ -974,7 +974,7 @@ export default function DinoIncremental() {
 
         // ── Move everything ──────────────────────────────────────────────────
         gs.obstacles=gs.obstacles.filter(o=>{
-          if(o.otype!=="dust_devil") o.x-=effSpeed*dt;
+          if(o.otype!=="dust_devil"&&o.otype!=="blizzardWall") o.x-=effSpeed*dt;
           // Turret: shoot horizontal bullets, fires when 1/4 body visible
           if(o.otype==="turret"&&o.x<CANVAS_W-20&&o.x>-60){
             const shootInterval=Math.max(70,130-tier*8);
@@ -1000,6 +1000,12 @@ export default function DinoIncremental() {
             const maxH=36+tier*4;
             if(dist<420) o._wormH=Math.min(maxH,(o._wormH||0)+2.5*dt);
             else         o._wormH=Math.max(0,(o._wormH||0)-2*dt);
+          }
+          // Scorpion: raise tail toward player when close
+          if(o.otype==="scorpion"){
+            const dist=Math.abs(o.x-gs.dino.x);
+            if(dist<300) o._tailRaise=Math.min(28,(o._tailRaise||0)+2*dt);
+            else         o._tailRaise=Math.max(0,(o._tailRaise||0)-1.5*dt);
           }
           // Icicle: drop from sky when dino is nearby
           if(o.otype==="icicle"){
@@ -1060,30 +1066,74 @@ export default function DinoIncremental() {
             }
             o.bullets=o.bullets.filter(b=>{b.x+=b.vx*dt; return b.x>-20;});
           }
-          // Scorpion: arc venom shots (parabolic), fires when 1/4 body visible
-          if(o.otype==="scorpion"&&o.x<CANVAS_W-20&&o.x>-60){
-            const shootInterval=Math.max(90,160-tier*8);
+          // Walrus: shoot horizontal ice tusks at low height, fires when 1/4 body visible
+          if(o.otype==="walrus"&&o.x<CANVAS_W-20&&o.x>-60){
+            const shootInterval=Math.max(80,150-tier*8);
             if(!o._entryShot&&o.x<=CANVAS_W-11){
-              o._entryShot=true;
-              o._shootTimer=shootInterval;
+              o._entryShot=true; o._shootTimer=shootInterval;
             }
             o._shootTimer=(o._shootTimer||0)+dt;
             if(o._shootTimer>=shootInterval){
               o._shootTimer=0;
               const bSpd=effSpeed/gs.baseSpeed;
-              o.bullets.push({x:o.x+36,y:GROUND_Y-40,vx:-(5+tier*0.3)*bSpd,vy:(-5-tier*0.2)*bSpd});
+              o.bullets.push({x:o.x+4,y:GROUND_Y-20,vx:-(6+tier*0.3)*bSpd,vy:0});
+            }
+            o.bullets=o.bullets.filter(b=>{b.x+=b.vx*dt; return b.x>-20;});
+          }
+          // SnowGolem: shoot arcing snowball that bounces once on ground
+          if(o.otype==="snowGolem"&&o.x<CANVAS_W-20&&o.x>-60){
+            const shootInterval=Math.max(90,160-tier*8);
+            if(!o._entryShot&&o.x<=CANVAS_W-11){
+              o._entryShot=true; o._shootTimer=shootInterval;
+            }
+            o._shootTimer=(o._shootTimer||0)+dt;
+            if(o._shootTimer>=shootInterval){
+              o._shootTimer=0;
+              const bSpd=effSpeed/gs.baseSpeed;
+              o.bullets.push({x:o.x+4,y:GROUND_Y-48,vx:-(5+tier*0.25)*bSpd,vy:(-6-tier*0.2)*bSpd,_bounced:false});
             }
             o.bullets=o.bullets.filter(b=>{
-              b.x+=b.vx*dt; b.y+=b.vy*dt; b.vy+=0.35*dt;
-              return b.x>-20&&b.y<GROUND_Y;
+              b.x+=b.vx*dt; b.y+=b.vy*dt; b.vy+=0.4*dt;
+              // Bounce once on ground
+              if(!b._bounced&&b.y>=GROUND_Y-12){
+                b.y=GROUND_Y-12; b.vy=-(Math.abs(b.vy)*0.55); b._bounced=true;
+              }
+              return b.x>-20&&b.y<GROUND_Y+4;
             });
+          }
+          // Mummy: shoot horizontal bandage wraps, fires when 1/4 body visible
+          if(o.otype==="mummy"&&o.x<CANVAS_W-20&&o.x>-60){
+            const shootInterval=Math.max(90,160-tier*8);
+            if(!o._entryShot&&o.x<=CANVAS_W-11){
+              o._entryShot=true; o._shootTimer=shootInterval;
+            }
+            o._shootTimer=(o._shootTimer||0)+dt;
+            if(o._shootTimer>=shootInterval){
+              o._shootTimer=0;
+              const bSpd=effSpeed/gs.baseSpeed;
+              o.bullets.push({x:o.x+4,y:GROUND_Y-44,vx:-(6+tier*0.3)*bSpd,vy:0});
+            }
+            o.bullets=o.bullets.filter(b=>{b.x+=b.vx*dt; return b.x>-20;});
+          }
+          // Obelisk: shoot horizontal curse beam, fires when 1/4 body visible
+          if(o.otype==="obelisk"&&o.x<CANVAS_W-20&&o.x>-60){
+            const shootInterval=Math.max(80,150-tier*8);
+            if(!o._entryShot&&o.x<=CANVAS_W-9){
+              o._entryShot=true; o._shootTimer=shootInterval;
+            }
+            o._shootTimer=(o._shootTimer||0)+dt;
+            if(o._shootTimer>=shootInterval){
+              o._shootTimer=0;
+              const bSpd=effSpeed/gs.baseSpeed;
+              o.bullets.push({x:o.x+4,y:GROUND_Y-58,vx:-(7+tier*0.3)*bSpd,vy:0});
+            }
+            o.bullets=o.bullets.filter(b=>{b.x+=b.vx*dt; return b.x>-20;});
           }
           // Vulture: dive toward dino when close, then pull back up
           if(o.otype==="vulture"||o.otype==="hawk"){
             const dist=Math.abs(o.x-gs.dino.x);
             if(o._vultureState===undefined){ o._vultureState=0; o._vultureBaseY=o.y; }
             if(o._vultureState===0&&dist<200){
-              // Lock onto dino Y at dive commit — hawk swoops to that fixed point, not continuously
               o._vultureTargetY = o.otype==="hawk" ? gs.dino.y+8 : GROUND_Y-52;
               o._vultureState=1;
             }
@@ -1095,12 +1145,43 @@ export default function DinoIncremental() {
               if(o.y<=o._vultureBaseY) o._vultureState=0;
             }
           }
+          // IceBat: dive toward dino when close, same state machine as vulture
+          if(o.otype==="iceBat"){
+            const dist=Math.abs(o.x-gs.dino.x);
+            if(o._vultureState===undefined){ o._vultureState=0; o._vultureBaseY=o.y; }
+            if(o._vultureState===0&&dist<220){
+              o._vultureTargetY=gs.dino.y+6;
+              o._vultureState=1;
+            }
+            if(o._vultureState===1){
+              o.y=Math.min(o._vultureTargetY, o.y+4*dt);
+              if(o.y>=o._vultureTargetY) o._vultureState=2;
+            } else if(o._vultureState===2){
+              o.y=Math.max(o._vultureBaseY, o.y-3*dt);
+              if(o.y<=o._vultureBaseY) o._vultureState=0;
+            }
+          }
           // Dust devil: slow horizontal drift (wobble left/right)
           if(o.otype==="dust_devil"){
             if(o._ddBaseX===undefined) o._ddBaseX=o.x;
             o._ddPhase=(o._ddPhase||0)+0.04*dt;
             o._ddBaseX-=effSpeed*dt;
             o.x=o._ddBaseX+Math.sin(o._ddPhase)*14;
+          }
+          // BlizzardWall: slow drift like dust devil + gentle wind push on dino
+          if(o.otype==="blizzardWall"){
+            if(o._ddBaseX===undefined) o._ddBaseX=o.x;
+            o._ddPhase=(o._ddPhase||0)+0.025*dt;
+            o._ddBaseX-=effSpeed*0.6*dt;
+            o.x=o._ddBaseX+Math.sin(o._ddPhase)*8;
+            // Wind push: nudge dino left when overlapping, scales with game speed
+            if(!hasGhost&&!hasGiant&&gs.dino.invTimer<=0){
+              const hb=getObstacleHitbox(o);
+              if(rectsOverlap(gs.dino.x,gs.dino.y,DINO_W,DINO_H,hb.x,hb.y,hb.w,hb.h)){
+                const pushStrength = 1.2 * (effSpeed / gs.baseSpeed);
+                gs.dino.x=Math.max(10, gs.dino.x-pushStrength*dt);
+              }
+            }
           }
           // VineTrap: snap shut when dino is close
           if(o.otype==="vineTrap"){
@@ -1255,16 +1336,20 @@ export default function DinoIncremental() {
         if(hasGiant||hasSpdPw){
           for(const o of gs.obstacles){
             if(o.bullets&&o.bullets.length>0){
-              o.bullets=o.bullets.filter(b=>!rectsOverlap(DX,DY,DW,DH,b.x,b.y,8,4));
+              o.bullets=o.bullets.filter(b=>{
+                const bw = o.otype==="mummy" ? 14 : o.otype==="obelisk" ? 12 : 8;
+                return !rectsOverlap(DX,DY,DW,DH,b.x,b.y,bw,4);
+              });
             }
           }
         }
         if(!hasGhost&&!hasGiant&&!hasSpdPw&&gs.dino.invTimer<=0&&!(designId==="dilopho"&&gs.dilophoPhaseActive>0)){
           for(const o of gs.obstacles){
-            if((o.otype!=="turret"&&o.otype!=="scorpion"&&o.otype!=="yeti"&&o.otype!=="lavaburst"&&o.otype!=="demon"&&o.otype!=="gorilla"&&o.otype!=="statue"&&o.otype!=="golem"&&o.otype!=="crystalGolem"&&o.otype!=="crystalMine")||!o.bullets) continue;
+            if((o.otype!=="turret"&&o.otype!=="yeti"&&o.otype!=="walrus"&&o.otype!=="snowGolem"&&o.otype!=="lavaburst"&&o.otype!=="demon"&&o.otype!=="gorilla"&&o.otype!=="statue"&&o.otype!=="golem"&&o.otype!=="crystalGolem"&&o.otype!=="crystalMine"&&o.otype!=="mummy"&&o.otype!=="obelisk")||!o.bullets) continue;
             for(let bi=o.bullets.length-1;bi>=0;bi--){
               const b=o.bullets[bi];
-              if(rectsOverlap(DX,DY,DW,DH,b.x,b.y,8,4)){
+              const bw = o.otype==="mummy" ? 14 : o.otype==="obelisk" ? 12 : 8;
+              if(rectsOverlap(DX,DY,DW,DH,b.x,b.y,bw,4)){
                 o.bullets.splice(bi,1);
                 if(gs.activePowerups.shield_pw){
                   gs.shieldHitsLeft--; if(gs.shieldHitsLeft<=0) delete gs.activePowerups.shield_pw;
@@ -1301,6 +1386,8 @@ export default function DinoIncremental() {
         } else if(!hasGhost){
           for(let i=gs.obstacles.length-1;i>=0;i--){
             const o=gs.obstacles[i];
+            // BlizzardWall only pushes — never deals body collision damage
+            if(o.otype==="blizzardWall") continue;
             const hb=getObstacleHitbox(o);
 
             // Dilopho passive: phase through everything when active
