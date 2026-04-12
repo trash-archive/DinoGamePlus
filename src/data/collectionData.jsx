@@ -23,6 +23,90 @@ export const SCENERIES = [
   SCENERY_ABYSS,
 ];
 
+// ─── MAP ICONS ───────────────────────────────────────────────────────────────
+const I = { display:"block", shapeRendering:"crispEdges" };
+export const MAP_ICONS = {
+  // Wasteland — pixel cactus
+  classic:
+    <svg width="16" height="16" viewBox="0 0 10 10" style={I}>
+      <rect x="4" y="1" width="2" height="7" fill="currentColor"/>
+      <rect x="2" y="3" width="2" height="2" fill="currentColor"/>
+      <rect x="6" y="4" width="2" height="2" fill="currentColor"/>
+      <rect x="1" y="5" width="2" height="1" fill="currentColor"/>
+      <rect x="7" y="6" width="2" height="1" fill="currentColor"/>
+      <rect x="3" y="8" width="4" height="2" fill="currentColor"/>
+    </svg>,
+  // Grasslands — pixel sun over hills
+  plains:
+    <svg width="16" height="16" viewBox="0 0 10 10" style={I}>
+      <rect x="4" y="0" width="2" height="1" fill="currentColor"/>
+      <rect x="3" y="1" width="4" height="2" fill="currentColor"/>
+      <rect x="4" y="3" width="2" height="1" fill="currentColor"/>
+      <rect x="0" y="6" width="4" height="4" fill="currentColor"/>
+      <rect x="3" y="5" width="4" height="5" fill="currentColor"/>
+      <rect x="6" y="7" width="4" height="3" fill="currentColor"/>
+    </svg>,
+  // Desert — pixel pyramid
+  desert:
+    <svg width="16" height="16" viewBox="0 0 10 10" style={I}>
+      <rect x="4" y="1" width="2" height="2" fill="currentColor"/>
+      <rect x="3" y="3" width="4" height="2" fill="currentColor"/>
+      <rect x="2" y="5" width="6" height="2" fill="currentColor"/>
+      <rect x="1" y="7" width="8" height="2" fill="currentColor"/>
+      <rect x="0" y="9" width="10" height="1" fill="currentColor"/>
+    </svg>,
+  // Arctic — pixel snowflake
+  arctic:
+    <svg width="16" height="16" viewBox="0 0 10 10" style={I}>
+      <rect x="4" y="0" width="2" height="10" fill="currentColor"/>
+      <rect x="0" y="4" width="10" height="2" fill="currentColor"/>
+      <rect x="1" y="1" width="2" height="2" fill="currentColor"/>
+      <rect x="7" y="1" width="2" height="2" fill="currentColor"/>
+      <rect x="1" y="7" width="2" height="2" fill="currentColor"/>
+      <rect x="7" y="7" width="2" height="2" fill="currentColor"/>
+    </svg>,
+  // Volcano — pixel erupting volcano
+  volcano:
+    <svg width="16" height="16" viewBox="0 0 10 10" style={I}>
+      <rect x="3" y="0" width="2" height="2" fill="currentColor"/>
+      <rect x="6" y="1" width="2" height="1" fill="currentColor"/>
+      <rect x="4" y="2" width="2" height="2" fill="currentColor"/>
+      <rect x="3" y="4" width="4" height="2" fill="currentColor"/>
+      <rect x="2" y="6" width="6" height="2" fill="currentColor"/>
+      <rect x="1" y="8" width="8" height="2" fill="currentColor"/>
+    </svg>,
+  // Jungle — pixel tree
+  jungle:
+    <svg width="16" height="16" viewBox="0 0 10 10" style={I}>
+      <rect x="3" y="0" width="4" height="2" fill="currentColor"/>
+      <rect x="2" y="2" width="6" height="2" fill="currentColor"/>
+      <rect x="1" y="4" width="8" height="3" fill="currentColor"/>
+      <rect x="4" y="7" width="2" height="3" fill="currentColor"/>
+    </svg>,
+  // Ruins — pixel pillar / arch
+  ruins:
+    <svg width="16" height="16" viewBox="0 0 10 10" style={I}>
+      <rect x="1" y="0" width="2" height="8" fill="currentColor"/>
+      <rect x="7" y="0" width="2" height="8" fill="currentColor"/>
+      <rect x="1" y="0" width="8" height="2" fill="currentColor"/>
+      <rect x="0" y="8" width="4" height="2" fill="currentColor"/>
+      <rect x="6" y="8" width="4" height="2" fill="currentColor"/>
+    </svg>,
+  // Crystal Cave — pixel crystal cluster
+  cave:
+    <svg width="16" height="16" viewBox="0 0 10 10" style={I}>
+      <rect x="1" y="4" width="2" height="6" fill="currentColor"/>
+      <rect x="0" y="3" width="4" height="1" fill="currentColor"/>
+      <rect x="4" y="2" width="2" height="8" fill="currentColor"/>
+      <rect x="3" y="1" width="4" height="1" fill="currentColor"/>
+      <rect x="7" y="4" width="2" height="6" fill="currentColor"/>
+      <rect x="6" y="3" width="4" height="1" fill="currentColor"/>
+    </svg>,
+};
+
+// Runnable maps shown in leaderboards (excludes The Abyss which is boss-only)
+export const RUNNABLE_SCENERIES = SCENERIES.filter(s => s.id !== "abyss");
+
 // The 8 regular maps that must all be owned to unlock The Abyss
 export const REGULAR_SCENERY_IDS = [
   "classic","plains","desert","arctic","volcano","jungle","ruins","cave",

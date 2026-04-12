@@ -1,6 +1,47 @@
 import { useState, useCallback } from "react";
 import { playClick, getSoundMuted, setSoundMuted, getSfxVolume, setSfxVolume } from "./hooks/useSoundEffects";
 import useModalBack from "./hooks/useModalBack";
+import { MAP_ICONS } from "./data/collectionData.jsx";
+
+// Rich pixel globe for GLOBAL board
+const GlobeIcon = ({ size = 20, color = "currentColor", starColor = "#ffe066" }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" style={{ display:"block", shapeRendering:"crispEdges" }}>
+    {/* Outer circle */}
+    <rect x="5" y="0" width="6" height="1" fill={color}/>
+    <rect x="3" y="1" width="2" height="1" fill={color}/>
+    <rect x="11" y="1" width="2" height="1" fill={color}/>
+    <rect x="2" y="2" width="1" height="1" fill={color}/>
+    <rect x="13" y="2" width="1" height="1" fill={color}/>
+    <rect x="1" y="3" width="1" height="2" fill={color}/>
+    <rect x="14" y="3" width="1" height="2" fill={color}/>
+    <rect x="0" y="5" width="1" height="6" fill={color}/>
+    <rect x="15" y="5" width="1" height="6" fill={color}/>
+    <rect x="1" y="11" width="1" height="2" fill={color}/>
+    <rect x="14" y="11" width="1" height="2" fill={color}/>
+    <rect x="2" y="13" width="1" height="1" fill={color}/>
+    <rect x="13" y="13" width="1" height="1" fill={color}/>
+    <rect x="3" y="14" width="2" height="1" fill={color}/>
+    <rect x="11" y="14" width="2" height="1" fill={color}/>
+    <rect x="5" y="15" width="6" height="1" fill={color}/>
+    {/* Equator line */}
+    <rect x="1" y="7" width="14" height="2" fill={color} opacity="0.45"/>
+    {/* Vertical meridian */}
+    <rect x="7" y="1" width="2" height="14" fill={color} opacity="0.45"/>
+    {/* Left arc */}
+    <rect x="4" y="2" width="1" height="12" fill={color} opacity="0.28"/>
+    <rect x="3" y="4" width="1" height="8" fill={color} opacity="0.18"/>
+    {/* Right arc */}
+    <rect x="11" y="2" width="1" height="12" fill={color} opacity="0.28"/>
+    <rect x="12" y="4" width="1" height="8" fill={color} opacity="0.18"/>
+    {/* Star accent top-right */}
+    <rect x="11" y="3" width="1" height="1" fill={starColor} opacity="0.9"/>
+    <rect x="10" y="3" width="1" height="1" fill={starColor} opacity="0.5"/>
+    <rect x="11" y="2" width="1" height="1" fill={starColor} opacity="0.5"/>
+    {/* Shine streak */}
+    <rect x="3" y="2" width="1" height="4" fill="rgba(255,255,255,0.35)"/>
+    <rect x="4" y="2" width="1" height="2" fill="rgba(255,255,255,0.2)"/>
+  </svg>
+);
 
 const SAVE_KEYS = [
   "dino_player_id", "dino_player_name",
@@ -32,7 +73,7 @@ export default function MenuScreen({
   startGame, setScreen, totalRuns, bestDist, fossils, passiveRate,
   notification, achivNotif,
   ownedSkins, ownedDesigns, ownedSceneries,
-  playerMenuRank,
+  playerMenuRank, allMenuRanks, displayRankIdx, setDisplayRankIdx,
   musicMuted, setMusicMuted, musicVolume, setMusicVolume,
   activeScenery,
   abyssUnlocked, startBossFight,
@@ -66,9 +107,28 @@ export default function MenuScreen({
     (ownedDesigns?.length  >= 12) &&
     (ownedSceneries?.length >= 8);
 
-  const rankLabel  = playerMenuRank === 1 ? "1ST" : playerMenuRank === 2 ? "2ND" : playerMenuRank === 3 ? "3RD" : `${playerMenuRank}TH`;
-  const bannerBg   = playerMenuRank === 1 ? "#c9a227" : playerMenuRank === 2 ? "#7a8fa6" : playerMenuRank === 3 ? "#a0522d" : DARK;
-  const bannerColor = playerMenuRank <= 3 ? "#fff" : BG;
+  const [showRankPicker, setShowRankPicker] = useState(false);
+
+  const displayed  = allMenuRanks?.[displayRankIdx] ?? null;
+  const rankNum    = displayed?.rank ?? playerMenuRank;
+  const rankLabel  = rankNum === 1 ? "1ST" : rankNum === 2 ? "2ND" : rankNum === 3 ? "3RD" : `${rankNum}TH`;
+  const isGlobal   = !displayed || displayed.board === "global";
+  const hasMultiple = allMenuRanks?.length > 1;
+
+  // Per-rank banner styling
+  const getBannerStyle = (rank, global) => {
+    if (global) {
+      if (rank === 1) return { bg:"linear-gradient(160deg,#b8860b,#ffd700,#b8860b)", border:"#ffd700", color:"#fff", shine:true };
+      if (rank === 2) return { bg:"linear-gradient(160deg,#5a6a7a,#c0c8d0,#5a6a7a)", border:"#c0c8d0", color:"#fff", shine:true };
+      if (rank === 3) return { bg:"linear-gradient(160deg,#7a3a1a,#cd7f32,#7a3a1a)", border:"#cd7f32", color:"#fff", shine:true };
+      return { bg:"linear-gradient(160deg,#1a1a2a,#2a2a3a,#1a1a2a)", border:"#4444aa", color:"#aaaaff", shine:false };
+    }
+    if (rank === 1) return { bg:"#c9a227", border:"#e8c040", color:"#fff", shine:false };
+    if (rank === 2) return { bg:"#7a8fa6", border:"#aaa",    color:"#fff", shine:false };
+    if (rank === 3) return { bg:"#a0522d", border:"#cd7f32", color:"#fff", shine:false };
+    return { bg:DARK, border:BORDER, color:BG, shine:false };
+  };
+  const bs = getBannerStyle(rankNum, isGlobal);
 
   return (
     <div style={outer}>
@@ -288,13 +348,111 @@ export default function MenuScreen({
       <div style={{ width:"100%", maxWidth:480, padding:"0 16px", boxSizing:"border-box" }}>
         <div style={card}>
 
-          {/* Rank banner */}
-          {playerMenuRank && (
-            <div style={{ position:"absolute", top:0, left:14, zIndex:10 }}>
-              <div style={{ background:bannerBg, color:bannerColor, fontFamily:F, padding:"5px 8px 0", fontSize:9, letterSpacing:2, textAlign:"center", clipPath:"polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%)", width:"clamp(34px,8vw,44px)", height:"clamp(52px,14vw,68px)" }}>
-                <div style={{ fontSize:"clamp(6px,1.5vw,7px)", letterSpacing:2, opacity:0.8, marginBottom:0 }}>RANK</div>
-                <div style={{ fontSize:"clamp(10px,2.8vw,13px)", fontWeight:"bold", letterSpacing:1 }}>{rankLabel}</div>
+          {/* Rank banner — only the active one */}
+          {allMenuRanks?.length > 0 && (() => {
+            const entry   = allMenuRanks[displayRankIdx];
+            const rLabel  = entry.rank === 1 ? "1ST" : entry.rank === 2 ? "2ND" : entry.rank === 3 ? "3RD" : `${entry.rank}TH`;
+            const eGlobal = entry.board === "global";
+            const eStyle  = getBannerStyle(entry.rank, eGlobal);
+            return (
+              <div
+                onClick={() => { if (!hasMultiple) return; playClick(); setShowRankPicker(true); }}
+                style={{ position:"absolute", top:0, left:14, zIndex:10, cursor: hasMultiple ? "pointer" : "default" }}
+              >
+                <div style={{
+                  background: eStyle.bg,
+                  color: eStyle.color,
+                  fontFamily: F,
+                  clipPath: "polygon(0 0, 100% 0, 100% 82%, 50% 100%, 0 82%)",
+                  width: "clamp(48px,11vw,60px)",
+                  height: "clamp(72px,18vw,90px)",
+                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                  gap: 3, paddingBottom: 8, boxSizing: "border-box",
+                  outline: eGlobal ? `2px solid ${eStyle.border}` : "none",
+                  position: "relative", overflow: "hidden",
+                }}>
+                  {eStyle.shine && (
+                    <div style={{ position:"absolute", top:0, left:"-30%", width:"40%", height:"100%", background:"rgba(255,255,255,0.18)", transform:"skewX(-18deg)", pointerEvents:"none" }} />
+                  )}
+                  <div style={{ flexShrink:0 }}>
+                    {eGlobal
+                      ? <GlobeIcon size={18} color={eStyle.color} starColor={entry.rank <= 3 ? "#ffe066" : "#8888ff"} />
+                      : <span style={{ color: eStyle.color, display:"block", lineHeight:1, fontSize:16 }}>{MAP_ICONS[entry.board]}</span>
+                    }
+                  </div>
+                  <div style={{ fontSize:"clamp(11px,3vw,14px)", fontWeight:"bold", letterSpacing:1, lineHeight:1 }}>{rLabel}</div>
+                  <div style={{ fontSize:"clamp(5px,1.2vw,6px)", letterSpacing:2, opacity:0.7, lineHeight:1 }}>RANK</div>
+                </div>
               </div>
+            );
+          })()}
+
+          {/* Rank picker overlay — 3-col scrollable banner grid */}
+          {showRankPicker && (
+            <div
+              onClick={() => { playClick(); setShowRankPicker(false); }}
+              style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.72)", zIndex:300, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"flex-start", padding:"24px 16px 16px", overflowY:"auto", WebkitOverflowScrolling:"touch" }}
+            >
+              {/* Header — doesn't stop propagation so clicking it also closes */}
+              <div style={{ color:"#f0ede6", fontFamily:F, textAlign:"center", marginBottom:20, pointerEvents:"none" }}>
+                <div style={{ fontSize:9, letterSpacing:4, opacity:0.6, marginBottom:4 }}>CHOOSE DISPLAY</div>
+                <div style={{ fontSize:14, fontWeight:"bold", letterSpacing:3 }}>YOUR RANKINGS</div>
+              </div>
+
+              {/* 3-col banner grid */}
+              <div
+                onClick={e => e.stopPropagation()}
+                style={{ display:"grid", gridTemplateColumns:"repeat(3, auto)", gap:"12px 16px", justifyContent:"center", width:"100%", maxWidth:340 }}
+              >
+                {allMenuRanks.map((entry, i) => {
+                  const rLabel   = entry.rank === 1 ? "1ST" : entry.rank === 2 ? "2ND" : entry.rank === 3 ? "3RD" : `${entry.rank}TH`;
+                  const eGlobal  = entry.board === "global";
+                  const eStyle   = getBannerStyle(entry.rank, eGlobal);
+                  const isActive = i === displayRankIdx;
+                  return (
+                    <div
+                      key={`${entry.board}-${entry.rank}-${entry.dist}`}
+                      onClick={() => { playClick(); setDisplayRankIdx(i); setShowRankPicker(false); }}
+                      style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, cursor:"pointer" }}
+                    >
+                      {/* Banner ribbon */}
+                      <div style={{
+                        background: eStyle.bg,
+                        color: eStyle.color,
+                        clipPath: "polygon(0 0, 100% 0, 100% 82%, 50% 100%, 0 82%)",
+                        width: 64, height: 86,
+                        display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+                        gap: 4, paddingBottom: 10, boxSizing:"border-box",
+                        outline: isActive ? `3px solid #fff` : eGlobal ? `2px solid ${eStyle.border}` : "none",
+                        position:"relative", overflow:"hidden",
+                        opacity: isActive ? 1 : 0.7,
+                        transition: "opacity 0.15s",
+                      }}>
+                        {eStyle.shine && (
+                          <div style={{ position:"absolute", top:0, left:"-30%", width:"40%", height:"100%", background:"rgba(255,255,255,0.18)", transform:"skewX(-18deg)", pointerEvents:"none" }} />
+                        )}
+                        <div style={{ flexShrink:0 }}>
+                          {eGlobal
+                            ? <GlobeIcon size={20} color={eStyle.color} starColor={entry.rank <= 3 ? "#ffe066" : "#8888ff"} />
+                            : <span style={{ color:eStyle.color, display:"block", lineHeight:1, fontSize:18 }}>{MAP_ICONS[entry.board]}</span>
+                          }
+                        </div>
+                        <div style={{ fontSize:13, fontWeight:"bold", letterSpacing:1, lineHeight:1 }}>{rLabel}</div>
+                        <div style={{ fontSize:6, letterSpacing:2, opacity:0.7, lineHeight:1 }}>RANK</div>
+                      </div>
+                      {/* Label below banner */}
+                      <div style={{ fontSize:8, letterSpacing:1, color: isActive ? "#fff" : "rgba(255,255,255,0.55)", textAlign:"center", fontFamily:F, fontWeight:"bold", lineHeight:1.3 }}>
+                        {entry.label}
+                      </div>
+                      {isActive && (
+                        <div style={{ fontSize:7, letterSpacing:1, color:"rgba(255,255,255,0.45)", fontFamily:F }}>ACTIVE</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div style={{ marginTop:24, fontSize:9, letterSpacing:2, color:"rgba(255,255,255,0.35)", fontFamily:F, pointerEvents:"none" }}>TAP OUTSIDE TO CLOSE</div>
             </div>
           )}
 

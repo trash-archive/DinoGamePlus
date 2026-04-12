@@ -47,8 +47,31 @@ export function drawClouds(ctx, clouds, scenery) {
   const s = scenery || SCENERIES[0];
   for(const c of clouds){
     if(s.id==="cave"){
-      ctx.fillStyle=s.cloudColor;
-      ctx.fillRect(c.x,0,8,c.h||20); ctx.fillRect(c.x+2,c.h||20,4,4);
+      // Stalactite formations hanging from ceiling
+      const h = c.h || 20;
+      const pulse = Math.sin(c.x * 0.07 + c.y * 0.03) * 0.5 + 0.5;
+      // Main stalactite body — two-tone layered
+      ctx.fillStyle = "#2a1a4a";
+      ctx.fillRect(c.x + 1, 0, 6, h);
+      ctx.fillStyle = "#4a2a7a";
+      ctx.fillRect(c.x + 2, 0, 4, h);
+      ctx.fillStyle = "#7733cc";
+      ctx.fillRect(c.x + 3, 0, 2, Math.floor(h * 0.55));
+      // Drip tip — pointed crystal end
+      ctx.fillStyle = "#5522aa";
+      ctx.fillRect(c.x + 1, h,     6, 4);
+      ctx.fillRect(c.x + 2, h + 4, 4, 4);
+      ctx.fillRect(c.x + 3, h + 8, 2, 4);
+      // Crystal tip glow dot
+      ctx.fillStyle = pulse > 0.6 ? "#cc88ff" : "#9944dd";
+      ctx.fillRect(c.x + 3, h + 10, 2, 2);
+      // Side micro-crystals
+      ctx.fillStyle = "#6622bb";
+      ctx.fillRect(c.x - 1, Math.floor(h * 0.3), 3, 6);
+      ctx.fillRect(c.x + 6, Math.floor(h * 0.45), 3, 5);
+      ctx.fillStyle = "#9944dd";
+      ctx.fillRect(c.x,     Math.floor(h * 0.3), 2, 3);
+      ctx.fillRect(c.x + 6, Math.floor(h * 0.45), 2, 2);
     } else if(s.id==="classic") {
       ctx.fillStyle="#dddddd";
       ctx.fillRect(c.x+10,c.y+8,38,9);ctx.fillRect(c.x+4,c.y+3,18,14);
@@ -419,6 +442,81 @@ export function drawGround(ctx, offset, scenery, nightBlend) {
       const pw = 10 + (i%3)*8;
       ctx.fillStyle = puddleCol; ctx.fillRect(rx, GROUND_Y+2, pw, 3);
       ctx.fillStyle = puddleHi;  ctx.fillRect(rx+2, GROUND_Y+2, pw-4, 1);
+    }
+    return;
+  }
+  if(s.id === "cave") {
+    const baseTop  = "#1e0e38";
+    const baseMid  = "#150a28";
+    const veinGlow = "#7722cc";
+    const veinBright = "#aa44ff";
+    const shardCol = "#4a2a7a";
+    const shardHi  = "#7744bb";
+    const mineralCol = "#331166";
+    const mineralHi  = "#6633aa";
+    const tealVein   = "#226688";
+    const tealBright = "#44aacc";
+    // Base cave floor
+    ctx.fillStyle = baseTop;  ctx.fillRect(0, GROUND_Y,   CANVAS_W, 5);
+    ctx.fillStyle = baseMid;  ctx.fillRect(0, GROUND_Y+5, CANVAS_W, CANVAS_H-GROUND_Y-5);
+    // Glowing crystal vein cracks — purple
+    const VEIN_STRIDE = 62, VEIN_COUNT = 24, VEIN_PERIOD = VEIN_STRIDE * VEIN_COUNT;
+    const veinOff = offset % VEIN_PERIOD;
+    for(let i=0;i<VEIN_COUNT;i++){
+      const rx = ((i*VEIN_STRIDE - veinOff) % VEIN_PERIOD + VEIN_PERIOD) % VEIN_PERIOD;
+      if(rx > CANVAS_W) continue;
+      const ry = GROUND_Y + 6 + (i%4)*7;
+      const rw = 10 + (i%3)*14;
+      ctx.fillStyle = veinGlow;
+      ctx.fillRect(rx,   ry,   rw, 2);
+      ctx.fillRect(rx+4, ry+3, rw-8, 1);
+      ctx.fillStyle = veinBright;
+      ctx.fillRect(rx+2, ry,   rw-4, 1);
+      // Short vertical branch crack
+      if(i%4===0) { ctx.fillStyle = veinGlow; ctx.fillRect(rx+rw/2|0, ry, 1, 5); }
+    }
+    // Teal/cyan accent veins — scattered between purple ones
+    const TEAL_STRIDE = 97, TEAL_COUNT = 14, TEAL_PERIOD = TEAL_STRIDE * TEAL_COUNT;
+    const tealOff = offset % TEAL_PERIOD;
+    for(let i=0;i<TEAL_COUNT;i++){
+      const rx = ((i*TEAL_STRIDE - tealOff) % TEAL_PERIOD + TEAL_PERIOD) % TEAL_PERIOD;
+      if(rx > CANVAS_W) continue;
+      const ry = GROUND_Y + 9 + (i%3)*9;
+      const rw = 8 + (i%3)*10;
+      ctx.fillStyle = tealVein;
+      ctx.fillRect(rx,   ry,   rw, 1);
+      ctx.fillStyle = tealBright;
+      ctx.fillRect(rx+2, ry,   rw-4, 1);
+    }
+    // Embedded crystal shards poking up from the surface edge
+    const SHARD_STRIDE = 83, SHARD_COUNT = 18, SHARD_PERIOD = SHARD_STRIDE * SHARD_COUNT;
+    const shardOff = offset % SHARD_PERIOD;
+    for(let i=0;i<SHARD_COUNT;i++){
+      const rx = ((i*SHARD_STRIDE - shardOff) % SHARD_PERIOD + SHARD_PERIOD) % SHARD_PERIOD;
+      if(rx > CANVAS_W) continue;
+      const sh = 4 + (i%3)*3;
+      ctx.fillStyle = shardCol;
+      ctx.fillRect(rx,   GROUND_Y-sh, 4, sh);
+      ctx.fillRect(rx+5, GROUND_Y-(sh-2), 3, sh-2);
+      ctx.fillStyle = shardHi;
+      ctx.fillRect(rx+1, GROUND_Y-sh, 2, 2);
+      ctx.fillRect(rx+5, GROUND_Y-(sh-2), 1, 2);
+    }
+    // Small glowing mineral deposits in the floor
+    const MIN_STRIDE = 113, MIN_COUNT = 14, MIN_PERIOD = MIN_STRIDE * MIN_COUNT;
+    const minOff = offset % MIN_PERIOD;
+    for(let i=0;i<MIN_COUNT;i++){
+      const rx = ((i*MIN_STRIDE - minOff) % MIN_PERIOD + MIN_PERIOD) % MIN_PERIOD;
+      if(rx > CANVAS_W) continue;
+      const ry = GROUND_Y + 8 + (i%4)*7;
+      const mw = 5 + (i%3)*4;
+      ctx.fillStyle = mineralCol; ctx.fillRect(rx, ry, mw, mw*0.5|0);
+      ctx.fillStyle = mineralHi;  ctx.fillRect(rx+1, ry, mw-2, 1);
+      // Teal mineral variant every 3rd
+      if(i%3===2){
+        ctx.fillStyle = tealVein;   ctx.fillRect(rx+mw+3, ry+2, mw-2, (mw*0.5|0)-1);
+        ctx.fillStyle = tealBright; ctx.fillRect(rx+mw+4, ry+2, mw-4, 1);
+      }
     }
     return;
   }

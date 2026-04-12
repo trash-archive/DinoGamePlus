@@ -10,6 +10,10 @@ const tierColors = { bronze:"#cd7f32", silver:"#aaa", gold:"#d4a820", legend:"#9
 export default function GameOverScreen({ lastRun, bestDist, lastRunRank, getSavedName, onRunAgain, onUpgrades, onMenu }) {
   const isNewBest = lastRun && lastRun.dist >= bestDist && bestDist > 0;
 
+  // lastRunRank is { rank, boardLabel } or null
+  const rankNum   = lastRunRank?.rank ?? null;
+  const rankBoard = lastRunRank?.boardLabel ?? "GLOBAL";
+
   const overlay = {
     position: "fixed", inset: 0,
     display: "flex", alignItems: "center", justifyContent: "center",
@@ -55,14 +59,16 @@ export default function GameOverScreen({ lastRun, bestDist, lastRunRank, getSave
 
         {/* Stats */}
         {lastRun && (
-          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-            <div style={{ background: "#f0ede6", border: "1px solid #ddd", padding: "10px 8px", flex: 1 }}>
-              <div style={{ fontSize: 8, letterSpacing: 1, color: MUTED, marginBottom: 5 }}>DISTANCE</div>
-              <div style={{ fontSize: 18, fontWeight: "bold" }}>{lastRun.dist}m</div>
+          <div style={{ marginBottom: 16 }}>
+            {/* Distance — primary, large */}
+            <div style={{ background: "#f0ede6", border: `2px solid ${BORDER}`, padding: "14px 12px", marginBottom: 6 }}>
+              <div style={{ fontSize: 8, letterSpacing: 2, color: MUTED, marginBottom: 6 }}>DISTANCE</div>
+              <div style={{ fontSize: 36, fontWeight: "bold", letterSpacing: 2, lineHeight: 1 }}>{lastRun.dist}<span style={{ fontSize: 16, fontWeight: "normal", letterSpacing: 1, marginLeft: 4, color: MUTED }}>m</span></div>
             </div>
-            <div style={{ background: "#f0ede6", border: "1px solid #ddd", padding: "10px 8px", flex: 1 }}>
-              <div style={{ fontSize: 8, letterSpacing: 1, color: MUTED, marginBottom: 5 }}>FOSSILS</div>
-              <div style={{ fontSize: 18, fontWeight: "bold" }}>◈ {lastRun.fossils}</div>
+            {/* Fossils — secondary, smaller */}
+            <div style={{ background: "#f5f2ec", border: "1px solid #ddd", padding: "7px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ fontSize: 8, letterSpacing: 2, color: MUTED }}>FOSSILS EARNED</div>
+              <div style={{ fontSize: 13, fontWeight: "bold", color: DARK }}>◈ {lastRun.fossils}</div>
             </div>
           </div>
         )}
@@ -75,14 +81,15 @@ export default function GameOverScreen({ lastRun, bestDist, lastRunRank, getSave
         )}
 
         {/* Leaderboard rank */}
-        {lastRunRank !== null && (
+        {rankNum !== null && (
           <div style={{ marginBottom: 12, padding: "9px 12px", background: "#111", color: BG, letterSpacing: 1, fontSize: 10 }}>
+            <div style={{ fontSize: 8, color: "#888", letterSpacing: 2, marginBottom: 4 }}>{rankBoard} LEADERBOARD</div>
             RANKED{" "}
             <span style={{
-              color: lastRunRank <= 3 ? tierColors[lastRunRank === 1 ? "gold" : lastRunRank === 2 ? "silver" : "bronze"] : BG,
+              color: rankNum <= 3 ? tierColors[rankNum === 1 ? "gold" : rankNum === 2 ? "silver" : "bronze"] : BG,
               fontWeight: "bold", fontSize: 13,
             }}>
-              #{lastRunRank}
+              #{rankNum}
             </span>
             {" "}ON THE LEADERBOARD
             <div style={{ fontSize: 8, color: "#888", marginTop: 3, letterSpacing: 1 }}>as {getSavedName()}</div>

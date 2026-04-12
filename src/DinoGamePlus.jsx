@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { submitScore, fetchLeaderboard } from "./leaderboard";
+import { submitScore, fetchLeaderboard, fetchMapLeaderboard, fetchAllPlayerRanks } from "./leaderboard";
 import { getSavedName, getPlayerId } from "./supabase";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import useCozyMusic from "./hooks/useCozyMusic";
@@ -95,8 +95,11 @@ export default function DinoIncremental() {
   const [lbData,           setLbData]           = useState([]);
   const [lbLoading,        setLbLoading]        = useState(false);
   const [lastRunRank,      setLastRunRank]       = useState(null);
+
   const [bossKey,          setBossKey]           = useState(0);
   const [playerMenuRank,   setPlayerMenuRank]    = useState(null);
+  const [allMenuRanks,     setAllMenuRanks]      = useState([]);
+  const [displayRankIdx,   setDisplayRankIdx]    = useLocalStorage("dino_displayRankIdx", 0);
   const [touchButtonOpacity, setTouchButtonOpacity] = useLocalStorage("dino_touchButtonOpacity", 0.88);
   const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
   const [touchButtons,     setTouchButtons]     = useLocalStorage("dino_touchButtons_v2", isTouchDevice);
@@ -188,20 +191,15 @@ export default function DinoIncremental() {
     fetchLeaderboard().then(data=>{ setLbData(data); setLbLoading(false); });
   },[screen]);
 
-  // Fetch player's best rank for menu banner
+  // Fetch player's ranks across all boards for menu banner
   useEffect(()=>{
     if(screen!=="menu") return;
     const myId = getPlayerId();
-    fetchLeaderboard().then(board=>{
-      const myEntries = board.filter(r => r.player_id === myId);
-      if(myEntries.length === 0){ setPlayerMenuRank(null); return; }
-      const best = myEntries.reduce((a,b) => b.best_dist > a.best_dist ? b : a);
-      const rank = board.filter(r =>
-        r.best_dist > best.best_dist ||
-        (r.best_dist === best.best_dist && r.best_fossils > best.best_fossils) ||
-        (r.best_dist === best.best_dist && r.best_fossils === best.best_fossils && r.updated_at < best.updated_at)
-      ).length + 1;
-      setPlayerMenuRank(rank <= 50 ? rank : null);
+    fetchAllPlayerRanks(myId).then(ranks => {
+      setAllMenuRanks(ranks);
+      // Clamp saved index in case ranks list shrank since last session
+      setDisplayRankIdx(prev => Math.min(prev, Math.max(0, ranks.length - 1)));
+      setPlayerMenuRank(ranks.length > 0 ? ranks[0].rank : null);
     });
   },[screen]);
 
@@ -492,21 +490,45 @@ export default function DinoIncremental() {
           dinoDistances:newDinoDist,
         };
       });
-      // Auto-submit run and check if it makes top 50
+      // Auto-submit run and check rank on both global and map boards
       const playerName = getSavedName();
-      submitScore(playerName, dist, earned).then(async()=>{
-        const board = await fetchLeaderboard();
-        const myId = getPlayerId();
-        // Find rank of this specific run (same dist)
-        const myEntry = board.find(r => r.player_id === myId && r.best_dist === dist && r.best_fossils === earned);
-        const rank = myEntry
-          ? board.filter(r =>
-              r.best_dist > myEntry.best_dist ||
-              (r.best_dist === myEntry.best_dist && r.best_fossils > myEntry.best_fossils) ||
-              (r.best_dist === myEntry.best_dist && r.best_fossils === myEntry.best_fossils && r.updated_at < myEntry.updated_at)
-            ).length + 1
-          : null;
-        setLastRunRank(rank);
+      submitScore(playerName, dist, earned, gs.scenery?.id || null).then(async () => {
+        const myId     = getPlayerId();
+        const mapId    = gs.scenery?.id || null;
+        const RUNNABLE_MAP_LABELS = {
+          classic:"WASTELAND", plains:"GRASSLANDS", desert:"DESERT",
+          arctic:"ARCTIC TUNDRA", volcano:"VOLCANIC RIFT",
+          jungle:"DENSE JUNGLE", ruins:"ANCIENT RUINS", cave:"CRYSTAL CAVE",
+        };
+
+        const calcRank = (board, entry) => board.filter(r =>
+          r.best_dist > entry.best_dist ||
+          (r.best_dist === entry.best_dist && r.best_fossils > entry.best_fossils) ||
+          (r.best_dist === entry.best_dist && r.best_fossils === entry.best_fossils && r.updated_at < entry.updated_at)
+        ).length + 1;
+
+        // Fetch both boards in parallel
+        const [globalBoard, mapBoard] = await Promise.all([
+          fetchLeaderboard(),
+          mapId ? fetchMapLeaderboard(mapId) : Promise.resolve([]),
+        ]);
+
+        // Check global rank
+        const globalEntry = globalBoard.find(r => r.player_id === myId && r.best_dist === dist && r.best_fossils === earned);
+        const globalRank  = globalEntry ? calcRank(globalBoard, globalEntry) : null;
+
+        // Check map rank
+        const mapEntry = mapBoard.find(r => r.player_id === myId && r.best_dist === dist && r.best_fossils === earned);
+        const mapRank  = mapEntry ? calcRank(mapBoard, mapEntry) : null;
+
+        // Prefer global rank; fall back to map rank
+        if (globalRank !== null) {
+          setLastRunRank({ rank: globalRank, boardLabel: "GLOBAL" });
+        } else if (mapRank !== null && mapId) {
+          setLastRunRank({ rank: mapRank, boardLabel: RUNNABLE_MAP_LABELS[mapId] || mapId.toUpperCase() });
+        } else {
+          setLastRunRank(null);
+        }
       });
       setTimeout(()=>setScreen("gameover"),450);
     };
@@ -1527,7 +1549,7 @@ export default function DinoIncremental() {
           // CrystalMine: explode into 4 shards when dino is close
           if(o.otype==="crystalMine"&&!o._exploding){
             const dist=Math.sqrt(Math.pow(o.x+12-gs.dino.x,2)+Math.pow(o.y+12-gs.dino.y,2));
-            if(dist<60){
+            if(dist<80){
               o._exploding=1;
               o.bullets=[
                 {x:o.x+12,y:o.y+12,vx:-6,vy:-6},
@@ -1542,8 +1564,123 @@ export default function DinoIncremental() {
               b.x+=b.vx*dt; b.y+=b.vy*dt; b.vy+=0.3*dt;
               return b.x>-20&&b.y<GROUND_Y;
             });
-            if(o.bullets.length===0) o._exploding=2; // fully done
+            if(o.bullets.length===0) o._exploding=2;
           }
+          // CrystalBat: dive at dino, split into 2 minibats on body hit
+          if(o.otype==="crystalBat"){
+            if(o._vultureState===undefined){ o._vultureState=0; o._vultureBaseY=o.y; o._splitDone=false; o._miniBats=[]; }
+            const dist=Math.abs(o.x-gs.dino.x);
+            if(o._vultureState===0&&dist<240){
+              o._vultureState=1;
+            }
+            if(o._vultureState===1){
+              // Aim at standing dino top — ducking dino is lower so bat flies over
+              o._vultureTargetY = GROUND_Y - DINO_H + 4;
+              o.y=Math.min(o._vultureTargetY,o.y+5*dt);
+              if(o.y>=o._vultureTargetY) o._vultureState=2;
+            } else if(o._vultureState===2){
+              o.y=Math.max(o._vultureBaseY,o.y-3.5*dt);
+              if(o.y<=o._vultureBaseY) o._vultureState=0;
+            }
+            // Move and cull minibats
+            if(o._miniBats&&o._miniBats.length>0){
+              o._miniBats=o._miniBats.filter(mb=>{
+                mb.x+=mb.vx*dt; mb.y+=mb.vy*dt;
+                mb.vy+=0.18*dt; // slight gravity
+                return mb.x>-60&&mb.x<CANVAS_W+60&&mb.y<GROUND_Y+20;
+              });
+            }
+          }
+          // GeodeSpitter: V-spread — one high shard, one low shard
+          if(o.otype==="geodeSpitter"&&o.x<CANVAS_W-20&&o.x>-60){
+            const shootInterval=Math.max(80,150-tier*8);
+            if(!o._entryShot&&o.x<=CANVAS_W-11){
+              o._entryShot=true; o._shootTimer=shootInterval;
+            }
+            o._shootTimer=(o._shootTimer||0)+dt;
+            if(o._shootTimer>=shootInterval){
+              o._shootTimer=0;
+              const bSpd=Math.min(effSpeed/gs.baseSpeed,1.6);
+              // High shard — must jump over
+              o.bullets.push({x:o.x,y:GROUND_Y-52,vx:-(7+tier*0.3)*bSpd,vy:0,_high:true});
+              // Low shard — must jump (can't duck under, forces jump read)
+              o.bullets.push({x:o.x,y:GROUND_Y-18,vx:-(6+tier*0.25)*bSpd,vy:0,_high:false});
+            }
+            o.bullets=o.bullets.filter(b=>{b.x+=b.vx*dt; return b.x>-20;});
+          }
+          // VoidCrawler: creeps toward dino, speeds up when close
+          // Moves at effSpeed (scroll) + chargeSpeed (active pursuit) so it always advances on screen
+          if(o.otype==="voidCrawler"){
+            const dist=Math.abs(o.x-gs.dino.x);
+            const baseCreep = 0.8+tier*0.12;
+            const chargeSpeed = dist<180 ? baseCreep*2.8 : baseCreep;
+            o._crawlerSpeed = chargeSpeed;
+            // Extra pursuit on top of normal world scroll
+            o.x -= chargeSpeed*dt;
+          }
+          // CrystalCeiling: descend on timer, hold, then retract
+          if(o.otype==="crystalCeiling"){
+            if(o._ceilY===undefined){ o._ceilY=0; o._ceilState=0; o._ceilTimer=0; }
+            const descendTarget = GROUND_Y - 72; // slab bottom at 138+22=160, ducking dino top at 189 — 29px gap
+            const holdFrames    = Math.max(60, 100-tier*5);
+            const warnFrames    = 50;
+            if(o._ceilState===0){
+              // Warning: flash in place
+              o._ceilTimer+=dt;
+              o._ceilDescending=false;
+              if(o._ceilTimer>=warnFrames){ o._ceilState=1; o._ceilTimer=0; }
+            } else if(o._ceilState===1){
+              // Descend
+              o._ceilDescending=true;
+              o._ceilY=Math.min(descendTarget,o._ceilY+5.5*dt);
+              if(o._ceilY>=descendTarget){ o._ceilState=2; o._ceilTimer=0; }
+            } else if(o._ceilState===2){
+              // Hold
+              o._ceilDescending=false;
+              o._ceilTimer+=dt;
+              if(o._ceilTimer>=holdFrames) o._ceilState=3;
+            } else {
+              // Retract
+              o._ceilY=Math.max(0,o._ceilY-4*dt);
+              if(o._ceilY<=0){ o._ceilState=0; o._ceilTimer=0; } // loop
+            }
+          }
+          // RuneCircle: telegraph glow then 4-way shard burst, repeating
+          if(o.otype==="runeCircle"){
+            const chargeFrames = Math.max(60,100-tier*5);
+            const fireFrames   = 12;
+            if(o._runeState===undefined){ o._runeState=0; o._runeTimer=0; o._runeCharge=0; }
+            if(o._runeState===0){
+              // Charging
+              o._runeTimer+=dt;
+              o._runeCharge=Math.min(1,o._runeTimer/chargeFrames);
+              o._runeFiring=false;
+              if(o._runeTimer>=chargeFrames){
+                o._runeState=1; o._runeTimer=0;
+                const bSpd=Math.min(effSpeed/gs.baseSpeed,1.5);
+                const bx=o.x+20, by=GROUND_Y-4;
+                o.bullets=[
+                  {x:bx,y:by,vx:-(7+tier*0.3)*bSpd,vy:0},           // left
+                  {x:bx,y:by,vx: (5+tier*0.2)*bSpd,vy:0},           // right
+                  {x:bx,y:by,vx:0,vy:-(8+tier*0.3)*bSpd},           // up
+                  {x:bx,y:by,vx:-(5+tier*0.2)*bSpd,vy:-(6+tier*0.2)*bSpd}, // up-left
+                ];
+              }
+            } else {
+              // Firing — shards fly, then reset
+              o._runeFiring=true;
+              o._runeTimer+=dt;
+              o.bullets=o.bullets.filter(b=>{
+                b.x+=b.vx*dt; b.y+=b.vy*dt;
+                return b.x>-20&&b.x<CANVAS_W+20&&b.y>-20&&b.y<GROUND_Y;
+              });
+              if(o._runeTimer>=fireFrames&&o.bullets.length===0){
+                o._runeState=0; o._runeTimer=0; o._runeCharge=0;
+              }
+            }
+          }
+          // Cull split bat once all minibats are gone
+          if(o.otype==="crystalBat"&&o._splitDone&&(o._miniBats||[]).length===0) return false;
           return o.x>-100 && o._exploding!==2 && o._laserState!==2;
         });
 
@@ -1596,7 +1733,7 @@ export default function DinoIncremental() {
         }
         if(!hasGhost&&!hasGiant&&!hasSpdPw&&gs.dino.invTimer<=0&&!(designId==="dilopho"&&gs.dilophoPhaseActive>0)){
           for(const o of gs.obstacles){
-            if((o.otype!=="turret"&&o.otype!=="yeti"&&o.otype!=="walrus"&&o.otype!=="snowGolem"&&o.otype!=="lavaburst"&&o.otype!=="demon"&&o.otype!=="gorilla"&&o.otype!=="jungleSerpent"&&o.otype!=="statue"&&o.otype!=="golem"&&o.otype!=="crystalGolem"&&o.otype!=="crystalMine"&&o.otype!=="mummy"&&o.otype!=="obelisk"&&o.otype!=="magmaGolem"&&o.otype!=="ankh")||!o.bullets) continue;
+            if((o.otype!=="turret"&&o.otype!=="yeti"&&o.otype!=="walrus"&&o.otype!=="snowGolem"&&o.otype!=="lavaburst"&&o.otype!=="demon"&&o.otype!=="gorilla"&&o.otype!=="jungleSerpent"&&o.otype!=="statue"&&o.otype!=="golem"&&o.otype!=="crystalGolem"&&o.otype!=="crystalMine"&&o.otype!=="mummy"&&o.otype!=="obelisk"&&o.otype!=="magmaGolem"&&o.otype!=="ankh"&&o.otype!=="geodeSpitter"&&o.otype!=="runeCircle")||!o.bullets) continue;
             for(let bi=o.bullets.length-1;bi>=0;bi--){
               const b=o.bullets[bi];
               const bw = o.otype==="mummy" ? 14 : o.otype==="obelisk" ? 12 : 8;
@@ -1626,6 +1763,7 @@ export default function DinoIncremental() {
         if(hasGiant||hasSpdPw){
           const giantBonusPerKill = designId==="trex" ? 5 : 4;
           gs.obstacles=gs.obstacles.filter(o=>{
+            if(o.otype==="crystalBat"&&o._splitDone) return true; // parked split bat — skip
             const hb=getObstacleHitbox(o);
             if(rectsOverlap(DX,DY,DW,DH,hb.x,hb.y,hb.w,hb.h)){
               gs.fossilsEarned+=giantBonusPerKill; gs.giantCrushes++;
@@ -1639,7 +1777,7 @@ export default function DinoIncremental() {
           for(let i=gs.obstacles.length-1;i>=0;i--){
             const o=gs.obstacles[i];
             // BlizzardWall and AshCloud only push — never deal body collision damage
-            if(o.otype==="blizzardWall"||o.otype==="ashCloud"||o.otype==="cursedWall"||o.otype==="sandTrap"||o.otype==="ruinsLaser") continue;
+            if(o.otype==="blizzardWall"||o.otype==="ashCloud"||o.otype==="cursedWall"||o.otype==="sandTrap"||o.otype==="ruinsLaser"||o.otype==="runeCircle") continue;
             const hb=getObstacleHitbox(o);
 
             // Dilopho passive: phase through everything when active
@@ -1647,6 +1785,42 @@ export default function DinoIncremental() {
 
             const actualHit = gs.dino.invTimer<=0&&rectsOverlap(DX,DY,DW,DH,hb.x,hb.y,hb.w,hb.h);
 
+            // CrystalBat: on first body hit, split into 2 minibats instead of dealing damage
+            if(o.otype==="crystalBat"&&actualHit&&!o._splitDone&&!hasGiant&&!hasGhost){
+              o._splitDone=true;
+              o._vultureState=99; // park the main bat off-screen logic
+              o._miniBats=[
+                {x:o.x,    y:o.y, vx:-(4+tier*0.2), vy:-(3+tier*0.1)},
+                {x:o.x+14, y:o.y, vx:-(2+tier*0.15),vy:-(4+tier*0.1)},
+              ];
+              gs.dino.invTimer=8; // brief grace so split doesn't immediately re-hit
+              continue;
+            }
+            // CrystalBat minibat collision
+            if(o.otype==="crystalBat"&&o._miniBats&&o._miniBats.length>0&&!hasGiant&&!hasGhost&&gs.dino.invTimer<=0){
+              let mbHit=false;
+              o._miniBats=o._miniBats.filter(mb=>{
+                if(!mbHit&&rectsOverlap(DX,DY,DW,DH,mb.x+2,mb.y+2,10,8)){
+                  mbHit=true; return false;
+                }
+                return true;
+              });
+              if(mbHit){
+                if(gs.activePowerups.shield_pw){
+                  gs.shieldHitsLeft--; if(gs.shieldHitsLeft<=0) delete gs.activePowerups.shield_pw;
+                  gs.dino.invTimer=20+gs.stats.invFramesBonus; gs.hitTaken=true;
+                } else if((gs.stats.shieldChance+stegoShieldBonus)>Math.random()){
+                  gs.dino.invTimer=20+gs.stats.invFramesBonus; gs.hitTaken=true;
+                  if(designId==="stego"){ gs.stegoFlashTimer=40; addFloat(gs,"PLATE ARMOR!",gs.dino.x-10,gs.dino.y-28,"#ffcc00"); }
+                } else if(gs.lives>1){
+                  gs.lives--; gs.dino.invTimer=30+gs.stats.invFramesBonus; gs.hitTaken=true;
+                  playDie(); addFloat(gs,"-1 LIFE",gs.dino.x,gs.dino.y-24,"#ee3344");
+                } else {
+                  gs.lives=0; gs.hitTaken=true; endGame(gs); return;
+                }
+              }
+              continue;
+            }
             // Collision first
             if(actualHit){
               if(gs.activePowerups.shield_pw){
@@ -1764,9 +1938,46 @@ export default function DinoIncremental() {
       const SC  = getSceneryColors(SCN,B);
 
       ctx.fillStyle=SC.bg; ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
-      if(B>0.05) drawStars(ctx,gs.stars,B);
-      drawPixelSun(ctx,gs.sunX,gs.sunY,gs.sunAlpha);
-      drawPixelMoon(ctx,gs.moonX,gs.moonY,gs.moonAlpha);
+      if(SCN.id==="cave"){
+        // Bioluminescent glow patches on the back wall — static per-position shimmer
+        const glowPatches = [
+          {x:38,  y:28, rx:28, ry:18, col:"#6611cc"},
+          {x:110, y:52, rx:20, ry:14, col:"#224488"},
+          {x:185, y:18, rx:34, ry:20, col:"#441188"},
+          {x:270, y:44, rx:22, ry:16, col:"#116644"},
+          {x:340, y:22, rx:30, ry:18, col:"#5511aa"},
+          {x:420, y:50, rx:18, ry:12, col:"#224466"},
+          {x:490, y:30, rx:26, ry:16, col:"#330088"},
+          {x:560, y:48, rx:20, ry:14, col:"#115533"},
+        ];
+        for(const p of glowPatches){
+          const pulse = 0.06 + Math.sin(gs.frame*0.022 + p.x*0.04)*0.03;
+          ctx.save();
+          ctx.globalAlpha = pulse;
+          ctx.fillStyle = p.col;
+          // Pixel-art ellipse approximation — 3 stacked rects
+          ctx.fillRect(p.x - p.rx*0.5|0, p.y - p.ry,     p.rx,   p.ry*2);
+          ctx.fillRect(p.x - p.rx,       p.y - p.ry*0.5|0, p.rx*2, p.ry);
+          ctx.fillRect(p.x - p.rx*0.7|0, p.y - p.ry*0.8|0, p.rx*1.4|0, p.ry*1.6|0);
+          ctx.restore();
+        }
+        // Crystal cluster silhouettes on the back wall mid-layer
+        ctx.save();
+        ctx.globalAlpha = 0.18;
+        ctx.fillStyle = "#3a1a6a";
+        const wallClusters = [60,150,240,330,430,520];
+        for(const wx of wallClusters){
+          ctx.fillRect(wx,    55, 6, 28);
+          ctx.fillRect(wx+8,  48, 8, 35);
+          ctx.fillRect(wx+18, 58, 5, 25);
+          ctx.fillRect(wx+25, 52, 7, 31);
+        }
+        ctx.restore();
+      } else {
+        if(B>0.05) drawStars(ctx,gs.stars,B);
+        drawPixelSun(ctx,gs.sunX,gs.sunY,gs.sunAlpha);
+        drawPixelMoon(ctx,gs.moonX,gs.moonY,gs.moonAlpha);
+      }
       drawClouds(ctx,gs.clouds,SCN);
       if(gs.entity.alpha>0) drawEntitySilhouette(ctx,gs.entity.x,gs.entity.y,gs.frame,gs.entity.alpha,SCN);
       drawGround(ctx,gs.groundOffset,SCN,B);
@@ -2219,6 +2430,9 @@ export default function DinoIncremental() {
       notification={notification} achivNotif={achivNotif}
       ownedSkins={ownedSkins} ownedDesigns={ownedDesigns} ownedSceneries={ownedSceneries}
       playerMenuRank={playerMenuRank}
+      allMenuRanks={allMenuRanks}
+      displayRankIdx={displayRankIdx}
+      setDisplayRankIdx={setDisplayRankIdx}
       musicMuted={musicMuted} setMusicMuted={setMusicMuted}
       musicVolume={musicVolume} setMusicVolume={setMusicVolume}
       activeScenery={activeScenery}
