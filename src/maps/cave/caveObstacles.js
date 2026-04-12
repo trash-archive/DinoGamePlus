@@ -1,5 +1,5 @@
 // ─── CRYSTAL CAVE OBSTACLES ───────────────────────────────────────────────────
-import { GROUND_Y } from "../../maps/mapConstants";
+import { GROUND_Y, CANVAS_H } from "../../maps/mapConstants";
 
 // ── Draw ──────────────────────────────────────────────────────────────────────
 export function drawCaveObstacle(ctx, o, frame) {
@@ -350,35 +350,43 @@ export function drawCaveObstacle(ctx, o, frame) {
     }
 
   } else if (o.otype === "geodeSpitter") {
-    // Ground turret — fires V-spread: one high shard, one low shard
+    // Ground turret — tall crystal cannon body with two stacked barrels
+    // Base plinth
     ctx.fillStyle = dark2;
-    ctx.fillRect(o.x+2,  g-22, 40, 22);
+    ctx.fillRect(o.x+4,  g-14, 36, 14);
     ctx.fillStyle = "#2a1248";
-    ctx.fillRect(o.x+4,  g-20, 36, 20);
-    // Geode body — cracked open crystal egg
+    ctx.fillRect(o.x+6,  g-12, 32, 12);
+    // Main body — tall crystal block
+    ctx.fillStyle = dark2;
+    ctx.fillRect(o.x+8,  g-54, 28, 42);
     ctx.fillStyle = glow2;
-    ctx.fillRect(o.x+8,  g-36, 28, 18);
-    ctx.fillRect(o.x+6,  g-32, 32, 14);
-    ctx.fillStyle = dark1;
-    ctx.fillRect(o.x+10, g-34, 24, 14);
-    // Interior crystal lining
+    ctx.fillRect(o.x+10, g-52, 24, 40);
+    // Body vein
     ctx.fillStyle = glow3;
-    ctx.fillRect(o.x+12, g-32, 4,  10);
-    ctx.fillRect(o.x+18, g-33, 4,  12);
-    ctx.fillRect(o.x+24, g-31, 4,  9);
-    // Outer shell facets
+    ctx.fillRect(o.x+20, g-50, 4,  34);
+    ctx.fillRect(o.x+12, g-40, 20, 3);
+    // Body highlight edge
     ctx.fillStyle = glow1;
-    ctx.fillRect(o.x+8,  g-36, 6,  4);
-    ctx.fillRect(o.x+30, g-36, 6,  4);
-    ctx.fillRect(o.x+6,  g-32, 4,  4);
-    ctx.fillRect(o.x+34, g-32, 4,  4);
-    // Barrel nozzle — left-facing
+    ctx.fillRect(o.x+10, g-52, 5,  40);
+    // Crown spikes
+    ctx.fillStyle = glow1;
+    ctx.fillRect(o.x+12, g-58, 4,  6);
+    ctx.fillRect(o.x+20, g-60, 4,  8);
+    ctx.fillRect(o.x+28, g-56, 4,  4);
+    // Upper barrel — fires high shard (at g-52)
     ctx.fillStyle = "#5522aa";
-    ctx.fillRect(o.x,    g-30, 8,  8);
+    ctx.fillRect(o.x,    g-54, 10, 6);
     ctx.fillStyle = glow2;
-    ctx.fillRect(o.x+1,  g-29, 6,  6);
+    ctx.fillRect(o.x+1,  g-53, 8,  4);
     ctx.fillStyle = dark1;
-    ctx.fillRect(o.x+2,  g-28, 4,  4);
+    ctx.fillRect(o.x+2,  g-52, 5,  2);
+    // Lower barrel — fires low shard (at g-18)
+    ctx.fillStyle = "#5522aa";
+    ctx.fillRect(o.x,    g-20, 10, 6);
+    ctx.fillStyle = glow2;
+    ctx.fillRect(o.x+1,  g-19, 8,  4);
+    ctx.fillStyle = dark1;
+    ctx.fillRect(o.x+2,  g-18, 5,  2);
     // Bullets — high shard bright, low shard pink
     for(const b of (o.bullets||[])){
       ctx.fillStyle = dark2;
@@ -519,52 +527,149 @@ export function drawCaveObstacle(ctx, o, frame) {
     }
 
   } else if (o.otype === "crystalGas") {
-    // Toxic crystal gas cloud — drifts slowly, inverts controls on contact
+    // Toxic crystal gas — large circular cloud, inverts controls on contact
     if(o._ddBaseX===undefined) o._ddBaseX=o.x;
-    const gx = o._ddBaseX;
-    const gasPhase = Math.floor(frame/12)%3;
-    const gasAlpha = 0.38 + Math.sin(frame*0.04)*0.12;
-    // Vent source at ground level — cracked crystal emitter
-    ctx.fillStyle = "#1a0a30";
-    ctx.fillRect(gx+10, g-10, 16, 10);
-    ctx.fillStyle = "#3a1a5a";
-    ctx.fillRect(gx+12, g-8,  12, 8);
-    ctx.fillStyle = glow3;
-    ctx.fillRect(gx+14, g-10, 4,  3);
-    ctx.fillRect(gx+20, g-10, 4,  3);
-    // Gas cloud layers — stacked semi-transparent blobs rising upward
+    const gx = o._ddBaseX + 18; // cloud centre x
+    const gy = g - 70;           // cloud centre y
+    const gasAlpha = 0.30 + Math.sin(frame*0.035)*0.10;
+    const gasPhase = Math.floor(frame/10)%4;
+    const gasCol  = "#44ff88";
+    const gasCol2 = "#22dd66";
+    const gasCol3 = "#88ffaa";
+    // Radial pixel-circle cloud — 5 concentric rings
     ctx.save();
-    const gasCol = "#44ff88"; // toxic green
-    ctx.globalAlpha = gasAlpha * 0.55;
-    ctx.fillStyle = gasCol;
-    // Layer 1 — widest, lowest
-    ctx.fillRect(gx+2,  g-28, 32, 18);
-    ctx.fillRect(gx,    g-24, 36, 14);
-    // Layer 2 — mid
-    ctx.globalAlpha = gasAlpha * 0.45;
-    ctx.fillRect(gx+4,  g-44, 28, 18);
-    ctx.fillRect(gx+2,  g-40, 32, 14);
-    // Layer 3 — top wisp
-    ctx.globalAlpha = gasAlpha * 0.28;
-    ctx.fillRect(gx+8,  g-58, 20, 16);
-    ctx.fillRect(gx+6,  g-54, 24, 12);
-    // Animated bubble dots
-    ctx.globalAlpha = gasAlpha * 0.7;
-    ctx.fillStyle = "#88ffaa";
-    if(gasPhase===0){ ctx.fillRect(gx+14,g-32,4,4); ctx.fillRect(gx+22,g-48,3,3); }
-    if(gasPhase===1){ ctx.fillRect(gx+18,g-36,4,4); ctx.fillRect(gx+10,g-52,3,3); }
-    if(gasPhase===2){ ctx.fillRect(gx+20,g-30,4,4); ctx.fillRect(gx+16,g-46,3,3); }
+    const rings = [
+      { r:60, alpha:gasAlpha*0.16, col:gasCol  },
+      { r:48, alpha:gasAlpha*0.26, col:gasCol  },
+      { r:36, alpha:gasAlpha*0.38, col:gasCol2 },
+      { r:24, alpha:gasAlpha*0.52, col:gasCol2 },
+      { r:12, alpha:gasAlpha*0.68, col:gasCol3 },
+    ];
+    for(const ring of rings){
+      ctx.globalAlpha = ring.alpha;
+      ctx.fillStyle   = ring.col;
+      const r = ring.r;
+      const s = Math.max(4, (r/4)|0);
+      // Cardinal points
+      ctx.fillRect(gx-s/2, gy-r,     s, s);
+      ctx.fillRect(gx-s/2, gy+r-s,   s, s);
+      ctx.fillRect(gx-r,   gy-s/2,   s, s);
+      ctx.fillRect(gx+r-s, gy-s/2,   s, s);
+      // Diagonal points
+      const d = (r*0.68)|0;
+      ctx.fillRect(gx-d,   gy-d,     s, s);
+      ctx.fillRect(gx+d-s, gy-d,     s, s);
+      ctx.fillRect(gx-d,   gy+d-s,   s, s);
+      ctx.fillRect(gx+d-s, gy+d-s,   s, s);
+      // Fill between cardinal and diagonal
+      const m = (r*0.92)|0, ms = Math.max(3, s-2);
+      ctx.fillRect(gx-ms/2, gy-m,    ms, ms);
+      ctx.fillRect(gx-ms/2, gy+m-ms, ms, ms);
+      ctx.fillRect(gx-m,    gy-ms/2, ms, ms);
+      ctx.fillRect(gx+m-ms, gy-ms/2, ms, ms);
+    }
+    // Solid filled core
+    ctx.globalAlpha = gasAlpha * 0.85;
+    ctx.fillStyle = gasCol2;
+    ctx.fillRect(gx-10, gy-10, 20, 20);
+    ctx.fillRect(gx-14, gy-6,  28, 12);
+    ctx.fillRect(gx-6,  gy-14, 12, 28);
+    // Animated rising bubble dots
+    ctx.globalAlpha = gasAlpha * 0.9;
+    ctx.fillStyle = gasCol3;
+    const bubbles = [
+      [-20,-30],[10,-44],[-8,-52],[22,-28],[-30,-18],
+      [30,-40],[0,-60],[-18,-8],[18,-14],[-40,-35],[40,-20],
+    ];
+    for(let bi=0; bi<bubbles.length; bi++){
+      if((gasPhase+bi)%4 < 2) ctx.fillRect(gx+bubbles[bi][0], gy+bubbles[bi][1], 4, 4);
+    }
     ctx.restore();
-    // Inverted controls indicator — flashing ! when active
+    // Ground vent emitter
+    ctx.fillStyle = "#1a0a30";
+    ctx.fillRect(gx-9,  g-12, 18, 12);
+    ctx.fillStyle = "#3a1a5a";
+    ctx.fillRect(gx-7,  g-10, 14, 10);
+    ctx.fillStyle = glow3;
+    ctx.fillRect(gx-5,  g-12, 4, 4);
+    ctx.fillRect(gx+1,  g-12, 4, 4);
+    ctx.fillStyle = gasCol3;
+    ctx.fillRect(gx-3,  g-14, 6, 4);
+    // Inverted controls indicator
     if((o._gasActive||0)>0){
       ctx.save();
       ctx.globalAlpha = Math.sin(frame*0.3)*0.5+0.5;
-      ctx.fillStyle = "#44ff88";
-      ctx.font = "bold 11px 'Courier New'";
-      ctx.fillText("!", gx+16, g-62);
+      ctx.fillStyle = gasCol3;
+      ctx.font = "bold 13px 'Courier New'";
+      ctx.textAlign = "center";
+      ctx.fillText("!", gx, gy-68);
+      ctx.textAlign = "left";
       ctx.restore();
     }
-
+  } else if (o.otype === "crystalWall") {
+    // Void shard cluster — wide low ground-hugging crystals, pushes dino forward
+    const sx = o.x;
+    // Ground shadow base
+    ctx.fillStyle = dark2;
+    ctx.fillRect(sx,    g-6,  44, 6);
+    // Wide flat base slab
+    ctx.fillStyle = glow2;
+    ctx.fillRect(sx+2,  g-8,  40, 8);
+    ctx.fillStyle = dark1;
+    ctx.fillRect(sx+2,  g-8,  5,  8);
+    // Short shard 1 (left)
+    ctx.fillStyle = dark2;
+    ctx.fillRect(sx+3,  g-22, 10, 16);
+    ctx.fillStyle = glow2;
+    ctx.fillRect(sx+4,  g-20, 8,  16);
+    ctx.fillStyle = dark1;
+    ctx.fillRect(sx+4,  g-20, 2,  16);
+    ctx.fillStyle = glow3;
+    ctx.fillRect(sx+7,  g-17, 2,  10);
+    ctx.fillStyle = glow1;
+    ctx.fillRect(sx+5,  g-20, 4,  3);
+    // Tall shard 2 (centre)
+    ctx.fillStyle = dark2;
+    ctx.fillRect(sx+14, g-30, 12, 24);
+    ctx.fillStyle = glow2;
+    ctx.fillRect(sx+15, g-28, 10, 24);
+    ctx.fillStyle = dark1;
+    ctx.fillRect(sx+15, g-28, 3,  24);
+    ctx.fillStyle = glow3;
+    ctx.fillRect(sx+19, g-24, 2,  16);
+    ctx.fillStyle = glow1;
+    ctx.fillRect(sx+16, g-28, 5,  3);
+    // Short shard 3 (right)
+    ctx.fillStyle = dark2;
+    ctx.fillRect(sx+28, g-18, 10, 12);
+    ctx.fillStyle = glow2;
+    ctx.fillRect(sx+29, g-16, 8,  12);
+    ctx.fillStyle = dark1;
+    ctx.fillRect(sx+29, g-16, 2,  12);
+    ctx.fillStyle = glow3;
+    ctx.fillRect(sx+32, g-13, 2,  8);
+    ctx.fillStyle = glow1;
+    ctx.fillRect(sx+30, g-16, 4,  3);
+    // Tip sparkles
+    if(pulse===0){
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(sx+18, g-30, 2, 2);
+      ctx.fillRect(sx+6,  g-22, 2, 2);
+      ctx.fillRect(sx+31, g-18, 2, 2);
+    }
+    // Floating right-arrow indicator — bobs up/down above the cluster
+    const arrowBob = Math.sin(frame * 0.12) * 3;
+    const ax = sx + 8, ay = g - 46 + arrowBob;
+    ctx.fillStyle = glow1;
+    ctx.fillRect(ax,    ay+3,  16, 4);
+    ctx.fillRect(ax+14, ay,    4,  4);
+    ctx.fillRect(ax+16, ay+2,  4,  4);
+    ctx.fillRect(ax+14, ay+6,  4,  4);
+    ctx.fillRect(ax+18, ay+4,  3,  2);
+    ctx.fillStyle = glow3;
+    ctx.fillRect(ax+1,  ay+4,  12, 2);
+    ctx.fillRect(ax+15, ay+2,  2,  2);
+    ctx.fillRect(ax+15, ay+6,  2,  2);
   } else {
     // Generic fallback — small crystal pair
     ctx.fillStyle = dark2;
@@ -594,52 +699,58 @@ export function spawnCaveObstacle(r, tier) {
 
   if (tier <= 2) {
     // Early tiers: basic obstacles + first new ones
-    if      (r < 0.14) { otype="cactus"; type=Math.floor(Math.random()*(Math.min(2,tier)+1)); }
-    else if (r < 0.26) { otype="bird"; oy=GROUND_Y-88-Math.random()*48;
+    if      (r < 0.12) { otype="cactus"; type=Math.floor(Math.random()*(Math.min(2,tier)+1)); }
+    else if (r < 0.23) { otype="bird"; oy=GROUND_Y-88-Math.random()*48;
                          if(Math.random()<0.35) oy=GROUND_Y-62; }
-    else if (r < 0.40) { otype="crystalSpire"; type=Math.floor(Math.random()*3); }
-    else if (r < 0.54) { otype="crystalCluster"; }
-    else if (r < 0.66) { otype="stalactite"; oy=-30; }
-    else if (r < 0.78) { otype="crystalBat"; oy=GROUND_Y-100-Math.random()*50; }
-    else if (r < 0.90) { otype="voidCrawler"; }
-    else               { otype="geodeSpitter"; bullets=[]; }
+    else if (r < 0.36) { otype="crystalSpire"; type=Math.floor(Math.random()*3); }
+    else if (r < 0.49) { otype="crystalCluster"; }
+    else if (r < 0.60) { otype="stalactite"; oy=-30; }
+    else if (r < 0.71) { otype="crystalBat"; oy=GROUND_Y-100-Math.random()*50; }
+    else if (r < 0.81) { otype="voidCrawler"; }
+    else if (r < 0.91) { otype="geodeSpitter"; bullets=[]; }
+    else if (r < 0.95) { otype="crystalGas"; }
+    else if (r < 1.00) { otype="crystalWall"; }
     return { otype, type, oy, bullets };
   }
 
   if (tier <= 5) {
     // Mid tiers: all obstacles, new ones weighted heavier
-    if      (r < 0.10) { otype="cactus"; type=Math.floor(Math.random()*3); }
-    else if (r < 0.18) { otype="bird"; oy=GROUND_Y-88-Math.random()*48;
+    if      (r < 0.08) { otype="cactus"; type=Math.floor(Math.random()*3); }
+    else if (r < 0.15) { otype="bird"; oy=GROUND_Y-88-Math.random()*48;
                          if(Math.random()<0.40) oy=GROUND_Y-62;
                          if(Math.random()<0.30) oy=GROUND_Y-36; }
-    else if (r < 0.27) { otype="crystalSpire"; type=Math.floor(Math.random()*3); }
-    else if (r < 0.35) { otype="crystalCluster"; }
-    else if (r < 0.43) { otype="stalactite"; oy=-30; }
-    else if (r < 0.52) { otype="crystalMine"; oy=GROUND_Y-80-Math.random()*60; bullets=[]; }
-    else if (r < 0.62) { otype="crystalBat"; oy=GROUND_Y-100-Math.random()*50; }
-    else if (r < 0.71) { otype="geodeSpitter"; bullets=[]; }
-    else if (r < 0.80) { otype="voidCrawler"; }
-    else if (r < 0.88) { otype="crystalCeiling"; }
-    else if (r < 0.94) { otype="crystalGolem"; bullets=[]; }
-    else if (r < 0.98) { otype="runeCircle"; bullets=[]; }
+    else if (r < 0.23) { otype="crystalSpire"; type=Math.floor(Math.random()*3); }
+    else if (r < 0.31) { otype="crystalCluster"; }
+    else if (r < 0.39) { otype="stalactite"; oy=-30; }
+    else if (r < 0.47) { otype="crystalMine"; oy=GROUND_Y-80-Math.random()*60; bullets=[]; }
+    else if (r < 0.55) { otype="crystalBat"; oy=GROUND_Y-100-Math.random()*50; }
+    else if (r < 0.63) { otype="geodeSpitter"; bullets=[]; }
+    else if (r < 0.70) { otype="voidCrawler"; }
+    else if (r < 0.77) { otype="crystalCeiling"; }
+    else if (r < 0.83) { otype="crystalGolem"; bullets=[]; }
+    else if (r < 0.89) { otype="runeCircle"; bullets=[]; }
+    else if (r < 0.91) { otype="crystalGas"; }
+    else if (r < 0.94) { otype="crystalWall"; }
     else               { otype="voidPortal"; }
     return { otype, type, oy, bullets };
   }
 
   // Tier 6+: brutal — new hard obstacles dominate
-  if      (r < 0.07) { otype="cactus"; type=2; }
-  else if (r < 0.13) { otype="bird"; oy=GROUND_Y-88-Math.random()*48;
+  if      (r < 0.06) { otype="cactus"; type=2; }
+  else if (r < 0.12) { otype="bird"; oy=GROUND_Y-88-Math.random()*48;
                        if(Math.random()<0.5) oy=GROUND_Y-62;
                        if(Math.random()<0.4) oy=GROUND_Y-36; }
-  else if (r < 0.20) { otype="stalactite"; oy=-30; }
-  else if (r < 0.28) { otype="crystalMine"; oy=GROUND_Y-80-Math.random()*60; bullets=[]; }
-  else if (r < 0.38) { otype="crystalBat"; oy=GROUND_Y-100-Math.random()*50; }
-  else if (r < 0.48) { otype="geodeSpitter"; bullets=[]; }
-  else if (r < 0.58) { otype="voidCrawler"; }
-  else if (r < 0.68) { otype="crystalCeiling"; }
-  else if (r < 0.76) { otype="runeCircle"; bullets=[]; }
-  else if (r < 0.84) { otype="crystalGolem"; bullets=[]; }
-  else if (r < 0.92) { otype="voidPortal"; }
+  else if (r < 0.19) { otype="stalactite"; oy=-30; }
+  else if (r < 0.27) { otype="crystalMine"; oy=GROUND_Y-80-Math.random()*60; bullets=[]; }
+  else if (r < 0.36) { otype="crystalBat"; oy=GROUND_Y-100-Math.random()*50; }
+  else if (r < 0.45) { otype="geodeSpitter"; bullets=[]; }
+  else if (r < 0.54) { otype="voidCrawler"; }
+  else if (r < 0.62) { otype="crystalCeiling"; }
+  else if (r < 0.69) { otype="runeCircle"; bullets=[]; }
+  else if (r < 0.76) { otype="crystalGolem"; bullets=[]; }
+  else if (r < 0.83) { otype="crystalGas"; }
+  else if (r < 0.87) { otype="voidPortal"; }
+  else if (r < 0.93) { otype="crystalWall"; }
   else               { otype="crystalSpire"; type=2; }
   return { otype, type, oy, bullets };
 }

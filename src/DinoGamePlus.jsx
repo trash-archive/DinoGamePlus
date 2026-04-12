@@ -830,11 +830,17 @@ export default function DinoIncremental() {
           }
 
           // Dash  Efull canvas bounds (10 to CANVAS_W-60)
-          if(gs.stats.hasDash&&k["ArrowRight"]&&!pk["ArrowRight"]&&gs.dino.dashTimer<=0&&gs.dino.dashCooldown<=0){
+          // CrystalGas: swap left/right dash while inside the cloud
+          const gasInvert = gs.obstacles.some(o=>o.otype==="crystalGas"&&(o._gasActive||0)>0);
+          const kRight = gasInvert ? k["ArrowLeft"]  : k["ArrowRight"];
+          const kLeft  = gasInvert ? k["ArrowRight"] : k["ArrowLeft"];
+          const pkRight= gasInvert ? pk["ArrowLeft"]  : pk["ArrowRight"];
+          const pkLeft = gasInvert ? pk["ArrowRight"] : pk["ArrowLeft"];
+          if(gs.stats.hasDash&&kRight&&!pkRight&&gs.dino.dashTimer<=0&&gs.dino.dashCooldown<=0){
             gs.dino.dashTimer=10; gs.dino.dashDir=1; gs.dino.dashCooldown=baseDashCd; gs.usedDash=true;
             playDashForward();
           }
-          if(gs.stats.hasBackDash&&k["ArrowLeft"]&&!pk["ArrowLeft"]&&gs.dino.dashTimer<=0&&gs.dino.dashCooldown<=0){
+          if(gs.stats.hasBackDash&&kLeft&&!pkLeft&&gs.dino.dashTimer<=0&&gs.dino.dashCooldown<=0){
             gs.dino.dashTimer=10; gs.dino.dashDir=-1; gs.dino.dashCooldown=baseDashCd; gs.usedDash=true;
             playDashBack();
           }
@@ -1424,7 +1430,8 @@ export default function DinoIncremental() {
           if(o.otype==="stalactite"){
             if(o._stalY===undefined) o._stalY=-30;
             const dist=Math.abs(o.x-gs.dino.x);
-            if(dist<280||o._stalY>-30) o._stalY=Math.min(GROUND_Y-42,(o._stalY||0)+5.5*dt);
+            const stalSpd = 5.5 * Math.max(1, effSpeed/gs.baseSpeed);
+            if(dist<280||o._stalY>-30) o._stalY=Math.min(GROUND_Y-42,(o._stalY||0)+stalSpd*dt);
           }
           // FallingLog: drops from canopy when dino is nearby, lands and stays
           if(o.otype==="fallingLog"){
@@ -1521,14 +1528,14 @@ export default function DinoIncremental() {
           }
           // CrystalGolem: shoot 3-way crystal shard spread, fires when 1/4 body visible
           if(o.otype==="crystalGolem"&&o.x<CANVAS_W-20&&o.x>-60){
-            const shootInterval=Math.max(90,160-tier*8);
+            const bSpd=Math.min(effSpeed/gs.baseSpeed,1.8);
+            const shootInterval=Math.max(50,(160-tier*8)/bSpd);
             if(!o._entryShot&&o.x<=CANVAS_W-11){
               o._entryShot=true; o._shootTimer=shootInterval;
             }
             o._shootTimer=(o._shootTimer||0)+dt;
             if(o._shootTimer>=shootInterval){
               o._shootTimer=0;
-              const bSpd=effSpeed/gs.baseSpeed;
               o.bullets.push({x:o.x+4,y:GROUND_Y-50,vx:-(7+tier*0.3)*bSpd,vy:0});
               o.bullets.push({x:o.x+4,y:GROUND_Y-60,vx:-(6+tier*0.25)*bSpd,vy:0});
               o.bullets.push({x:o.x+4,y:GROUND_Y-40,vx:-(6+tier*0.25)*bSpd,vy:0});
@@ -1551,11 +1558,12 @@ export default function DinoIncremental() {
             const dist=Math.sqrt(Math.pow(o.x+12-gs.dino.x,2)+Math.pow(o.y+12-gs.dino.y,2));
             if(dist<80){
               o._exploding=1;
+              const mSpd=Math.max(1,effSpeed/gs.baseSpeed);
               o.bullets=[
-                {x:o.x+12,y:o.y+12,vx:-6,vy:-6},
-                {x:o.x+12,y:o.y+12,vx:6,vy:-6},
-                {x:o.x+12,y:o.y+12,vx:-6,vy:4},
-                {x:o.x+12,y:o.y+12,vx:6,vy:4},
+                {x:o.x+12,y:o.y+12,vx:-6*mSpd,vy:-6*mSpd},
+                {x:o.x+12,y:o.y+12,vx: 6*mSpd,vy:-6*mSpd},
+                {x:o.x+12,y:o.y+12,vx:-6*mSpd,vy: 4*mSpd},
+                {x:o.x+12,y:o.y+12,vx: 6*mSpd,vy: 4*mSpd},
               ];
             }
           }
@@ -1593,14 +1601,14 @@ export default function DinoIncremental() {
           }
           // GeodeSpitter: V-spread — one high shard, one low shard
           if(o.otype==="geodeSpitter"&&o.x<CANVAS_W-20&&o.x>-60){
-            const shootInterval=Math.max(80,150-tier*8);
+            const bSpd=Math.min(effSpeed/gs.baseSpeed,1.6);
+            const shootInterval=Math.max(45,(150-tier*8)/bSpd);
             if(!o._entryShot&&o.x<=CANVAS_W-11){
               o._entryShot=true; o._shootTimer=shootInterval;
             }
             o._shootTimer=(o._shootTimer||0)+dt;
             if(o._shootTimer>=shootInterval){
               o._shootTimer=0;
-              const bSpd=Math.min(effSpeed/gs.baseSpeed,1.6);
               // High shard — must jump over
               o.bullets.push({x:o.x,y:GROUND_Y-52,vx:-(7+tier*0.3)*bSpd,vy:0,_high:true});
               // Low shard — must jump (can't duck under, forces jump read)
@@ -1608,8 +1616,6 @@ export default function DinoIncremental() {
             }
             o.bullets=o.bullets.filter(b=>{b.x+=b.vx*dt; return b.x>-20;});
           }
-          // VoidCrawler: creeps toward dino, speeds up when close
-          // Moves at effSpeed (scroll) + chargeSpeed (active pursuit) so it always advances on screen
           if(o.otype==="voidCrawler"){
             const dist=Math.abs(o.x-gs.dino.x);
             const baseCreep = 0.8+tier*0.12;
@@ -1618,21 +1624,52 @@ export default function DinoIncremental() {
             // Extra pursuit on top of normal world scroll
             o.x -= chargeSpeed*dt;
           }
+          // CrystalWall (void shard): scrolls in from right, pushes dino forward on contact
+          if(o.otype==="crystalWall"){
+            if(!hasGhost&&!hasGiant&&gs.dino.invTimer<=0){
+              const hb=getObstacleHitbox(o);
+              if(rectsOverlap(gs.dino.x,gs.dino.y,DINO_W,DINO_H,hb.x,hb.y,hb.w,hb.h)){
+                gs.dino.x = Math.min(CANVAS_W-60, gs.dino.x + (5+tier*0.3)*8*dt);
+                gs.dino.vy = Math.min(gs.dino.vy, -2.5);
+                gs.dino.invTimer = 20+gs.stats.invFramesBonus;
+                gs.hitTaken = true;
+                if(gs.activePowerups.shield_pw){
+                  gs.shieldHitsLeft--; if(gs.shieldHitsLeft<=0) delete gs.activePowerups.shield_pw;
+                } else if((gs.stats.shieldChance)>Math.random()){
+                  // shield proc
+                } else if(gs.lives>1){
+                  gs.lives--; playDie(); addFloat(gs,"-1 LIFE",gs.dino.x,gs.dino.y-24,"#ee3344");
+                } else { gs.lives=0; endGame(gs); return; }
+              }
+            }
+          }
+          // CrystalGas: slow drift, inverts dino controls on overlap
+          if(o.otype==="crystalGas"){
+            if(o._ddBaseX===undefined) o._ddBaseX=o.x;
+            o._ddBaseX-=effSpeed*0.5*dt;
+            o.x=o._ddBaseX;
+            // Check overlap with dino — invert controls while inside
+            const hb=getObstacleHitbox(o);
+            const inside=!hasGhost&&!hasGiant&&rectsOverlap(gs.dino.x,gs.dino.y,DINO_W,DINO_H,hb.x,hb.y,hb.w,hb.h);
+            o._gasActive=(o._gasActive||0)+(inside?dt:-dt);
+            o._gasActive=Math.max(0,Math.min(30,o._gasActive));
+          }
           // CrystalCeiling: descend on timer, hold, then retract
           if(o.otype==="crystalCeiling"){
             if(o._ceilY===undefined){ o._ceilY=0; o._ceilState=0; o._ceilTimer=0; }
             const descendTarget = GROUND_Y - 72; // slab bottom at 138+22=160, ducking dino top at 189 — 29px gap
-            const holdFrames    = Math.max(60, 100-tier*5);
-            const warnFrames    = 50;
+            const ceilSpd       = Math.max(1, effSpeed/gs.baseSpeed);
+            const holdFrames    = Math.max(30, (100-tier*5)/ceilSpd);
+            const warnFrames    = Math.max(18, 50/ceilSpd);
             if(o._ceilState===0){
               // Warning: flash in place
               o._ceilTimer+=dt;
               o._ceilDescending=false;
               if(o._ceilTimer>=warnFrames){ o._ceilState=1; o._ceilTimer=0; }
             } else if(o._ceilState===1){
-              // Descend
+              // Descend — speed scales with game speed so it always reaches the player in time
               o._ceilDescending=true;
-              o._ceilY=Math.min(descendTarget,o._ceilY+5.5*dt);
+              o._ceilY=Math.min(descendTarget,o._ceilY+5.5*ceilSpd*dt);
               if(o._ceilY>=descendTarget){ o._ceilState=2; o._ceilTimer=0; }
             } else if(o._ceilState===2){
               // Hold
@@ -1641,13 +1678,14 @@ export default function DinoIncremental() {
               if(o._ceilTimer>=holdFrames) o._ceilState=3;
             } else {
               // Retract
-              o._ceilY=Math.max(0,o._ceilY-4*dt);
+              o._ceilY=Math.max(0,o._ceilY-4*ceilSpd*dt);
               if(o._ceilY<=0){ o._ceilState=0; o._ceilTimer=0; } // loop
             }
           }
           // RuneCircle: telegraph glow then 4-way shard burst, repeating
           if(o.otype==="runeCircle"){
-            const chargeFrames = Math.max(60,100-tier*5);
+            const bSpd=Math.min(effSpeed/gs.baseSpeed,1.5);
+            const chargeFrames = Math.max(35,(100-tier*5)/bSpd);
             const fireFrames   = 12;
             if(o._runeState===undefined){ o._runeState=0; o._runeTimer=0; o._runeCharge=0; }
             if(o._runeState===0){
@@ -1657,7 +1695,6 @@ export default function DinoIncremental() {
               o._runeFiring=false;
               if(o._runeTimer>=chargeFrames){
                 o._runeState=1; o._runeTimer=0;
-                const bSpd=Math.min(effSpeed/gs.baseSpeed,1.5);
                 const bx=o.x+20, by=GROUND_Y-4;
                 o.bullets=[
                   {x:bx,y:by,vx:-(7+tier*0.3)*bSpd,vy:0},           // left
@@ -1702,7 +1739,7 @@ export default function DinoIncremental() {
         for(const c of gs.clouds){c.x-=(c.speed||0.25)*dt;if(c.x<-100) c.x=CANVAS_W+100;}
 
         // ── Hitboxes ─────────────────────────────────────────────────────────
-        const effH=gs.dino.ducking?DUCK_H:DINO_H;
+        const effH=(gs.dino.ducking&&!hasGiant)?DUCK_H:DINO_H;
         const sc=hasGiant?1.9:hasTiny?0.6:1;
         const DW=(DINO_W-14)*sc, DH=effH*0.82*sc;
         const DX=gs.dino.x+DINO_W/2-DW/2;
@@ -1777,7 +1814,7 @@ export default function DinoIncremental() {
           for(let i=gs.obstacles.length-1;i>=0;i--){
             const o=gs.obstacles[i];
             // BlizzardWall and AshCloud only push — never deal body collision damage
-            if(o.otype==="blizzardWall"||o.otype==="ashCloud"||o.otype==="cursedWall"||o.otype==="sandTrap"||o.otype==="ruinsLaser"||o.otype==="runeCircle") continue;
+            if(o.otype==="blizzardWall"||o.otype==="ashCloud"||o.otype==="cursedWall"||o.otype==="sandTrap"||o.otype==="ruinsLaser"||o.otype==="runeCircle"||o.otype==="crystalWall"||o.otype==="crystalGas") continue;
             const hb=getObstacleHitbox(o);
 
             // Dilopho passive: phase through everything when active

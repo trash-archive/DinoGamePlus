@@ -86,8 +86,8 @@ export function getObstacleHitbox(o) {
   if(o.otype==="voidPortal")    return{x:o.x+6,  y:g-64,               w:28, h:64};
   if(o.otype==="crystalMine")   return{x:o.x+2,  y:o.y-6,              w:20, h:28};
   if(o.otype==="crystalBat")    return{x:o.x+6,  y:o.y+3,              w:16, h:12};
-  if(o.otype==="geodeSpitter")  return{x:o.x+4,  y:g-36,               w:36, h:36};
-  if(o.otype==="voidCrawler")   return{x:o.x+2,  y:g-18,               w:40, h:18};
+  if(o.otype==="geodeSpitter")  return{x:o.x+6,  y:g-54,               w:28, h:54};
+  if(o.otype==="crystalGas")    return{x:o.x+2,  y:g-58,               w:32, h:58};
   if(o.otype==="crystalCeiling"){
     const cy = o._ceilY??0;
     // Hitbox covers slab face only (22px), active only once descending
@@ -95,6 +95,7 @@ export function getObstacleHitbox(o) {
     return{x:o.x+4, y:cy, w:40, h:cy>2?22:0};
   }
   if(o.otype==="runeCircle")    return{x:o.x+4,  y:g-4,                w:32, h:4};
+  if(o.otype==="crystalWall")   return{x:o.x+2,  y:g-30,               w:40, h:30};
   const heights=[44,62,52,36,34], widths=[28,22,44,44,38];
   return{x:o.x+4, y:g-(heights[o.type||0]||44), w:widths[o.type||0]||28, h:heights[o.type||0]||44};
 }

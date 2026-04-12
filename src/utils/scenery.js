@@ -22,7 +22,7 @@ const SCENERY_HUD = {
   volcano: { hud:["#222222","#dddddd"], fossil:["#888888","#ccccaa"], heart:["#dd2244","#ff4466"], bonePick:["#888888","#cccc99"] },
   jungle:  { hud:["#222222","#dddddd"], fossil:["#888888","#ccccaa"], heart:["#dd2244","#ff4466"], bonePick:["#888888","#cccc99"] },
   ruins:   { hud:["#222222","#dddddd"], fossil:["#222222","#dddddd"], heart:["#dd2244","#ff4466"], bonePick:["#888888","#cccc99"] },
-  cave:    { hud:["#8844ff","#cc88ff"], fossil:["#aa44ff","#dd99ff"], heart:["#8822cc","#cc44ff"], bonePick:["#9933ee","#cc77ff"] },
+  cave:    { hud:["#222222","#dddddd"], fossil:["#888888","#ccccaa"], heart:["#dd2244","#ff4466"], bonePick:["#888888","#cccc99"] },
   abyss:   { hud:["#cc88ff","#ee99ff"], fossil:["#aa44ff","#cc88ff"], heart:["#ff2244","#ff6688"], bonePick:["#9933ee","#cc77ff"] },
 };
 
