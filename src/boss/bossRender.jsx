@@ -1,9 +1,9 @@
 // ─── BOSS RENDER ───────────────────────────────────────────────────────────────────
-import { CANVAS_W, CANVAS_H, GROUND_Y } from "../constants";
+import { CANVAS_W, CANVAS_H, GROUND_Y, DINO_W } from "../constants";
 import { drawDino }                      from "../rendering/drawDino";
 import { drawBoss, drawGround }          from "../rendering/drawWorld";
 import { drawBossAttacks, drawBossTelegraph } from "../rendering/drawBossAttacks";
-import { BOSS_MAX_HP, BOSS_X, BOSS_Y, ABYSS_SCENERY } from "./bossConstants";
+import { BOSS_MAX_HP, ABYSS_SCENERY, BITE_RANGE, BLIND_DURATION } from "./bossConstants";
 
 // ─── CRACK OVERLAY ───────────────────────────────────────────────────────────────────
 export function CrackOverlay() {
@@ -266,8 +266,8 @@ export function renderBoss(ctx, gs) {
     ctx.fillStyle = "#6600cc";
     for(let s = 0; s < 5; s++) {
       const r  = (s / 5) * len;
-      const px = Math.round(BOSS_X + Math.cos(angle + s * 0.15) * r);
-      const py = Math.round(BOSS_Y + Math.sin(angle + s * 0.15) * r);
+      const px = Math.round(gs.bossX + Math.cos(angle + s * 0.15) * r);
+      const py = Math.round(gs.bossY + Math.sin(angle + s * 0.15) * r);
       ctx.fillRect(px-2, py-2, 5-s, 5-s);
     }
   }
@@ -303,14 +303,17 @@ export function renderBoss(ctx, gs) {
   drawGround(ctx, gs.groundOffset, ABYSS_SCENERY, 1);
 
   const hpFrac = gs.bossHp / BOSS_MAX_HP;
-  drawBoss(ctx, BOSS_X, BOSS_Y, f, gs.bossPhase, hpFrac, gs.blindWindow, gs.hitFlash);
+  // Flicker: skip drawing boss every other frame during teleport wind-up
+  const flickering = gs.teleportFlicker > 0;
+  if(!flickering || gs.frame % 2 === 0)
+    drawBoss(ctx, gs.bossX, gs.bossY, f, gs.bossPhase, hpFrac, gs.blindWindow, gs.hitFlash, gs.bossOpen);
   if(gs.hitFlash > 0) gs.hitFlash--;
 
   // Telegraph
   if(!gs.blindWindow && gs.barrage.length > 0 && gs.attackIndex < gs.barrage.length) {
     const atk = gs.barrage[gs.attackIndex];
     if(gs.attackTimer < atk.warmup)
-      drawBossTelegraph(ctx, atk, gs.attackTimer, atk.warmup, BOSS_X, BOSS_Y, gs.dino.x+20, gs.dino.y+24, f);
+      drawBossTelegraph(ctx, atk, gs.attackTimer, atk.warmup, gs.bossX, gs.bossY, gs.dino.x+20, gs.dino.y+24, f);
   }
 
   drawBossAttacks(ctx, gs.projectiles, f);
@@ -327,6 +330,30 @@ export function renderBoss(ctx, gs) {
     }
   }
   ctx.globalAlpha = 1;
+
+  // Bite range indicator — shown during blind window
+  if(gs.blindWindow && gs.stats.hasBite) {
+    const range = BITE_RANGE[gs.bossPhase];
+    const rangeX = gs.bossX - range;
+    ctx.globalAlpha = 0.18 + Math.sin(f * 0.2) * 0.08;
+    ctx.fillStyle = "#ffdd00";
+    ctx.fillRect(rangeX, GROUND_Y - 4, range, 4);
+    ctx.globalAlpha = 0.55;
+    ctx.fillStyle = "#ffdd00";
+    ctx.fillRect(rangeX - 2, 0, 2, GROUND_Y);
+    ctx.globalAlpha = 1;
+  }
+
+  // Dino bite lunge flash
+  if(gs.biteAnim > 0) {
+    const a = gs.biteAnim / 18;
+    ctx.globalAlpha = a * 0.7;
+    ctx.fillStyle = "#ffdd00";
+    ctx.fillRect(gs.dino.x + DINO_W - 4, gs.dino.y + 4, Math.floor(a * 28), 8);
+    ctx.globalAlpha = a * 0.4;
+    ctx.fillRect(gs.dino.x + DINO_W,     gs.dino.y + 8, Math.floor(a * 18), 4);
+    ctx.globalAlpha = 1;
+  }
 
   drawDino(ctx, gs.dino.x, gs.dino.y, f, false,
     gs.skin, gs.design, false, gs.dino.ducking, false, false,
@@ -377,13 +404,26 @@ export function renderBoss(ctx, gs) {
 
   // HUD — blind window
   if(gs.blindWindow) {
-    ctx.fillStyle = `rgba(255,220,0,${0.7+Math.sin(f*0.3)*0.3})`;
-    ctx.font = "bold 13px 'Courier New'"; ctx.textAlign = "center";
-    ctx.fillText("BLIND SPOT! PRESS [F] TO BITE!", CANVAS_W/2, 40);
+    const phase      = gs.bossPhase;
+    const urgentCol  = phase >= 2 ? "#ff2200" : phase >= 1 ? "#ff8800" : "#ffdd00";
+    const timerFrac  = Math.max(0, gs.blindTimer / BLIND_DURATION[phase]);
+    // Countdown bar across top
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.fillRect(0, 0, CANVAS_W, 8);
+    ctx.fillStyle = urgentCol;
+    ctx.fillRect(0, 0, Math.floor(CANVAS_W * timerFrac), 8);
+    // Flashing text
+    ctx.fillStyle = `rgba(${phase>=2?"255,34,0":phase>=1?"255,136,0":"255,220,0"},${0.7+Math.sin(f*0.3)*0.3})`;
+    ctx.font = `bold ${phase>=2?"14":"13"}px 'Courier New'`; ctx.textAlign = "center";
+    ctx.fillText(
+      phase >= 2 ? "BITE NOW! GET CLOSE!" : "BLIND SPOT! PRESS [F] TO BITE!",
+      CANVAS_W/2, 24
+    );
     ctx.textAlign = "left";
   }
 
   // HUD — phase label
   ctx.fillStyle = "rgba(255,50,0,0.5)"; ctx.font = "9px 'Courier New'";
-  ctx.fillText(`PHASE ${gs.bossPhase+1}  |  HP ${gs.bossHp}/${BOSS_MAX_HP}`, 8, 20);
+  const posLabel = gs.bossX < CANVAS_W * 0.35 ? " [LEFT]" : gs.bossX < CANVAS_W * 0.6 ? " [CENTER]" : "";
+  ctx.fillText(`PHASE ${gs.bossPhase+1}  |  HP ${gs.bossHp}/${BOSS_MAX_HP}${posLabel}`, 8, 20);
 }

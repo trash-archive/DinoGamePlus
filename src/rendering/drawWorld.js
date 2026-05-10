@@ -618,7 +618,7 @@ export function drawBonePickup(ctx, x, y, col) {
 }
 
 // ─── BOSS RENDERER ───────────────────────────────────────────────────────────
-export function drawBoss(ctx, cx, cy, frame, phase, hpFrac, blindWindow, hitFlash) {
+export function drawBoss(ctx, cx, cy, frame, phase, hpFrac, blindWindow, hitFlash, bossOpen) {
   ctx.save();
 
   const breathe  = Math.sin(frame * 0.022) * (phase === 2 ? 8 : 5);
@@ -785,21 +785,27 @@ export function drawBoss(ctx, cx, cy, frame, phase, hpFrac, blindWindow, hitFlas
   }
 
   // ── Mouth ──
-  const mouthOpen = Math.sin(frame * 0.03) > 0.2;
+  const mouthOpen = bossOpen || Math.sin(frame * 0.03) > 0.2;
+  const mouthH    = bossOpen ? 18 : (mouthOpen ? 10 : 4);
   // Mouth cavity
   ctx.fillStyle = "#0a0010";
-  ctx.fillRect(cx-22, cy-6+breathe, 44, mouthOpen ? 10 : 4);
+  ctx.fillRect(cx-22, cy-6+breathe, 44, mouthH);
   if(mouthOpen) {
-    // Inner mouth glow
-    ctx.fillStyle = "#660022";
-    ctx.fillRect(cx-18, cy-5+breathe, 36, 8);
-    ctx.fillStyle = "#cc0044";
-    ctx.fillRect(cx-12, cy-4+breathe, 24, 5);
+    // Inner mouth glow — brighter red when bossOpen (vulnerable)
+    ctx.fillStyle = bossOpen ? "#cc0000" : "#660022";
+    ctx.fillRect(cx-18, cy-5+breathe, 36, mouthH - 2);
+    ctx.fillStyle = bossOpen ? "#ff2244" : "#cc0044";
+    ctx.fillRect(cx-12, cy-4+breathe, 24, mouthH - 5);
+    if(bossOpen) {
+      // Extra inner glow core when fully open
+      ctx.fillStyle = "#ff6688";
+      ctx.fillRect(cx-6, cy-3+breathe, 12, mouthH - 8);
+    }
     // Teeth
     ctx.fillStyle = "#ffddcc";
     for(let t = 0; t < 5; t++) {
-      ctx.fillRect(cx - 18 + t * 9, cy - 6 + breathe, 5, 5);
-      ctx.fillRect(cx - 16 + t * 9, cy + 3  + breathe, 5, 4);
+      ctx.fillRect(cx - 18 + t * 9, cy - 6 + breathe, 5, bossOpen ? 7 : 5);
+      ctx.fillRect(cx - 16 + t * 9, cy + (bossOpen ? 6 : 3) + breathe, 5, bossOpen ? 6 : 4);
     }
   }
 
