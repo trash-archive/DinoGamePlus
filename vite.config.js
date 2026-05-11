@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'prompt',
+      registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'logo.png', 'logo-192.png', 'logo-512.png', 'icons.svg'],
       manifest: {
         name: 'Dino Reimagined',
