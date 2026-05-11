@@ -1,8 +1,11 @@
 // ─── BOSS TICK ────────────────────────────────────────────────────────────────
 import { GRAVITY, JUMP_FORCE, GROUND_Y, DINO_W, DINO_H, CANVAS_W, DUCK_H } from "../constants";
 import { BOSS_MAX_HP, BOSS_X, BOSS_Y, BOSS_POSITIONS, BITE_RANGE,
-         BLIND_DURATION, BARRAGE_GAP, TELEPORT_FLICKER, buildBarrage } from "./bossConstants";
-import { playBite } from "../hooks/useSoundEffects";
+         BLIND_DURATION, BARRAGE_GAP, TELEPORT_FLICKER, buildBarrage, GOD_MODE } from "./bossConstants";
+import { playBite, playWaveLow, playWaveHigh, playAimedShot, playGroundSlam,
+         playCeilingDrop, playVoidOrb, playTentacle, playGroundPound,
+         playVoidBurst, playTrackingBeam, playSpikeRain,
+         playBossHit, playBossDeath, playPhaseTransition, playTeleport } from "../hooks/useSoundEffects";
 
 // ─── PARTICLE HELPERS ─────────────────────────────────────────────────────────
 export function spawnExplosion(gs, x, y, col1, col2, count = 10) {
@@ -31,86 +34,98 @@ export function addShake(gs, trauma) {
 // ─── SPAWN PROJECTILES ────────────────────────────────────────────────────────
 function spawnAttack(gs, attack) {
   const phase = gs.bossPhase;
-  const spd = 4 + phase * 1.5; // was 1.2 — faster projectiles each phase
+  const spd = 4 + phase * 1.5;
 
   const bx = gs.bossX, by = gs.bossY;
+  const dx = gs.dino.x;
+  // Direction from boss toward dino: -1 if boss is to the right, +1 if to the left
+  const dir = dx < bx ? -1 : 1;
+  const sdir = dir; // shorthand
+
   switch(attack.type) {
     case "wave_low":
+      playWaveLow();
       for(let i = 0; i < 3 + phase; i++)
-        gs.projectiles.push({ x: bx-40-i*80, y: GROUND_Y-18, vx:-(spd+i*0.4), vy:0, w:14, h:14, type:"wave_low" });
+        gs.projectiles.push({ x: bx + sdir*40 + sdir*i*80, y: GROUND_Y-18, vx:sdir*(spd+i*0.4), vy:0, w:14, h:14, type:"wave_low" });
       break;
     case "wave_high":
+      playWaveHigh();
       for(let i = 0; i < 3 + phase; i++)
-        gs.projectiles.push({ x: bx-40-i*80, y: GROUND_Y-90-Math.random()*30, vx:-(spd+i*0.4), vy:0, w:14, h:14, type:"wave_high" });
+        gs.projectiles.push({ x: bx + sdir*40 + sdir*i*80, y: GROUND_Y-90-Math.random()*30, vx:sdir*(spd+i*0.4), vy:0, w:14, h:14, type:"wave_high" });
       break;
     case "aimed_shot":
-      gs.projectiles.push({ x:bx-50, y:gs.dino.y+DINO_H/2, vx:-(spd*1.8), vy:0, w:10, h:10, type:"aimed_shot" });
+      playAimedShot();
+      gs.projectiles.push({ x:bx+sdir*50, y:gs.dino.y+DINO_H/2, vx:sdir*(spd*1.8), vy:0, w:10, h:10, type:"aimed_shot" });
       if(phase >= 1)
-        gs.projectiles.push({ x:bx-50, y:gs.dino.y+DINO_H/2-20, vx:-(spd*1.6), vy:0, w:10, h:10, type:"aimed_shot" });
+        gs.projectiles.push({ x:bx+sdir*50, y:gs.dino.y+DINO_H/2-20, vx:sdir*(spd*1.6), vy:0, w:10, h:10, type:"aimed_shot" });
       break;
     case "ground_slam":
-      gs.projectiles.push({ x:bx-20, y:GROUND_Y-10, vx:-(spd*1.4), vy:0, w:40, h:20, type:"ground_slam" });
+      playGroundSlam();
+      gs.projectiles.push({ x:bx+sdir*20, y:GROUND_Y-10, vx:sdir*(spd*1.4), vy:0, w:40, h:20, type:"ground_slam" });
       if(phase >= 2)
-        gs.projectiles.push({ x:bx-20, y:GROUND_Y-10, vx:-(spd*0.9), vy:0, w:40, h:20, type:"ground_slam" });
+        gs.projectiles.push({ x:bx+sdir*20, y:GROUND_Y-10, vx:sdir*(spd*0.9), vy:0, w:40, h:20, type:"ground_slam" });
       break;
     case "ceiling_drop":
+      playCeilingDrop();
       for(let i = 0; i < 3 + phase; i++)
         gs.projectiles.push({ x:80+Math.random()*(CANVAS_W-200), y:-20, vx:(Math.random()-0.5)*1.5, vy:3+Math.random()*2+phase, w:16, h:16, type:"ceiling_drop" });
       break;
     case "void_orb":
-      gs.projectiles.push({ x:bx-60, y:by-20, vx:-2, vy:0, w:18, h:18, type:"void_orb", homing:true });
+      playVoidOrb();
+      gs.projectiles.push({ x:bx+sdir*60, y:by-20, vx:sdir*2, vy:0, w:18, h:18, type:"void_orb", homing:true });
       if(phase >= 2)
-        gs.projectiles.push({ x:bx-60, y:by+10, vx:-1.8, vy:0, w:18, h:18, type:"void_orb", homing:true });
+        gs.projectiles.push({ x:bx+sdir*60, y:by+10, vx:sdir*1.8, vy:0, w:18, h:18, type:"void_orb", homing:true });
       break;
     case "tentacle":
-      gs.projectiles.push({ x:bx-30, y:GROUND_Y-30, vx:-(spd*1.2), vy:0, w:60, h:30, type:"tentacle" });
+      playTentacle();
+      gs.projectiles.push({ x:bx+sdir*30, y:GROUND_Y-30, vx:sdir*(spd*1.2), vy:0, w:60, h:30, type:"tentacle" });
       break;
     case "tentacle_sweep":
-      // Wide slow sweep across the full ground — must jump over it
-      gs.projectiles.push({ x:bx, y:GROUND_Y-38, vx:-(spd*0.7), vy:0, w:90, h:38, type:"tentacle_sweep" });
+      playTentacle();
+      gs.projectiles.push({ x:bx, y:GROUND_Y-38, vx:sdir*(spd*0.7), vy:0, w:90, h:38, type:"tentacle_sweep" });
       break;
     case "tentacle_combo": {
-      // 4 rapid consecutive pokes at alternating heights, staggered by 18 frames each
+      playTentacle();
       const heights = [GROUND_Y-28, GROUND_Y-80, GROUND_Y-28, GROUND_Y-60];
       for(let i = 0; i < 4; i++)
-        gs.projectiles.push({ x:bx-20, y:heights[i], vx:-(spd*1.6+i*0.3), vy:0, w:22, h:22,
+        gs.projectiles.push({ x:bx+sdir*20, y:heights[i], vx:sdir*(spd*1.6+i*0.3), vy:0, w:22, h:22,
           type:"tentacle_combo", _delay: i * 18, _active: false });
       break;
     }
     case "ground_pound":
-      // Primary shockwave — fast and wide
-      gs.projectiles.push({ x:bx-10, y:GROUND_Y-14, vx:-(spd*1.5), vy:0, w:50, h:14, type:"ground_pound", _wave:0 });
-      // Second smaller wave follows 30 frames later (phase 1+)
+      playGroundPound();
+      gs.projectiles.push({ x:bx+sdir*10, y:GROUND_Y-14, vx:sdir*(spd*1.5), vy:0, w:50, h:14, type:"ground_pound", _wave:0 });
       if(phase >= 1)
-        gs.projectiles.push({ x:bx-10, y:GROUND_Y-10, vx:-(spd*1.1), vy:0, w:34, h:10, type:"ground_pound", _wave:1, _delay:30, _active:false });
+        gs.projectiles.push({ x:bx+sdir*10, y:GROUND_Y-10, vx:sdir*(spd*1.1), vy:0, w:34, h:10, type:"ground_pound", _wave:1, _delay:30, _active:false });
       break;
     case "void_burst": {
-      // Fan of 6+phase orbs at spread heights — player must find the gap
-      // gap is always in the middle third so it's never trivially at top/bottom
-      const count = 6 + phase;
-      const gap   = 1 + Math.floor(Math.random() * (count - 2));
+      playVoidBurst();
+      const count = attack._vbCount ?? (6 + phase);
+      const gap   = attack._vbGap   ?? (1 + Math.floor(Math.random() * (count - 2)));
       for(let i = 0; i < count; i++) {
         if(i === gap) continue;
         const t  = i / (count - 1);
         const fy = GROUND_Y - 20 - t * (GROUND_Y - 40);
-        gs.projectiles.push({ x:bx-50, y:fy, vx:-(spd*1.4+i*0.15), vy:0, w:14, h:14,
+        gs.projectiles.push({ x:bx+sdir*50, y:fy, vx:sdir*(spd*1.4+i*0.15), vy:0, w:14, h:14,
           type:"void_burst", _gap: gap, _idx: i, _total: count });
       }
       break;
     }
     case "tracking_beam": {
-      // Horizontal beam that sweeps top-to-bottom; _sweepY ticks in movement loop
-      // _life matches the attack duration so it self-expires cleanly
+      playTrackingBeam();
       const beamDuration = 240;
-      gs.projectiles.push({ x:0, y:20, vx:0, vy:0, w:bx-10, h:12,
+      // Beam starts from boss side and extends toward dino
+      const beamX = dir === -1 ? 0 : bx + 10;
+      const beamW = dir === -1 ? bx - 10 : CANVAS_W - bx - 10;
+      gs.projectiles.push({ x:beamX, y:20, vx:0, vy:0, w:Math.max(10, beamW), h:12,
         type:"tracking_beam", _sweepY:20, _sweepDir:1, _sweepSpd:0.6+phase*0.25,
         _life: beamDuration });
       break;
     }
     case "spike_rain": {
-      // Dense ceiling drops covering ~85% of screen, 2 seeded safe gaps
-      const safeA = 60  + Math.floor(Math.random() * 120);
-      const safeB = 380 + Math.floor(Math.random() * 120);
+      playSpikeRain();
+      const safeA = attack._srSafeA ?? (60  + Math.floor(Math.random() * 120));
+      const safeB = attack._srSafeB ?? (380 + Math.floor(Math.random() * 120));
       const cols  = 18 + phase * 2;
       for(let i = 0; i < cols; i++) {
         const sx = 20 + i * ((CANVAS_W - 40) / cols);
@@ -129,7 +144,7 @@ function spawnAttack(gs, attack) {
 
 // ─── MAIN TICK ────────────────────────────────────────────────────────────────
 export function tickBoss(gs, keys, prevKeys, dt, onDeath, onWin) {
-  if(!gs.alive || gs.won) return;
+  if(!gs.alive) return;
 
   // Shake decay
   gs.shake.trauma = Math.max(0, gs.shake.trauma - 0.04 * dt);
@@ -137,9 +152,38 @@ export function tickBoss(gs, keys, prevKeys, dt, onDeath, onWin) {
   gs.shake.x = (Math.random() * 2 - 1) * shakeAmt;
   gs.shake.y = (Math.random() * 2 - 1) * shakeAmt;
   if(gs.phaseFlash > 0) gs.phaseFlash -= dt;
+  if(gs.phaseTransition > 0) gs.phaseTransition -= dt;
+
+  // Death animation tick — runs after won=true
+  if(gs.won) {
+    if(gs.deathAnim > 0) {
+      gs.deathAnim -= dt;
+      // Continuous shattering bursts
+      if(Math.floor(gs.deathAnim) % 6 === 0) {
+        spawnExplosion(gs, gs.bossX + (Math.random()-0.5)*80, gs.bossY + (Math.random()-0.5)*60, "#ffffff", "#cc88ff", 8);
+        spawnExplosion(gs, gs.bossX + (Math.random()-0.5)*60, gs.bossY + (Math.random()-0.5)*50, "#ffdd00", "#ff8800", 6);
+      }
+      addShake(gs, 0.06);
+      // Particles still tick
+      gs.particles = gs.particles.filter(p => {
+        p.x += p.vx*dt; p.y += p.vy*dt; p.vy += 0.18*dt;
+        if(p.ring) p.r += 4*dt;
+        p.life -= dt; return p.life > 0;
+      });
+      gs.shake.trauma = Math.max(0, gs.shake.trauma - 0.04 * dt);
+      const shakeAmt = gs.shake.trauma * gs.shake.trauma * 14;
+      gs.shake.x = (Math.random() * 2 - 1) * shakeAmt;
+      gs.shake.y = (Math.random() * 2 - 1) * shakeAmt;
+      gs.frame++;
+    } else {
+      gs.alive = false; // prevent onWin firing again next frame
+      onWin();
+    }
+    return;
+  }
 
   gs.frame++;
-  gs.groundOffset = (gs.groundOffset + 2 * dt) % (CANVAS_W * 4);
+  // groundOffset intentionally not updated — boss arena ground is static
 
   // ── Dino physics ────────────────────────────────────────────────────────────
   const d = gs.dino;
@@ -165,7 +209,7 @@ export function tickBoss(gs, keys, prevKeys, dt, onDeath, onWin) {
   }
   d.vy += GRAVITY * dt;
   d.y  += d.vy * dt;
-  if(d.dashTimer > 0) { d.x += d.dashDir*7*dt; d.dashTimer -= dt; d.x = Math.max(10, Math.min(CANVAS_W*0.55, d.x)); }
+  if(d.dashTimer > 0) { d.x += d.dashDir*7*dt; d.dashTimer -= dt; d.x = Math.max(10, Math.min(CANVAS_W - DINO_W - 10, d.x)); }
   if(d.y >= GROUND_Y - DINO_H) { d.y = GROUND_Y-DINO_H; d.vy=0; d.onGround=true; d.doubleJumped=false; }
 
   // ── Teleport tick ───────────────────────────────────────────────────────────────────────
@@ -177,6 +221,7 @@ export function tickBoss(gs, keys, prevKeys, dt, onDeath, onWin) {
       spawnExplosion(gs, gs.bossX, gs.bossY, "#8800cc", "#cc44ff", 20);
       spawnShockwave(gs, gs.bossX, gs.bossY);
       addShake(gs, 0.4);
+      playTeleport();
     }
   }
 
@@ -191,7 +236,7 @@ export function tickBoss(gs, keys, prevKeys, dt, onDeath, onWin) {
     playBite();
     if(gs.blindWindow) {
       const range = BITE_RANGE[gs.bossPhase];
-      const dist  = gs.bossX - (d.x + DINO_W);
+      const dist  = Math.abs(gs.bossX - (d.x + DINO_W / 2));
       if(dist > range) {
         gs.floatingTexts.push({ text:"TOO FAR!", x:d.x, y:d.y-28, vy:-1.4, life:45, maxLife:45, color:"#ff6600" });
       } else {
@@ -200,16 +245,22 @@ export function tickBoss(gs, keys, prevKeys, dt, onDeath, onWin) {
         gs.floatingTexts.push({ text:"BITE!", x:d.x, y:d.y-28, vy:-1.4, life:55, maxLife:55, color:"#ffdd00" });
         spawnExplosion(gs, gs.bossX, gs.bossY-10, "#ffdd00", "#ff8800", 14);
         addShake(gs, 0.35);
+        playBossHit();
         // phase thresholds: 0→1 at 10hp, 1→2 at 5hp (out of 15)
         const newPhase = gs.bossHp <= 5 ? 2 : gs.bossHp <= 10 ? 1 : 0;
         if(newPhase > gs.bossPhase) {
-          gs.bossPhase = newPhase; gs.phaseFlash = 25;
-          gs.floatingTexts.push({ text:`PHASE ${newPhase+1}!`, x:CANVAS_W/2-30, y:60, vy:-0.8, life:90, maxLife:90, color:"#ff4400" });
-          spawnExplosion(gs, gs.bossX, gs.bossY, "#ff2200", "#ff8800", 28);
-          spawnShockwave(gs, gs.bossX, gs.bossY);
-          addShake(gs, 0.9);
+          gs.bossPhase = newPhase;
+          gs.phaseFlash = 25;
+          gs.phaseTransition = 90;
+          gs.projectiles = [];
+          gs.barrage = []; gs.blindWindow = false; gs.bossOpen = false;
+          gs.barrageGap = BARRAGE_GAP[newPhase] + 60;
+          spawnExplosion(gs, gs.bossX, gs.bossY, newPhase===2?"#ff2200":"#ff8800", newPhase===2?"#ff8800":"#ffcc00", 40);
+          for(let r=0;r<4;r++) spawnShockwave(gs, gs.bossX, gs.bossY);
+          addShake(gs, 1.2);
+          playPhaseTransition();
         }
-        if(gs.bossHp <= 0) { gs.won = true; onWin(); return; }
+        if(gs.bossHp <= 0) { gs.deathAnim = 120; gs.won = true; playBossDeath(); return; }
         gs.blindWindow = false; gs.bossOpen = false; gs.blindTimer = 0; gs.barrage = []; gs.barrageGap = BARRAGE_GAP[gs.bossPhase];
       }
     } else {
@@ -217,8 +268,16 @@ export function tickBoss(gs, keys, prevKeys, dt, onDeath, onWin) {
     }
   }
 
-  // ── Attack sequencing ────────────────────────────────────────────────────────
-  if(gs.barrageGap > 0) {
+  // ── Attack sequencing (frozen during phase transition) ────────────────────
+  if(gs.phaseTransition > 0) {
+    // Keep shaking and spawning extra particles during transition
+    if(Math.floor(gs.phaseTransition) % 8 === 0) {
+      const col1 = gs.bossPhase===2 ? "#ff2200" : "#ff8800";
+      const col2 = gs.bossPhase===2 ? "#ff8800" : "#ffcc00";
+      spawnExplosion(gs, gs.bossX + (Math.random()-0.5)*60, gs.bossY + (Math.random()-0.5)*40, col1, col2, 6);
+    }
+    addShake(gs, 0.08);
+  } else if(gs.barrageGap > 0) {
     gs.barrageGap -= dt;
   } else if(gs.blindWindow) {
     gs.blindTimer -= dt;
@@ -276,7 +335,7 @@ export function tickBoss(gs, keys, prevKeys, dt, onDeath, onWin) {
   });
 
   // ── Projectile collision ──────────────────────────────────────────────────────
-  if(d.invTimer <= 0) {
+  if(!GOD_MODE && d.invTimer <= 0) {
     const effH = d.ducking ? DUCK_H : DINO_H;
     const DW = DINO_W-14, DH = effH*0.82;
     const DX = d.x+DINO_W/2-DW/2, DY = d.y+DINO_H-effH;

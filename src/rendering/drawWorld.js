@@ -584,6 +584,42 @@ export function drawGround(ctx, offset, scenery, nightBlend) {
     }
     return;
   }
+  if(s.id === "abyss") {
+    const phase = nightBlend; // passed as bossPhase (0/1/2)
+    const floorTop  = phase >= 2 ? "#1a0200" : phase >= 1 ? "#120a00" : "#041820";
+    const floorBase = phase >= 2 ? "#0e0100" : phase >= 1 ? "#0a0600" : "#020e14";
+    const tileCol   = phase >= 2 ? "#220400" : phase >= 1 ? "#1a0e00" : "#0a2030";
+    const veinCol   = phase >= 2 ? "#ff3300" : phase >= 1 ? "#cc7700" : "#00aacc";
+    const veinHi    = phase >= 2 ? "#ff6644" : phase >= 1 ? "#ffaa44" : "#44ddff";
+    const edgeGlow  = phase >= 2 ? "#ff2200" : phase >= 1 ? "#cc6600" : "#00aacc";
+    ctx.fillStyle = floorTop;  ctx.fillRect(0, GROUND_Y, CANVAS_W, 5);
+    ctx.fillStyle = floorBase; ctx.fillRect(0, GROUND_Y+5, CANVAS_W, CANVAS_H-GROUND_Y-5);
+    ctx.fillStyle = tileCol;
+    for(let i = 0; i < 10; i++) ctx.fillRect(i * 76, GROUND_Y, 1, CANVAS_H-GROUND_Y);
+    ctx.fillRect(0, GROUND_Y+14, CANVAS_W, 1);
+    ctx.fillRect(0, GROUND_Y+28, CANVAS_W, 1);
+    const VEIN_STRIDE = 88, VEIN_COUNT = 10, VEIN_PERIOD = VEIN_STRIDE * VEIN_COUNT;
+    const veinOff = offset % VEIN_PERIOD;
+    const vPulse = 0.4 + Math.sin(offset * 0.003) * 0.2;
+    for(let i = 0; i < VEIN_COUNT; i++) {
+      const rx = ((i*VEIN_STRIDE - veinOff) % VEIN_PERIOD + VEIN_PERIOD) % VEIN_PERIOD;
+      if(rx > CANVAS_W) continue;
+      const ry = GROUND_Y + 8 + (i%3)*9;
+      const rw = 12 + (i%3)*10;
+      ctx.globalAlpha = vPulse * 0.6;
+      ctx.fillStyle = veinCol;
+      ctx.fillRect(rx, ry, rw, 2);
+      ctx.globalAlpha = vPulse * 0.3;
+      ctx.fillStyle = veinHi;
+      ctx.fillRect(rx+2, ry, rw-4, 1);
+      ctx.globalAlpha = 1;
+    }
+    ctx.globalAlpha = 0.18;
+    ctx.fillStyle = edgeGlow;
+    ctx.fillRect(0, GROUND_Y, CANVAS_W, 2);
+    ctx.globalAlpha = 1;
+    return;
+  }
   ctx.fillStyle = s.groundTop;
   ctx.fillRect(0, GROUND_Y, CANVAS_W, 4);
   ctx.fillStyle = s.groundColor;
@@ -617,6 +653,66 @@ export function drawBonePickup(ctx, x, y, col) {
   ctx.closePath(); ctx.fill();
 }
 
+// ─── BOSS BLIND OUTLINE ──────────────────────────────────────────────────────
+export function drawBossBlindOutline(ctx, cx, cy, frame, phase) {
+  const pulse = 0.6 + Math.sin(frame * 0.2) * 0.4;
+  const col = `rgba(255,221,0,${pulse})`;
+  ctx.save();
+  for(const [ox, oy] of [[-3,0],[3,0],[0,-3],[0,3]]) {
+    // Temporarily override globalAlpha and draw a solid-color version of the boss
+    const breathe = Math.sin(frame * 0.022) * (phase === 2 ? 8 : 5);
+    const bx = cx + ox, by = cy + oy;
+    ctx.fillStyle = col;
+    // Core body
+    ctx.fillRect(bx-38, by-30+breathe, 76, 60);
+    ctx.fillRect(bx-52, by-16+breathe, 104, 38);
+    ctx.fillRect(bx-28, by-48+breathe, 56, 22);
+    ctx.fillRect(bx-20, by-60+breathe, 40, 16);
+    // Side masses
+    const sideW = 20 + phase * 8;
+    ctx.fillRect(bx+34,       by-24+breathe, sideW, 32);
+    ctx.fillRect(bx-34-sideW, by-24+breathe, sideW, 32);
+    ctx.fillRect(bx+46,       by-14+breathe, 10, 12);
+    ctx.fillRect(bx-56,       by-14+breathe, 10, 12);
+    if(phase >= 1) {
+      ctx.fillRect(bx+54+sideW-20, by-10+breathe, 14, 20);
+      ctx.fillRect(bx-54-sideW+6,  by-10+breathe, 14, 20);
+    }
+    // Tentacles (bottom) — simplified solid pass
+    const tentacles = [
+      {ox:-40,len:5},{ox:-26,len:6},{ox:-12,len:7},
+      {ox:2,len:6},{ox:16,len:5},{ox:30,len:7},
+      {ox:-54,len:4},{ox:44,len:4},
+    ];
+    tentacles.forEach((t, i) => {
+      const tx = bx + t.ox, ty = by + 30 + breathe;
+      for(let s = 0; s < t.len; s++) {
+        const w = Math.max(3, 9 - s);
+        const wav = Math.sin(frame * (0.04 + phase * 0.012) + i * 1.1 + s * 0.5) * (8 + phase * 3);
+        ctx.fillRect(tx + wav - w/2, ty + s * 10, w, 11);
+      }
+    });
+    // Arms (top)
+    const arms = [{ox:-30,dir:-1},{ox:30,dir:1},{ox:-12,dir:-1},{ox:12,dir:1}];
+    arms.forEach((a, i) => {
+      const ax = bx + a.ox, ay = by - 46 + breathe;
+      for(let s = 0; s < 4 + phase; s++) {
+        const w = Math.max(3, 8 - s);
+        const wav = Math.sin(frame * (0.04 + phase * 0.012) + (i+8) * 1.1 + s * 0.6) * (8 + phase * 3) * a.dir;
+        ctx.fillRect(ax + wav - w/2, ay - s * 11, w, 12);
+      }
+    });
+    // Spines
+    const spineCount = 7 + phase * 3;
+    for(let i = 0; i < spineCount; i++) {
+      const sx = bx - 34 + i * (68 / (spineCount - 1));
+      const sh = 12 + (i % 3) * 7 + Math.sin(frame * 0.035 + i) * 5;
+      ctx.fillRect(sx - 3, by - 60 - sh + breathe, 6, sh);
+    }
+  }
+  ctx.restore();
+}
+
 // ─── BOSS RENDERER ───────────────────────────────────────────────────────────
 export function drawBoss(ctx, cx, cy, frame, phase, hpFrac, blindWindow, hitFlash, bossOpen) {
   ctx.save();
@@ -637,13 +733,6 @@ export function drawBoss(ctx, cx, cy, frame, phase, hpFrac, blindWindow, hitFlas
   const eyeCol    = phase === 2 ? "#ff2200" : phase === 1 ? "#ff6600" : "#ff4488";
   const eyeGlow   = phase === 2 ? "#ff8800" : phase === 1 ? "#ffaa44" : "#ff88cc";
   const eyePulse  = Math.floor(frame * 0.07) % 3 === 0;
-
-  // ── Outer glow aura (drawn first, behind everything) ──
-  const auraAlpha = 0.12 + Math.sin(frame * 0.04) * 0.06;
-  ctx.globalAlpha = auraAlpha;
-  ctx.fillStyle = flash ? "#ff4400" : "#6600cc";
-  ctx.fillRect(cx - 80, cy - 90 + breathe, 160, 160);
-  ctx.globalAlpha = 1;
 
   // ── Core body ──
   // Outer shell
@@ -718,18 +807,15 @@ export function drawBoss(ctx, cx, cy, frame, phase, hpFrac, blindWindow, hitFlas
     }
   });
 
-  // ── Spines (crown) ──
-  const spineCount = 7 + phase * 3;
+  // ── Spines (crown) — shorter, tighter ──
+  const spineCount = 5 + phase * 2;
   for(let i = 0; i < spineCount; i++) {
-    const sx = cx - 34 + i * (68 / (spineCount - 1));
-    const sh = 12 + (i % 3) * 7 + Math.sin(frame * 0.035 + i) * 5;
-    // Spine base
+    const sx = cx - 26 + i * (52 / (spineCount - 1));
+    const sh = 6 + (i % 3) * 4 + Math.sin(frame * 0.035 + i) * 2;
     ctx.fillStyle = spineCol;
-    ctx.fillRect(sx - 3, cy - 60 - sh + breathe, 6, sh);
-    // Spine highlight
+    ctx.fillRect(sx - 2, cy - 60 - sh + breathe, 4, sh);
     ctx.fillStyle = spineGlow;
-    ctx.fillRect(sx - 1, cy - 60 - sh + breathe, 2, Math.floor(sh * 0.4));
-    // Spine tip glow dot
+    ctx.fillRect(sx - 1, cy - 60 - sh + breathe, 2, Math.floor(sh * 0.35));
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(sx - 1, cy - 60 - sh + breathe, 2, 2);
   }
@@ -809,50 +895,7 @@ export function drawBoss(ctx, cx, cy, frame, phase, hpFrac, blindWindow, hitFlas
     }
   }
 
-  // ── Blind spot glow (weak point) ──
-  if(blindWindow) {
-    const glowPulse = 0.5 + Math.sin(frame * 0.25) * 0.5;
-    // Wide aura
-    ctx.globalAlpha = 0.22 + glowPulse * 0.18;
-    ctx.fillStyle = "#ffdd00";
-    ctx.fillRect(cx-60, cy-70+breathe, 120, 140);
-    ctx.globalAlpha = 1;
-    // Bright core weak point
-    ctx.fillStyle = `rgba(255,230,50,${0.75 + glowPulse * 0.25})`;
-    ctx.fillRect(cx-10, cy-14+breathe, 20, 20);
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(cx-5,  cy-9+breathe,  10, 10);
-    ctx.fillStyle = "#ffff88";
-    ctx.fillRect(cx-2,  cy-6+breathe,  4,  4);
-    // Pulsing ring
-    ctx.globalAlpha = glowPulse * 0.6;
-    ctx.strokeStyle = "#ffdd00";
-    ctx.lineWidth = 3;
-    ctx.strokeRect(cx-18, cy-22+breathe, 36, 36);
-    ctx.globalAlpha = 1;
-  }
-
-  // ── HP bar ──
-  const barW = 220, barX = cx - barW/2, barY = cy - 100;
-  // Bar background
-  ctx.fillStyle = "#1a0030";
-  ctx.fillRect(barX - 3, barY - 3, barW + 6, 16);
-  ctx.fillStyle = "#0a0018";
-  ctx.fillRect(barX, barY, barW, 10);
-  // Bar fill
-  const barCol = phase === 2 ? "#ff2200" : phase === 1 ? "#ff6600" : "#cc44ff";
-  const barFill = Math.floor(barW * hpFrac);
-  ctx.fillStyle = barCol;
-  ctx.fillRect(barX, barY, barFill, 10);
-  // Bar shine
-  ctx.fillStyle = "rgba(255,255,255,0.25)";
-  ctx.fillRect(barX, barY, barFill, 3);
-  // Label
-  ctx.fillStyle = "#ffccff";
-  ctx.font = "bold 9px 'Courier New'";
-  ctx.textAlign = "center";
-  ctx.fillText("THE HORROR ENTITY", cx, barY - 5);
-  ctx.textAlign = "left";
+  // ── Blind spot glow (weak point) — handled by drawBossBlindOutline ──
 
   ctx.globalAlpha = 1;
   ctx.restore();

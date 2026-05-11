@@ -77,6 +77,7 @@ export default function MenuScreen({
   musicMuted, setMusicMuted, musicVolume, setMusicVolume,
   activeScenery,
   abyssUnlocked, startBossFight,
+  bossSlain,
   touchButtons, setTouchButtons,
   touchButtonOpacity, setTouchButtonOpacity,
   claimableAch,
@@ -347,6 +348,47 @@ export default function MenuScreen({
 
       <div style={{ width:"100%", maxWidth:480, padding:"0 16px", boxSizing:"border-box" }}>
         <div style={card}>
+
+          {/* Void Slayer banner — right side, shown when boss has been defeated */}
+          {bossSlain && (
+            <div style={{ position:"absolute", top:0, right:14, zIndex:10 }}>
+              <div style={{
+                background:"linear-gradient(160deg,#1a0030,#6600aa,#1a0030)",
+                color:"#e8aaff",
+                fontFamily:F,
+                clipPath:"polygon(0 0, 100% 0, 100% 82%, 50% 100%, 0 82%)",
+                width:"clamp(48px,11vw,60px)",
+                height:"clamp(72px,18vw,90px)",
+                display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+                gap:3, paddingBottom:8, boxSizing:"border-box",
+                outline:"2px solid #8800cc",
+                position:"relative", overflow:"hidden",
+              }}>
+                {/* Shine streak */}
+                <div style={{ position:"absolute", top:0, left:"-30%", width:"40%", height:"100%", background:"rgba(180,0,255,0.18)", transform:"skewX(-18deg)", pointerEvents:"none" }}/>
+                {/* Void skull icon */}
+                <svg width="18" height="18" viewBox="0 0 10 10" shapeRendering="crispEdges" style={{ display:"block", flexShrink:0 }}>
+                  {/* Skull dome */}
+                  <rect x="2" y="0" width="6" height="1" fill="#cc44ff"/>
+                  <rect x="1" y="1" width="8" height="1" fill="#cc44ff"/>
+                  <rect x="0" y="2" width="10" height="3" fill="#cc44ff"/>
+                  <rect x="0" y="5" width="10" height="1" fill="#cc44ff"/>
+                  {/* Eyes */}
+                  <rect x="1" y="2" width="3" height="2" fill="#0d0018"/>
+                  <rect x="6" y="2" width="3" height="2" fill="#0d0018"/>
+                  {/* Jaw teeth */}
+                  <rect x="1" y="6" width="2" height="3" fill="#cc44ff"/>
+                  <rect x="4" y="6" width="2" height="3" fill="#cc44ff"/>
+                  <rect x="7" y="6" width="2" height="3" fill="#cc44ff"/>
+                  {/* Glow dots in eyes */}
+                  <rect x="2" y="3" width="1" height="1" fill="#ff44ff"/>
+                  <rect x="7" y="3" width="1" height="1" fill="#ff44ff"/>
+                </svg>
+                <div style={{ fontSize:"clamp(7px,2vw,9px)", fontWeight:"bold", letterSpacing:1, lineHeight:1, textAlign:"center" }}>VOID</div>
+                <div style={{ fontSize:"clamp(5px,1.2vw,6px)", letterSpacing:1, opacity:0.7, lineHeight:1, textAlign:"center" }}>SLAYER</div>
+              </div>
+            </div>
+          )}
 
           {/* Rank banner — only the active one */}
           {allMenuRanks?.length > 0 && (() => {

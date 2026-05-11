@@ -32,6 +32,7 @@ import { spawnRuinsObstacle } from "./maps/ruins/ruinsObstacles";
 import { spawnCaveObstacle } from "./maps/cave/caveObstacles";
 import { SCENERIES, SKINS, DINO_DESIGNS, DINO_PASSIVES, PASSIVE_ICONS, REGULAR_SCENERY_IDS } from "./data/collectionData.jsx";
 import BossFightScreen from "./BossFightScreen";
+import EndingScreen    from "./EndingScreen";
 import FeedbackScreen from "./FeedbackScreen";
 import TouchButtons from "./TouchButtons";
 import useHistoryNav from "./hooks/useHistoryNav";
@@ -85,7 +86,7 @@ export default function DinoIncremental() {
     ownedSkins:1, ownedSceneries:1, maxCombo:0, nightCycles:0,
     totalNearMiss:0, giantCrushes:0, bestDistNoDash:0, passiveEarned:0, allMovementMax:false,
     totalPlayTime:0, powerupUses:{}, totalPowerupUses:0, hasimKills:0,
-    dinoDistances:{}, bestDistNoHit:0, menuIdleUnlock:false,
+    dinoDistances:{}, bestDistNoHit:0, menuIdleUnlock:false, bossSlain:false,
   });
   const [unlockedAch,    setUnlockedAch]    = useLocalStorage("dino_unlockedAch", []);
   const [claimableAch,   setClaimableAch]   = useLocalStorage("dino_claimableAch", []);
@@ -163,9 +164,10 @@ export default function DinoIncremental() {
 
   // Achievement checker
   useEffect(()=>{
+    const statsWithFlags = { ...achievStats, ownsAbyss: ownedSceneries.includes("abyss") };
     const newUnlocked=[];
     ACHIEVEMENTS.forEach(a=>{
-      if(!unlockedAch.includes(a.id)&&a.req(achievStats)) newUnlocked.push(a);
+      if(!unlockedAch.includes(a.id) && a.req(statsWithFlags)) newUnlocked.push(a);
     });
     if(newUnlocked.length>0){
       const ids=newUnlocked.map(a=>a.id);
@@ -173,7 +175,7 @@ export default function DinoIncremental() {
       setClaimableAch(prev=>[...prev,...ids]);
       setPendingAch(prev=>[...prev,...newUnlocked]);
     }
-  },[achievStats, unlockedAch]);
+  },[achievStats, unlockedAch, ownedSceneries]);
 
   useEffect(()=>{
     if(pendingAch.length>0){
@@ -2218,6 +2220,7 @@ export default function DinoIncremental() {
       ctx.font="bold 13px 'Courier New'"; ctx.fillStyle=HUD.hudText;
       ctx.fillText(`${Math.floor(gs.fossilsEarned)}`,28,20);
 
+
       // Hearts
       if(gs.lives>0){
         const heartSize=14,heartGap=4;
@@ -2474,6 +2477,7 @@ export default function DinoIncremental() {
       musicVolume={musicVolume} setMusicVolume={setMusicVolume}
       activeScenery={activeScenery}
       abyssUnlocked={abyssUnlocked} startBossFight={startBossFight}
+      bossSlain={achievStats?.bossSlain === true}
       touchButtons={touchButtons} setTouchButtons={setTouchButtons}
       touchButtonOpacity={touchButtonOpacity} setTouchButtonOpacity={setTouchButtonOpacity}
       controlsToastSeen={controlsToastSeen} setControlsToastSeen={setControlsToastSeen}
@@ -2572,6 +2576,7 @@ export default function DinoIncremental() {
     <AchievementsScreen
       unlockedAch={unlockedAch}
       claimableAch={claimableAch}
+      achievStats={{ ...achievStats, ownsAbyss: ownedSceneries.includes("abyss") }}
       onClaim={(id, reward, rewardLabel)=>{
         setClaimableAch(prev=>prev.filter(x=>x!==id));
         setFossils(f=>f+reward);
@@ -2594,6 +2599,14 @@ export default function DinoIncremental() {
     />
   );
 
+  if(screen==="ending") return (
+    <EndingScreen
+      skin={currentSkin}
+      design={currentDesign}
+      onMenu={()=>navigate("menu")}
+    />
+  );
+
   if(screen==="feedback") return (
     <FeedbackScreen onBack={()=>navigate("menu")} showNotif={showNotif} />
   );
@@ -2611,8 +2624,8 @@ export default function DinoIncremental() {
       onWin={()=>{
         setFossils(f => f + 5000);
         setTotalFossils(f => f + 5000);
-        showNotif("The Horror Entity is defeated! +5000 fossils!");
-        navigate("menu");
+        setAchievStats(s => ({ ...s, bossSlain: true }));
+        navigate("ending");
       }}
       onDeath={()=>setBossKey(k => k + 1)}
       onMenu={()=>navigate("menu")}

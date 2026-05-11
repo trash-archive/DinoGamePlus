@@ -3,10 +3,13 @@ import { CANVAS_W, GROUND_Y } from "../constants";
 import { SCENERIES }          from "../data/collectionData.jsx";
 import { getHudColors }       from "../utils/scenery";
 
+// ─── TESTING FLAG ────────────────────────────────────────────────────────────
+export const GOD_MODE = false; // set to true to disable damage for testing
+
 export const BOSS_MAX_HP   = 15;
 export const WIN_REWARD    = 5000;
 export const BOSS_X        = CANVAS_W * 0.72;
-export const BOSS_Y        = GROUND_Y - 60;
+export const BOSS_Y        = GROUND_Y - 90;
 export const BITE_RANGE    = [220, 170, 130]; // per phase — gets tighter each phase
 
 // per-phase tuning tables
@@ -50,7 +53,20 @@ export const BARRAGE_SIZE = [2, 4, 5];
 
 export function pickAttack(phase) {
   const pool = ATTACKS_BY_PHASE[phase];
-  return pool[Math.floor(Math.random() * pool.length)];
+  const atk  = { ...pool[Math.floor(Math.random() * pool.length)] };
+
+  // Pre-generate random values so telegraph and spawn use the same data
+  if(atk.type === "void_burst") {
+    const count   = 6 + phase;
+    atk._vbCount  = count;
+    atk._vbGap    = 1 + Math.floor(Math.random() * (count - 2));
+  }
+  if(atk.type === "spike_rain") {
+    atk._srSafeA  = 60  + Math.floor(Math.random() * 120);
+    atk._srSafeB  = 380 + Math.floor(Math.random() * 120);
+  }
+
+  return atk;
 }
 
 export function buildBarrage(phase) {
@@ -79,9 +95,11 @@ export function initBossState(stats, skin, design, lives) {
     particles:   [],
     shake:       { x: 0, y: 0, trauma: 0 },
     phaseFlash:  0,
+    phaseTransition: 0,
+    deathAnim:   0,
     biteCooldown:0, biteFlash: 0,
     bossOpen:    false, biteAnim: 0,
-    bossX: CANVAS_W * 0.72, bossY: GROUND_Y - 60,
+    bossX: CANVAS_W * 0.72, bossY: GROUND_Y - 90,
     teleportFlicker: 0, teleportTarget: null,
     frame:       0, groundOffset: 0,
     alive:       true, won: false,

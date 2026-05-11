@@ -16,12 +16,13 @@ export default function GameOverScreen({ lastRun, bestDist, lastRunRank, getSave
 
   const overlay = {
     position: "fixed", inset: 0,
-    display: "flex", alignItems: "center", justifyContent: "center",
+    display: "flex", alignItems: "flex-start", justifyContent: "center",
     background: "rgba(10,10,10,0.65)",
     fontFamily: F,
     zIndex: 100,
     padding: "16px",
     boxSizing: "border-box",
+    overflowY: "auto",
   };
 
   const panel = {
@@ -33,6 +34,7 @@ export default function GameOverScreen({ lastRun, bestDist, lastRunRank, getSave
     boxSizing: "border-box",
     textAlign: "center",
     lineHeight: "normal",
+    margin: "auto",
   };
 
   const btn = (primary = false) => ({

@@ -58,6 +58,7 @@ export const ACHIEVEMENTS = [
   { id:"dino_hasim_10k",   label:"He Actually Did It",desc:"Reach 10,000m as Hasim",                req:(s)=>(s.dinoDistances?.hasim||0)>=10000,    reward:1000,tier:"legend" },
   { id:"all_dinos_10k",    label:"Dino Daycare Graduate",desc:"Reach 10,000m with every single dino",req:(s)=>["raptor","trex","stego","pterodac","anky","tri","brachio","spino","pachy","para","dilopho","hasim"].every(id=>(s.dinoDistances?.[id]||0)>=10000), reward:5000,tier:"legend" },
   { id:"playtime50h",  label:"I Live Here Now",        desc:"Spend 50 hours playing",                req:(s)=>(s.totalPlayTime||0)>=180000, reward:10000,tier:"legend" },
+  { id:"boss_slain",   label:"Void Slayer",            desc:"Defeat the creature lurking in the Abyss", req:(s)=>s.bossSlain===true, reward:9999, tier:"impossible", visibleIf:(s)=>s.ownsAbyss===true },
   { id:"untouchable",  label:"Are You Even Real?",     desc:"Run 20,000m without taking a single hit or activating a shield", req:(s)=>s.bestDistNoHit>=20000, reward:300,  tier:"impossible" },
   { id:"get_a_partner",label:"Get a Girlfriend/Boyfriend", desc:"Start talking with someone bro, you can do it. Probably.", req:(s)=>s.menuIdleUnlock===true, reward:1, rewardLabel:"1 hope", tier:"impossible" },
 ];
@@ -123,7 +124,7 @@ const TierIcon = ({ tier, BG }) => {
   return null;
 };
 
-export default function AchievementsScreen({ unlockedAch, claimableAch, onClaim, notification, achivNotif, onBack, F, BG, DARK, BORDER, MUTED }) {
+export default function AchievementsScreen({ unlockedAch, claimableAch, onClaim, notification, achivNotif, onBack, F, BG, DARK, BORDER, MUTED, achievStats }) {
   const outer = { minHeight:"100vh", background:BG, fontFamily:F, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"flex-start", userSelect:"none", boxSizing:"border-box", width:"100%", overflowX:"hidden" };
   const wrap  = { width:"100%", maxWidth:600, padding:"20px 16px", boxSizing:"border-box", margin:"0 auto" };
   const btn   = { background:BG, color:DARK, border:`2px solid ${BORDER}`, padding:"10px 20px", fontSize:12, fontFamily:F, cursor:"pointer", letterSpacing:2, fontWeight:"bold", boxSizing:"border-box" };
@@ -141,7 +142,7 @@ export default function AchievementsScreen({ unlockedAch, claimableAch, onClaim,
           <div style={{ fontSize:12, color:MUTED }}>{unlockedAch.length}/{ACHIEVEMENTS.length}</div>
         </div>
         {["bronze","silver","gold","legend","impossible"].map(tier => {
-          const tierAchs = ACHIEVEMENTS.filter(a => a.tier === tier);
+          const tierAchs = ACHIEVEMENTS.filter(a => a.tier === tier && (!a.visibleIf || a.visibleIf(achievStats || {})));
           return (
             <div key={tier} style={{ marginBottom:18 }}>
               <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>

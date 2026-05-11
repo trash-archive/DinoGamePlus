@@ -33,26 +33,21 @@ function drawWaveProjectile(ctx, p, frame) {
   const pulse  = Math.floor(frame / 5) % 2;
   const wobble = Math.sin(frame * 0.22 + p.x * 0.04) * 2;
 
-  // Trail
+  // Trail — pixel dots, not rect outlines
   for(let i = 1; i <= 5; i++) {
-    const tx = p.x + i * 10;
-    ctx.globalAlpha = (1 - i / 6) * 0.28;
-    ctx.fillStyle = "#660000";
-    ctx.fillRect(tx, p.y + wobble, p.w - i, p.h - i);
+    const tx = p.x + (p.vx > 0 ? -i : i) * 10;
+    ctx.globalAlpha = (1 - i / 6) * 0.5;
+    ctx.fillStyle = "#aa0000";
+    ctx.fillRect(tx + p.w/2 - 2, p.y + wobble + p.h/2 - 2, 4, 4);
   }
   ctx.globalAlpha = 1;
 
-  // Outer shell
   ctx.fillStyle = pulse ? "#aa0000" : "#770000";
   ctx.fillRect(p.x,     p.y + wobble,     p.w,     p.h);
-  // Inner bright core
   ctx.fillStyle = pulse ? "#ff4422" : "#cc2200";
   ctx.fillRect(p.x + 3, p.y + wobble + 3, p.w - 6, p.h - 6);
-  // Bright center pixel
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(p.x + Math.floor(p.w/2) - 1, p.y + wobble + Math.floor(p.h/2) - 1, 3, 3);
-
-  // Side spikes (pixel art)
   ctx.fillStyle = pulse ? "#ff2200" : "#880000";
   ctx.fillRect(p.x - 5, p.y + wobble + 4, 5, 4);
   ctx.fillRect(p.x + p.w, p.y + wobble + 4, 5, 4);
@@ -61,62 +56,47 @@ function drawWaveProjectile(ctx, p, frame) {
 // ── aimed_shot ────────────────────────────────────────────────────────────────
 function drawAimedShot(ctx, p, frame) {
   const spd = Math.abs(p.vx);
+  const trailDir = p.vx > 0 ? -1 : 1;
 
-  // Speed lines behind
+  // Speed lines — thin pixel streaks, not rect outlines
   for(let i = 1; i <= 6; i++) {
-    const tx = p.x + i * (spd * 0.6);
-    const lh = Math.max(1, p.h - i);
-    ctx.globalAlpha = (1 - i / 7) * 0.4;
+    const tx = p.x + trailDir * i * (spd * 0.6);
+    ctx.globalAlpha = (1 - i / 7) * 0.5;
     ctx.fillStyle = "#ff2200";
-    ctx.fillRect(tx, p.y + (p.h - lh) / 2, p.w * 0.6, lh);
+    ctx.fillRect(tx, p.y + p.h/2 - 1, 3, 2);
   }
   ctx.globalAlpha = 1;
 
-  // Needle body
   ctx.fillStyle = "#cc0000";
   ctx.fillRect(p.x,     p.y + 2, p.w,     p.h - 4);
   ctx.fillStyle = "#ff3300";
   ctx.fillRect(p.x + 1, p.y + 3, p.w - 2, p.h - 6);
-  // Bright tip (left side, moving left)
   ctx.fillStyle = "#ffffff";
-  ctx.fillRect(p.x,     p.y + Math.floor(p.h/2) - 1, 3, 3);
-  // Tail flare
+  ctx.fillRect(p.vx > 0 ? p.x + p.w - 3 : p.x, p.y + Math.floor(p.h/2) - 1, 3, 3);
   ctx.fillStyle = "#ff6600";
-  ctx.fillRect(p.x + p.w - 2, p.y + 1, 4, p.h - 2);
-  ctx.fillRect(p.x + p.w,     p.y + 3, 3, p.h - 6);
+  const tailX = p.vx > 0 ? p.x : p.x + p.w - 4;
+  ctx.fillRect(tailX, p.y + 1, 4, p.h - 2);
+  ctx.fillRect(tailX + (p.vx > 0 ? -3 : 4), p.y + 3, 3, p.h - 6);
 }
 
 // ── ground_slam ───────────────────────────────────────────────────────────────
 function drawGroundSlam(ctx, p, frame) {
   const crack = Math.floor(frame / 3) % 3;
 
-  // Glow aura under shockwave
-  ctx.globalAlpha = 0.18;
-  ctx.fillStyle = "#ff4400";
-  ctx.fillRect(p.x - 12, p.y - 8, p.w + 24, p.h + 14);
-  ctx.globalAlpha = 1;
-
-  // Main shockwave body
   ctx.fillStyle = "#cc2200";
   ctx.fillRect(p.x, p.y, p.w, p.h);
-
-  // Jagged top edge (pixel cracks)
   ctx.fillStyle = "#ff4400";
   for(let i = 0; i < Math.floor(p.w / 6); i++) {
     const jx = p.x + i * 6;
     const jh = (crack + i) % 3 === 0 ? 6 : 3;
     ctx.fillRect(jx, p.y - jh, 4, jh + 2);
   }
-
-  // Bright leading edge
   ctx.fillStyle = "#ff8844";
   ctx.fillRect(p.x, p.y, 4, p.h);
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(p.x, p.y + 4, 2, p.h - 8);
-
-  // Ground crack trail behind
   for(let i = 1; i <= 4; i++) {
-    const tx = p.x + i * 14;
+    const tx = p.x + (p.vx > 0 ? -i : i) * 14;
     ctx.globalAlpha = (1 - i / 5) * 0.5;
     ctx.fillStyle = "#880000";
     ctx.fillRect(tx, GROUND_Y - 4, 8, 4);
@@ -176,39 +156,30 @@ function drawVoidOrb(ctx, p, frame) {
   const cy    = p.y + p.h / 2;
   const r     = p.w / 2;
 
-  // Outer homing aura
-  ctx.globalAlpha = pulse * 0.22;
-  ctx.fillStyle = "#6600cc";
-  ctx.fillRect(cx - r - 8, cy - r - 8, (r + 8) * 2, (r + 8) * 2);
-  ctx.globalAlpha = 1;
-
-  // Rotating diamond (4 rects at 45° offset using pixel art)
   const arms2 = [
-    [Math.cos(spin),       Math.sin(spin)],
-    [Math.cos(spin + Math.PI/2), Math.sin(spin + Math.PI/2)],
-    [Math.cos(spin + Math.PI),   Math.sin(spin + Math.PI)],
-    [Math.cos(spin + Math.PI*1.5), Math.sin(spin + Math.PI*1.5)],
+    [Math.cos(spin),             Math.sin(spin)],
+    [Math.cos(spin+Math.PI/2),   Math.sin(spin+Math.PI/2)],
+    [Math.cos(spin+Math.PI),     Math.sin(spin+Math.PI)],
+    [Math.cos(spin+Math.PI*1.5), Math.sin(spin+Math.PI*1.5)],
   ];
   ctx.fillStyle = "#8800cc";
   for(const [ax, ay] of arms2) {
-    ctx.fillRect(Math.round(cx + ax * r) - 2, Math.round(cy + ay * r) - 2, 5, 5);
-    ctx.fillRect(Math.round(cx + ax * r * 0.5) - 1, Math.round(cy + ay * r * 0.5) - 1, 3, 3);
+    ctx.fillRect(Math.round(cx + ax*r)-2,     Math.round(cy + ay*r)-2,     5, 5);
+    ctx.fillRect(Math.round(cx + ax*r*0.5)-1, Math.round(cy + ay*r*0.5)-1, 3, 3);
   }
-
-  // Core
   ctx.fillStyle = `rgba(150,0,255,${pulse})`;
-  ctx.fillRect(cx - r + 2, cy - r + 2, (r - 2) * 2, (r - 2) * 2);
+  ctx.fillRect(cx - r + 2, cy - r + 2, (r-2)*2, (r-2)*2);
   ctx.fillStyle = "#cc44ff";
   ctx.fillRect(cx - 4, cy - 4, 8, 8);
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(cx - 2, cy - 2, 4, 4);
 
-  // Homing trail
+  // Trail — pixel dots only
+  const trailDir = p.vx > 0 ? -1 : 1;
   for(let i = 1; i <= 4; i++) {
-    const tx = p.x + i * 6;
-    ctx.globalAlpha = (1 - i / 5) * 0.3;
+    ctx.globalAlpha = (1 - i / 5) * 0.5;
     ctx.fillStyle = "#6600cc";
-    ctx.fillRect(tx, p.y + 2, p.w - 4, p.h - 4);
+    ctx.fillRect(cx + trailDir*i*7 - 2, cy - 2, 4, 4);
   }
   ctx.globalAlpha = 1;
 }
@@ -307,29 +278,21 @@ function drawGroundPound(ctx, p, frame) {
   if(p._delay !== undefined && !p._active) return;
   const crack = Math.floor(frame / 2) % 3;
   const isSecond = p._wave === 1;
-  // Glow aura
-  ctx.globalAlpha = isSecond ? 0.12 : 0.22;
-  ctx.fillStyle = isSecond ? "#880044" : "#ff2200";
-  ctx.fillRect(p.x - 14, p.y - 10, p.w + 28, p.h + 16);
-  ctx.globalAlpha = 1;
-  // Main body
   ctx.fillStyle = isSecond ? "#880033" : "#cc1100";
   ctx.fillRect(p.x, p.y, p.w, p.h);
-  // Jagged top
   ctx.fillStyle = isSecond ? "#cc0044" : "#ff3300";
   for(let i = 0; i < Math.floor(p.w / 7); i++) {
     const jx = p.x + i * 7;
     const jh = (crack + i) % 3 === 0 ? 7 : 3;
     ctx.fillRect(jx, p.y - jh, 5, jh + 2);
   }
-  // Bright leading edge
   ctx.fillStyle = isSecond ? "#ff4488" : "#ff6600";
   ctx.fillRect(p.x, p.y, 5, p.h);
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(p.x, p.y + 3, 2, p.h - 6);
-  // Ground crack trail
+  const trailDir = p.vx > 0 ? -1 : 1;
   for(let i = 1; i <= 5; i++) {
-    const tx = p.x + i * 12;
+    const tx = p.x + trailDir * i * 12;
     ctx.globalAlpha = (1 - i / 6) * 0.45;
     ctx.fillStyle = isSecond ? "#660022" : "#880000";
     ctx.fillRect(tx, GROUND_Y - 5, 9, 5);
@@ -342,26 +305,20 @@ function drawGroundPound(ctx, p, frame) {
 function drawVoidBurst(ctx, p, frame) {
   const pulse = 0.5 + Math.sin(frame * 0.18 + p._idx * 0.9) * 0.5;
   const cx = p.x + p.w / 2, cy = p.y + p.h / 2;
-  // Outer glow
-  ctx.globalAlpha = pulse * 0.2;
-  ctx.fillStyle = "#cc00ff";
-  ctx.fillRect(cx - 10, cy - 10, 20, 20);
-  ctx.globalAlpha = 1;
-  // Body
   ctx.fillStyle = "#6600aa";
   ctx.fillRect(p.x, p.y, p.w, p.h);
   ctx.fillStyle = "#aa22ee";
   ctx.fillRect(p.x + 2, p.y + 2, p.w - 4, p.h - 4);
-  // Bright core
   ctx.fillStyle = "#ee88ff";
   ctx.fillRect(cx - 3, cy - 3, 6, 6);
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(cx - 1, cy - 1, 3, 3);
-  // Speed trail
+  // Trail — pixel dots
+  const trailDir = p.vx > 0 ? -1 : 1;
   for(let i = 1; i <= 4; i++) {
-    ctx.globalAlpha = (1 - i / 5) * 0.28;
+    ctx.globalAlpha = (1 - i / 5) * 0.4;
     ctx.fillStyle = "#8800cc";
-    ctx.fillRect(p.x + i * 7, p.y + 2, p.w - 4, p.h - 4);
+    ctx.fillRect(cx + trailDir*i*7 - 2, cy - 2, 4, 4);
   }
   ctx.globalAlpha = 1;
 }
@@ -579,14 +536,23 @@ export function drawBossTelegraph(ctx, attack, attackTimer, warmup, bossX, bossY
       break;
     }
     case "void_burst": {
-      // Charge-up fan lines from boss at spread angles
-      const fanCount = 7;
-      for(let i = 0; i < fanCount; i++) {
-        const t  = i / (fanCount - 1);
-        const fy = GROUND_Y - 20 - t * (GROUND_Y - 40);
+      // Fan lines from boss — highlight the gap row in dark, others in purple
+      const vbCount = attack._vbCount ?? 7;
+      const vbGap   = attack._vbGap   ?? Math.floor(vbCount / 2);
+      for(let i = 0; i < vbCount; i++) {
+        const t   = i / (vbCount - 1);
+        const fy  = GROUND_Y - 20 - t * (GROUND_Y - 40);
         const len2 = progress * 60;
-        ctx.fillStyle = i === Math.floor(fanCount / 2) ? "#220033" : "#8800cc";
+        // Gap row shown as dark/empty, others as danger
+        ctx.fillStyle = i === vbGap ? "#220033" : "#8800cc";
         ctx.fillRect(bossX - 50 - len2, fy, len2, 3);
+        // Bright safe-gap marker
+        if(i === vbGap) {
+          ctx.globalAlpha = alpha * 0.5;
+          ctx.fillStyle = "#00ff88";
+          ctx.fillRect(0, fy - 6, bossX - 50, 14);
+          ctx.globalAlpha = alpha;
+        }
       }
       // Charge glow on boss
       ctx.globalAlpha = alpha * 0.3;
@@ -606,17 +572,19 @@ export function drawBossTelegraph(ctx, attack, attackTimer, warmup, bossX, bossY
     }
     case "spike_rain": {
       // Shadow columns where spikes will fall, gaps left clear
+      const safeA = attack._srSafeA ?? 100;
+      const safeB = attack._srSafeB ?? 420;
       const cols2 = 10;
       for(let i = 0; i < cols2; i++) {
         const sx = 20 + i * ((CANVAS_W - 40) / cols2);
         ctx.fillStyle = "#440011";
         ctx.fillRect(sx, 0, (CANVAS_W - 40) / cols2 - 4, GROUND_Y);
       }
-      // Bright safe-zone markers at approximate gap positions
+      // Bright safe-zone markers at actual gap positions
       ctx.globalAlpha = alpha * 0.6;
       ctx.fillStyle = "#00ff88";
-      ctx.fillRect(50,  GROUND_Y - 6, 90, 6);
-      ctx.fillRect(370, GROUND_Y - 6, 90, 6);
+      ctx.fillRect(safeA - 44, GROUND_Y - 6, 88, 6);
+      ctx.fillRect(safeB - 44, GROUND_Y - 6, 88, 6);
       break;
     }
     default: break;

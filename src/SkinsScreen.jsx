@@ -116,38 +116,121 @@ export default function SkinsScreen({
         )}
 
         {skinTab==="scenery" && (
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-            {SCENERIES.map(s => {
+          <>
+            {/* Regular maps — 2-column grid */}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+              {SCENERIES.filter(s => !s.isFinalMap).map(s => {
+                const owned  = ownedSceneries.includes(s.id);
+                const active = activeScenery === s.id;
+                return (
+                  <div key={s.id} onClick={() => { playClick(); buyScenery(s); }} style={{ background:active?"#ece8e0":"#faf8f4", border:`2px solid ${active?BORDER:"#ddd"}`, padding:"14px", cursor:"pointer", boxSizing:"border-box" }}>
+                    <div style={{ width:"100%", height:36, background:s.dayBg, marginBottom:8, position:"relative", overflow:"hidden" }}>
+                      <div style={{ position:"absolute", bottom:0, left:0, right:0, height:10, background:s.groundTop }}/>
+                      <div style={{ position:"absolute", bottom:0, left:0, right:0, height:6,  background:s.groundColor }}/>
+                      <div style={{ position:"absolute", top:6, left:"30%", width:20, height:8, background:s.cloudColor }}/>
+                    </div>
+                    <div style={{ fontSize:12, fontWeight:"bold", letterSpacing:1 }}>{s.label}</div>
+                    <div style={{ fontSize:10, color:MUTED, margin:"4px 0 8px", lineHeight:1.5 }}>{s.desc}</div>
+                    <div style={{ fontSize:11, fontWeight:"bold", color:active?"#aaa":owned?"#448844":DARK }}>
+                      {active?"ACTIVE":owned?"[ SELECT ]":s.cost===0?"FREE":`◈ ${s.cost}`}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* The Abyss — full-width special card */}
+            {(() => {
+              const s = SCENERIES.find(sc => sc.isFinalMap);
+              if(!s) return null;
               const owned  = ownedSceneries.includes(s.id);
               const active = activeScenery === s.id;
               const allRegularOwned = REGULAR_SCENERY_IDS.every(id => ownedSceneries.includes(id));
-              const isLocked = s.isFinalMap && !allRegularOwned;
+              const isLocked = !allRegularOwned;
+
               if(isLocked) return (
-                <div key={s.id} style={{ background:"#0a0010", border:"2px solid #330022", padding:"14px", boxSizing:"border-box", opacity:0.7 }}>
-                  <div style={{ width:"100%", height:36, background:"#000", marginBottom:8, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                    <span style={{ color:"#440022", fontSize:18 }}>???</span>
+                <div style={{ marginTop:10, background:"#06000f", border:"2px solid #1a0030", padding:"18px 16px", boxSizing:"border-box", position:"relative", overflow:"hidden" }}>
+                  {/* Animated scanline effect via CSS */}
+                  <div style={{ position:"absolute", inset:0, backgroundImage:"repeating-linear-gradient(0deg, rgba(80,0,120,0.06) 0px, rgba(80,0,120,0.06) 1px, transparent 1px, transparent 4px)", pointerEvents:"none" }}/>
+                  <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                    {/* Mystery icon */}
+                    <div style={{ width:52, height:52, background:"#0d0018", border:"2px solid #2a0044", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                      <span style={{ fontSize:22, color:"#330055" }}>▓</span>
+                    </div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontSize:13, fontWeight:"bold", letterSpacing:3, color:"#330055" }}>? ? ? ? ? ? ? ? ?</div>
+                      <div style={{ fontSize:9, color:"#220033", margin:"4px 0 6px", lineHeight:1.6 }}>Own all other maps to reveal what lurks beyond.</div>
+                      <div style={{ fontSize:10, fontWeight:"bold", color:"#330055", letterSpacing:2 }}>[ LOCKED ]</div>
+                    </div>
                   </div>
-                  <div style={{ fontSize:12, fontWeight:"bold", letterSpacing:1, color:"#440022" }}>???</div>
-                  <div style={{ fontSize:10, color:"#440022", margin:"4px 0 8px", lineHeight:1.5 }}>Unlock all other maps to reveal.</div>
-                  <div style={{ fontSize:11, fontWeight:"bold", color:"#440022" }}>[ LOCKED ]</div>
                 </div>
               );
+
               return (
-                <div key={s.id} onClick={() => { playClick(); buyScenery(s); }} style={{ background:active?"#ece8e0":"#faf8f4", border:`2px solid ${active?BORDER:"#ddd"}`, padding:"14px", cursor:"pointer", boxSizing:"border-box" }}>
-                  <div style={{ width:"100%", height:36, background:s.dayBg, marginBottom:8, position:"relative", overflow:"hidden" }}>
-                    <div style={{ position:"absolute", bottom:0, left:0, right:0, height:10, background:s.groundTop }}/>
-                    <div style={{ position:"absolute", bottom:0, left:0, right:0, height:6,  background:s.groundColor }}/>
-                    <div style={{ position:"absolute", top:6, left:"30%", width:20, height:8, background:s.cloudColor }}/>
+                <div
+                  onClick={() => { playClick(); buyScenery(s); }}
+                  style={{
+                    marginTop:10,
+                    background: active ? "#0d0020" : "#08000e",
+                    border: `2px solid ${active ? "#cc44ff" : "#3a0066"}`,
+                    padding:"0",
+                    cursor:"pointer",
+                    boxSizing:"border-box",
+                    position:"relative",
+                    overflow:"hidden",
+                    boxShadow: active ? "0 0 18px rgba(180,0,255,0.25)" : "none",
+                  }}
+                >
+                  {/* Scanlines */}
+                  <div style={{ position:"absolute", inset:0, backgroundImage:"repeating-linear-gradient(0deg, rgba(100,0,160,0.07) 0px, rgba(100,0,160,0.07) 1px, transparent 1px, transparent 4px)", pointerEvents:"none", zIndex:1 }}/>
+
+                  {/* Wide preview banner */}
+                  <div style={{ width:"100%", height:56, background:"#0d0018", position:"relative", overflow:"hidden" }}>
+                    {/* Void gradient */}
+                    <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg, #0d0018 0%, #1a0030 60%, #3d1a5c 100%)" }}/>
+                    {/* Floating void orbs */}
+                    <div style={{ position:"absolute", top:10, left:"15%", width:6, height:6, background:"#cc44ff", opacity:0.6, borderRadius:0 }}/>
+                    <div style={{ position:"absolute", top:18, left:"40%", width:4, height:4, background:"#8800cc", opacity:0.5 }}/>
+                    <div style={{ position:"absolute", top:8,  left:"65%", width:8, height:8, background:"#aa00ff", opacity:0.4 }}/>
+                    <div style={{ position:"absolute", top:22, left:"80%", width:4, height:4, background:"#cc44ff", opacity:0.7 }}/>
+                    <div style={{ position:"absolute", top:14, left:"55%", width:3, height:3, background:"#ff44ff", opacity:0.5 }}/>
+                    {/* Ground */}
+                    <div style={{ position:"absolute", bottom:0, left:0, right:0, height:12, background:"#3d1a5c" }}/>
+                    <div style={{ position:"absolute", bottom:0, left:0, right:0, height:7,  background:"#1a0a2e" }}/>
+                    {/* Crack lines */}
+                    <div style={{ position:"absolute", bottom:7, left:"20%", width:2, height:14, background:"#6600aa", opacity:0.6 }}/>
+                    <div style={{ position:"absolute", bottom:7, left:"50%", width:2, height:20, background:"#8800cc", opacity:0.5 }}/>
+                    <div style={{ position:"absolute", bottom:7, left:"75%", width:2, height:12, background:"#6600aa", opacity:0.6 }}/>
+                    {/* "THE ABYSS" label in preview */}
+                    <div style={{ position:"absolute", top:"50%", left:"50%", transform:"translate(-50%,-50%)", fontSize:9, letterSpacing:5, color:"rgba(180,80,255,0.35)", fontFamily:F, fontWeight:"bold", whiteSpace:"nowrap", zIndex:2 }}>
+                      THE ABYSS
+                    </div>
                   </div>
-                  <div style={{ fontSize:12, fontWeight:"bold", letterSpacing:1 }}>{s.label}</div>
-                  <div style={{ fontSize:10, color:MUTED, margin:"4px 0 8px", lineHeight:1.5 }}>{s.desc}</div>
-                  <div style={{ fontSize:11, fontWeight:"bold", color:active?"#aaa":owned?"#448844":DARK }}>
-                    {active?"ACTIVE":owned?"[ SELECT ]":s.cost===0?"FREE":`◈ ${s.cost}`}
+
+                  {/* Card body */}
+                  <div style={{ padding:"12px 16px", position:"relative", zIndex:2 }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:13, fontWeight:"bold", letterSpacing:3, color:"#cc44ff" }}>THE ABYSS</div>
+                        <div style={{ fontSize:9, color:"#7733aa", margin:"4px 0 0", lineHeight:1.6 }}>{s.desc}</div>
+                      </div>
+                      <div style={{ fontSize:10, fontWeight:"bold", letterSpacing:2, color: active?"#cc44ff": owned?"#8833cc":"#cc44ff", textAlign:"right", paddingLeft:12, paddingTop:2 }}>
+                        {active ? "ACTIVE" : owned ? "[ SELECT ]" : "FREE"}
+                      </div>
+                    </div>
+
+                    {/* Warning strip */}
+                    {owned && (
+                      <div style={{ marginTop:10, background:"#0d0018", border:"1px solid #3a0066", padding:"6px 10px", display:"flex", alignItems:"center", gap:8 }}>
+                        <span style={{ color:"#cc44ff", fontSize:12 }}>⚠</span>
+                        <span style={{ fontSize:9, color:"#7733aa", letterSpacing:1 }}>BOSS ENCOUNTER — No regular run. Enter to fight.</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
-            })}
-          </div>
+            })()}
+          </>
         )}
 
         <div style={{ display:"flex", gap:8, marginTop:14 }}>

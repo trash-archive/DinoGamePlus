@@ -109,7 +109,29 @@ export default function TouchButtons({ keysRef, stats, visible, canvasRef, opaci
         onPress={() => press("Space")} onRelease={() => release("Space")} />
       {hasLeft  && <Btn label="◀" col={1} row={2} opacity={opacity}
         onPress={() => press("ArrowLeft")}  onRelease={() => release("ArrowLeft")} />}
-      {hasBite  && <Btn label="🦷" col={2} row={2} opacity={opacity}
+      {hasBite  && <Btn label={
+        <svg viewBox="0 0 22 22" width="60%" height="60%" style={{display:"block"}} shapeRendering="crispEdges">
+          {/* Top jaw */}
+          <rect x="2"  y="2"  width="18" height="4" fill="currentColor"/>
+          <rect x="2"  y="6"  width="18" height="3" fill="currentColor"/>
+          {/* Top teeth */}
+          <rect x="3"  y="9"  width="3" height="4" fill="currentColor"/>
+          <rect x="8"  y="9"  width="3" height="5" fill="currentColor"/>
+          <rect x="13" y="9"  width="3" height="5" fill="currentColor"/>
+          <rect x="17" y="9"  width="3" height="4" fill="currentColor"/>
+          {/* Bottom jaw */}
+          <rect x="2"  y="16" width="18" height="4" fill="currentColor"/>
+          {/* Bottom teeth */}
+          <rect x="5"  y="13" width="3" height="3" fill="currentColor"/>
+          <rect x="10" y="12" width="3" height="4" fill="currentColor"/>
+          <rect x="15" y="13" width="3" height="3" fill="currentColor"/>
+          {/* Shine */}
+          <rect x="3"  y="3"  width="14" height="2" fill="rgba(255,255,255,0.4)"/>
+          {/* Blood tips */}
+          <rect x="9"  y="13" width="1" height="1" fill="#cc0000"/>
+          <rect x="14" y="13" width="1" height="1" fill="#cc0000"/>
+        </svg>
+      } col={2} row={2} opacity={opacity}
         onPress={() => press("KeyF")}   onRelease={() => release("KeyF")} />}
       {hasRight && <Btn label="▶" col={3} row={2} opacity={opacity}
         onPress={() => press("ArrowRight")} onRelease={() => release("ArrowRight")} />}
